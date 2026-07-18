@@ -1,0 +1,30 @@
+import { Router } from 'express';
+import { healthRouter } from './health.js';
+import { authRouter } from './auth.js';
+import { messagesRouter } from './messages.js';
+import { tokenRouter } from './token.js';
+import { ablyAuthRouter } from './ably-auth.js';
+import { registerRouter } from './register.js';
+import { requestCodeRouter } from './request-code.js';
+import { verifyCodeRouter } from './verify-code.js';
+import { deregisterRouter } from './deregister.js';
+import { sendRouter } from './send.js';
+import { phonesRouter } from './phones.js';
+import { callsRouter } from './calls.js';
+import { paidMessagingRouter } from './paid-messaging.js';
+
+export const apiRouter = Router();
+
+apiRouter.use('/health', healthRouter);
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/messages', messagesRouter);
+apiRouter.use('/token', tokenRouter);
+apiRouter.use('/ably-auth', ablyAuthRouter);
+apiRouter.use('/register', registerRouter);
+apiRouter.use('/request-code', requestCodeRouter);
+apiRouter.use('/verify-code', verifyCodeRouter);
+apiRouter.use('/deregister', deregisterRouter);
+apiRouter.use('/send', sendRouter);
+apiRouter.use('/phones', phonesRouter);
+apiRouter.use('/calls', callsRouter);
+apiRouter.use('/paid_messaging', paidMessagingRouter);
