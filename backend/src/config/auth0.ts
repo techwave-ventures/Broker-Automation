@@ -1,13 +1,13 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { env } from './env.js';
 
-const issuer = env.AUTH0_ISSUER_BASE_URL.replace(/\/$/, '');
-const jwks = createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`));
+const issuer = `https://${env.AUTH0_DOMAIN}/`;
+const jwks = createRemoteJWKSet(new URL('.well-known/jwks.json', issuer));
 
 export async function verifyAccessToken(token: string) {
   const result = await jwtVerify(token, jwks, {
     issuer,
-    audience: env.AUTH0_AUDIENCE,
+    audience: `https://${env.AUTH0_DOMAIN}/api/v2/`,
   });
 
   return result.payload;

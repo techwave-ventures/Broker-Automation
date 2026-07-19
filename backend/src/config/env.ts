@@ -9,8 +9,6 @@ const envSchema = z.object({
   POSTGRES_URL: z.string().min(1),
   APP_BASE_URL: z.string().min(1),
   AUTH0_DOMAIN: z.string().min(1),
-  AUTH0_AUDIENCE: z.string().min(1),
-  AUTH0_ISSUER_BASE_URL: z.string().min(1),
   BYPASS_AUTH: z.string().optional(),
   TP_CONTACT_EMAIL: z.string().email().optional(),
   FB_APP_ID: z.string().optional(),
