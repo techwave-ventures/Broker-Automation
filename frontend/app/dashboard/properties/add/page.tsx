@@ -113,7 +113,6 @@ export default function AddPropertyPage() {
             city: form.city || "N/A",
             locality: form.locality || "N/A",
             fullAddress: form.fullAddress || "",
-            price: form.transactionType === "Sell" ? price : Number(form.monthlyRent),
             monthlyRent: Number(form.monthlyRent),
             expectedPrice: Number(form.expectedPrice),
             image: form.category === "Commercial"
@@ -125,7 +124,8 @@ export default function AddPropertyPage() {
             // Attributes mapping
             beds: Number(form.beds) || 0,
             baths: Number(form.baths) || 0,
-            area: Number(form.builtUpArea) || Number(form.plotArea) || 0,
+            builtUpArea: Number(form.builtUpArea) || 0,
+            plotArea: Number(form.plotArea) || 0,
             furnishing: form.furnishing,
             parking: Boolean(form.parking),
             propertyAge: form.propertyAge,

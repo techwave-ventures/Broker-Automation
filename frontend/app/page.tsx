@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { auth0 } from "@/lib/auth0";
 import {
   ArrowRight,
   BotMessageSquare,
@@ -206,7 +207,9 @@ const PLANS = [
 ];
 
 /* ─── Page ──────────────────────────────────────────────────────── */
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth0.getSession();
+  const isLoggedIn = !!session;
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden transition-colors duration-300">
 
@@ -229,15 +232,26 @@ export default function HomePage() {
 
           <div className="flex items-center gap-3">
             <ThemeToggle />
-            <Link href="/auth/login" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors hidden sm:block">
-              Log in
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95"
-            >
-              Get Started Free
-            </Link>
+            {isLoggedIn ? (
+              <Link
+                href="/dashboard"
+                className="text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/login" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors hidden sm:block">
+                  Log in
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-full transition-all hover:scale-105 active:scale-95"
+                >
+                  Get Started Free
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -284,18 +298,29 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/auth/signup"
-                className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-base px-7 py-4 rounded-2xl font-semibold transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]"
-              >
-                Start for free <ArrowRight className="h-5 w-5" />
-              </Link>
-              <Link
-                href="/dashboard"
-                className="flex items-center justify-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground text-base px-7 py-4 rounded-2xl font-semibold transition-colors"
-              >
-                View Demo Dashboard
-              </Link>
+              {isLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-base px-7 py-4 rounded-2xl font-semibold transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]"
+                >
+                  Go to Dashboard <ArrowRight className="h-5 w-5" />
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/signup"
+                    className="flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-base px-7 py-4 rounded-2xl font-semibold transition-all hover:scale-105 hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]"
+                  >
+                    Start for free <ArrowRight className="h-5 w-5" />
+                  </Link>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center justify-center gap-2 bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 text-foreground text-base px-7 py-4 rounded-2xl font-semibold transition-colors"
+                  >
+                    View Demo Dashboard
+                  </Link>
+                </>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-5 mt-10">

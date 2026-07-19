@@ -8,63 +8,102 @@ import {
     BotMessageSquare,
     Circle,
 } from "lucide-react";
-
-const stats = [
-    {
-        label: "Total Properties",
-        value: "24",
-        change: "+3 this week",
-        icon: Building2,
-        color: "text-primary",
-        bg: "bg-primary/10",
-    },
-    {
-        label: "Active Leads",
-        value: "142",
-        change: "+18 today",
-        icon: Users,
-        color: "text-accent",
-        bg: "bg-accent/10",
-    },
-    {
-        label: "Conversations",
-        value: "1,204",
-        change: "+89 today",
-        icon: MessageSquare,
-        color: "text-secondary",
-        bg: "bg-secondary/10",
-    },
-    {
-        label: "Conversion Rate",
-        value: "6.4%",
-        change: "+1.2% vs last week",
-        icon: TrendingUp,
-        color: "text-orange-500",
-        bg: "bg-orange-500/10",
-    },
-];
-
-const recentLeads = [
-    { name: "Aarav Shah", query: "3 BHK in Baner", time: "2m ago", status: "new" },
-    { name: "Priya Desai", query: "2 BHK under ₹60L", time: "18m ago", status: "qualified" },
-    { name: "Rohan Mehta", query: "Villa in Koregaon Park", time: "1h ago", status: "viewing" },
-    { name: "Sneha Patil", query: "Office space 1000 sqft", time: "3h ago", status: "new" },
-    { name: "Karan Joshi", query: "Flat near Hinjewadi", time: "5h ago", status: "qualified" },
-];
+import { auth0 } from "@/lib/auth0";
+import { fetchProperties, fetchLeads, fetchChats } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
     new: "bg-primary text-primary-foreground",
     qualified: "bg-accent text-accent-foreground",
     viewing: "bg-orange-500 text-white",
+    closed: "bg-emerald-500 text-white"
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+    const session = await auth0.getSession();
+    const displayName = session?.user?.name || (session?.user?.email ? session.user.email.split('@')[0] : "Local Dev User");
+
+    // Fetch dynamic database counts
+    const [properties, leads, chats] = await Promise.all([
+        fetchProperties(),
+        fetchLeads(),
+        fetchChats()
+    ]);
+
+    const activeLeadsCount = leads.filter((l: any) => l.status !== 'Closed').length;
+    const closedLeadsCount = leads.filter((l: any) => l.status === 'Closed').length;
+    const conversionRate = leads.length > 0 
+        ? ((closedLeadsCount / leads.length) * 100).toFixed(1) + '%'
+        : '0.0%';
+
+    const stats = [
+        {
+            label: "Total Properties",
+            value: String(properties.length),
+            change: "Live listings",
+            icon: Building2,
+            color: "text-primary",
+            bg: "bg-primary/10",
+        },
+        {
+            label: "Active Leads",
+            value: String(activeLeadsCount),
+            change: `${leads.length - activeLeadsCount} closed`,
+            icon: Users,
+            color: "text-accent",
+            bg: "bg-accent/10",
+        },
+        {
+            label: "Conversations",
+            value: String(chats.length),
+            change: "AI & Human chats",
+            icon: MessageSquare,
+            color: "text-secondary",
+            bg: "bg-secondary/10",
+        },
+        {
+            label: "Conversion Rate",
+            value: conversionRate,
+            change: `${closedLeadsCount} deals won`,
+            icon: TrendingUp,
+            color: "text-orange-500",
+            bg: "bg-orange-500/10",
+        },
+    ];
+
+    const recentLeadsMapped = leads.slice(0, 5).map((lead: any) => {
+        let statusKey = 'new';
+        if (lead.status === 'Visited' || lead.status === 'Negotiating' || lead.status === 'Upcoming Visit') {
+            statusKey = 'qualified';
+        } else if (lead.status === 'Closed') {
+            statusKey = 'closed';
+        }
+
+        let displayTime = 'recent';
+        if (lead.created_at) {
+            const diffMs = Date.now() - new Date(lead.created_at).getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            if (diffMins < 60) displayTime = `${diffMins}m ago`;
+            else {
+                const diffHrs = Math.floor(diffMins / 60);
+                if (diffHrs < 24) displayTime = `${diffHrs}h ago`;
+                else displayTime = new Date(lead.created_at).toLocaleDateString();
+            }
+        }
+
+        return {
+            name: lead.customerName,
+            query: lead.interestedPropertyTitle || lead.requestedLocality || 'Browsing Properties',
+            time: displayTime,
+            status: statusKey
+        };
+    });
+
     return (
         <div className="p-6 lg:p-8 space-y-8">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Good morning, Vishal 👋</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Good morning, {displayName} 👋</h1>
                     <p className="text-foreground/60 text-sm mt-1">
                         Here&apos;s what&apos;s happening with your properties today.
                     </p>
@@ -111,10 +150,10 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                     <div className="divide-y divide-border">
-                        {recentLeads.map((lead, i) => (
+                        {recentLeadsMapped.map((lead, i) => (
                             <div key={i} className="flex items-center gap-4 px-6 py-3.5 hover:bg-border/30 transition-colors">
                                 <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0">
-                                    {lead.name[0]}
+                                    {(lead.name?.[0] || 'L')}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate">{lead.name}</p>

@@ -49,8 +49,11 @@ export default function PublicPropertyPage() {
 
     useEffect(() => {
         if (!id) return;
-        const prop = getPropertyById(id) || null;
-        setProperty(prop);
+        const load = async () => {
+            const prop = await getPropertyById(id);
+            setProperty(prop || null);
+        };
+        load();
     }, [id]);
 
     useEffect(() => {

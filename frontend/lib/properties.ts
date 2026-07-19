@@ -126,48 +126,105 @@ const DEFAULT_PROPERTIES: Property[] = [
     }
 ];
 
-export const getProperties = (): Property[] => {
-    if (typeof window === "undefined") return DEFAULT_PROPERTIES;
-    const stored = localStorage.getItem("propbot_properties");
+import { mapBackendPropertyToFrontend } from "./api";
 
-    // Automatically reset if old cache doesn't have the new category fields
-    if (!stored || !stored.includes("Commercial Plot")) {
-        localStorage.setItem("propbot_properties", JSON.stringify(DEFAULT_PROPERTIES));
-        return DEFAULT_PROPERTIES;
-    }
-
+export const getProperties = async (): Promise<Property[]> => {
     try {
-        return JSON.parse(stored);
+        const res = await fetch("/api/properties");
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data.map(mapBackendPropertyToFrontend) : [];
     } catch (e) {
-        return DEFAULT_PROPERTIES;
+        console.error("Failed to get properties:", e);
+        return [];
     }
 };
 
-export const addProperty = (prop: Omit<Property, "id">): void => {
-    if (typeof window === "undefined") return;
-    const current = getProperties();
-    const newProp: Property = {
-        ...prop,
-        id: Date.now().toString(),
-    };
-    localStorage.setItem("propbot_properties", JSON.stringify([newProp, ...current]));
+export const getPropertyById = async (id: string): Promise<Property | undefined> => {
+    try {
+        const res = await fetch(`/api/properties/${id}`);
+        if (!res.ok) return undefined;
+        const data = await res.json();
+        return mapBackendPropertyToFrontend(data);
+    } catch (e) {
+        console.error(`Failed to get property ${id}:`, e);
+        return undefined;
+    }
 };
 
-export const getPropertyById = (id: string): Property | undefined => {
-    const all = getProperties();
-    return all.find(p => p.id === id);
+export const addProperty = async (prop: Omit<Property, "id">): Promise<void> => {
+    try {
+        const backendPayload = {
+            title: prop.title,
+            description: prop.description,
+            transaction_type: prop.transactionType,
+            expected_price: prop.expectedPrice,
+            negotiable: prop.negotiable,
+            monthly_rent: prop.monthlyRent,
+            security_deposit: prop.securityDeposit,
+            available_from: prop.availableFrom,
+            category: prop.category,
+            type: prop.type,
+            city: prop.city,
+            locality: prop.locality,
+            full_address: prop.fullAddress,
+            image: prop.image,
+            images: prop.images,
+            built_up_area: prop.builtUpArea,
+            plot_area: prop.plotArea,
+            furnishing: prop.furnishing,
+            parking: prop.parking,
+            status: prop.status,
+            beds: prop.beds,
+            baths: prop.baths,
+            property_age: prop.propertyAge,
+            ready_to_move: prop.readyToMove,
+            floor_number: prop.floorNumber,
+            total_floors: prop.totalFloors,
+            garden: prop.garden,
+            washrooms: prop.washrooms,
+            plot_width: prop.plotWidth,
+            plot_length: prop.plotLength,
+            corner_plot: prop.cornerPlot,
+            amenities: prop.amenities,
+            other_amenities: prop.otherAmenities,
+        };
+
+        const res = await fetch("/api/properties", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(backendPayload),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || "Failed to add property");
+        }
+    } catch (e) {
+        console.error("Failed to add property:", e);
+        throw e;
+    }
 };
 
-export const updatePropertyStatus = (id: string, status: string): void => {
-    if (typeof window === "undefined") return;
-    const all = getProperties();
-    const updated = all.map(p => p.id === id ? { ...p, status } : p);
-    localStorage.setItem("propbot_properties", JSON.stringify(updated));
+export const updatePropertyStatus = async (id: string, status: string): Promise<void> => {
+    try {
+        const res = await fetch(`/api/properties/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+        });
+        if (!res.ok) throw new Error("Failed to update status");
+    } catch (e) {
+        console.error("Failed to update status:", e);
+    }
 };
 
-export const deleteProperty = (id: string): void => {
-    if (typeof window === "undefined") return;
-    const all = getProperties();
-    const filtered = all.filter(p => p.id !== id);
-    localStorage.setItem("propbot_properties", JSON.stringify(filtered));
+export const deleteProperty = async (id: string): Promise<void> => {
+    try {
+        const res = await fetch(`/api/properties/${id}`, {
+            method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to delete property");
+    } catch (e) {
+        console.error("Failed to delete property:", e);
+    }
 };

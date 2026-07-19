@@ -28,7 +28,7 @@ const NAV_ITEMS = [
     { href: "/dashboard/subscription", label: "Subscription", icon: Crown },
 ];
 
-export function DashboardSidebar() {
+export function DashboardSidebar({ user }: { user: { name: string | null; email: string | null; picture: string | null } | null }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -113,7 +113,7 @@ export function DashboardSidebar() {
                         Settings
                     </Link>
                     <Link
-                        href="/auth/login"
+                        href="/auth/logout"
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground/70 hover:bg-destructive/10 hover:text-red-500 transition-all"
                     >
                         <LogOut className="h-4 w-4" />
@@ -128,12 +128,23 @@ export function DashboardSidebar() {
 
                     {/* User avatar */}
                     <Link href="/dashboard/profile" className="mt-3 flex items-center gap-3 px-3 py-2 rounded-xl bg-background border border-border hover:bg-border/50 hover:border-border/80 transition-all cursor-pointer group">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold flex-shrink-0 group-hover:scale-105 transition-transform">
-                            VA
-                        </div>
+                        {user?.picture ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={user.picture} alt="Avatar" className="h-8 w-8 rounded-full flex-shrink-0 group-hover:scale-105 transition-transform object-cover" />
+                        ) : (
+                            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-sm font-bold flex-shrink-0 group-hover:scale-105 transition-transform">
+                                {user?.name
+                                    ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+                                    : user?.email
+                                    ? user.email.slice(0, 2).toUpperCase()
+                                    : "US"}
+                            </div>
+                        )}
                         <div className="overflow-hidden flex-1">
-                            <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">Vishal Auti</p>
-                            <p className="text-xs text-foreground/50 truncate">Pro Plan</p>
+                            <p className="text-sm font-semibold truncate group-hover:text-primary transition-colors">
+                                {user?.name || (user?.email ? user.email.split('@')[0] : "Local Dev User")}
+                            </p>
+                            <p className="text-xs text-foreground/50 truncate">{user?.email || "Pro Plan"}</p>
                         </div>
                     </Link>
                 </div>

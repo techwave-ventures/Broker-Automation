@@ -11,9 +11,13 @@ import {
 } from '../services/business.js';
 import { publishToChannel } from './ably.js';
 
-// Setup connection config for Redis
+// Setup connection config for Redis by parsing the connection URL
+const redisUrl = new URL(env.REDIS_URL);
 export const redisConnection = {
-  url: env.REDIS_URL,
+  host: redisUrl.hostname,
+  port: Number(redisUrl.port || 6379),
+  username: redisUrl.username || undefined,
+  password: redisUrl.password || undefined,
 };
 
 // Initialize the main queue

@@ -12,6 +12,10 @@ import { sendRouter } from './send.js';
 import { phonesRouter } from './phones.js';
 import { callsRouter } from './calls.js';
 import { paidMessagingRouter } from './paid-messaging.js';
+import { propertiesRouter } from './properties.js';
+import { leadsRouter } from './leads.js';
+import { chatsRouter } from './chats.js';
+import { botConfigsRouter } from './bot-configs.js';
 
 export const apiRouter = Router();
 
@@ -28,3 +32,7 @@ apiRouter.use('/send', sendRouter);
 apiRouter.use('/phones', phonesRouter);
 apiRouter.use('/calls', callsRouter);
 apiRouter.use('/paid_messaging', paidMessagingRouter);
+apiRouter.use('/properties', propertiesRouter);
+apiRouter.use('/leads', leadsRouter);
+apiRouter.use('/chats', chatsRouter);
+apiRouter.use('/bot-configs', botConfigsRouter);

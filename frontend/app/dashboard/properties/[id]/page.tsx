@@ -44,8 +44,11 @@ export default function PropertyDetailPage() {
 
     useEffect(() => {
         if (!id) return;
-        const prop = getPropertyById(id) || null;
-        setProperty(prop);
+        const load = async () => {
+            const prop = await getPropertyById(id);
+            setProperty(prop || null);
+        };
+        load();
     }, [id]);
 
     useEffect(() => {
@@ -203,7 +206,7 @@ export default function PropertyDetailPage() {
 
                         {/* Quick Stats Banner */}
                         <div className="flex flex-wrap items-center gap-2 sm:gap-6 bg-card border border-border p-4 sm:p-6 rounded-3xl shadow-sm">
-                            {property.beds > 0 && (
+                            {(property.beds ?? 0) > 0 && (
                                 <div className="flex items-center gap-3">
                                     <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
                                         <BedDouble className="h-6 w-6 text-blue-500" />
@@ -214,7 +217,7 @@ export default function PropertyDetailPage() {
                                     </div>
                                 </div>
                             )}
-                            {property.baths > 0 && (
+                            {(property.baths ?? 0) > 0 && (
                                 <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
                                     <div className="h-12 w-12 rounded-full bg-cyan-500/10 flex items-center justify-center">
                                         <Bath className="h-6 w-6 text-cyan-500" />

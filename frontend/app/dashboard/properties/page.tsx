@@ -36,7 +36,10 @@ export default function PropertiesPage() {
     const [dialog, setDialog] = useState<{ type: "Sold" | "Rented" | "Hide" | "Republish" | "Delete", propertyId: string } | null>(null);
     const [toast, setToast] = useState<{ msg: string, type: "success" | "error" } | null>(null);
 
-    const refresh = () => setProperties(getProperties());
+    const refresh = async () => {
+        const props = await getProperties();
+        setProperties(props);
+    };
 
     useEffect(() => {
         refresh();
