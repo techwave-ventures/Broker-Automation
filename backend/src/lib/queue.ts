@@ -19,6 +19,7 @@ export const redisConnection = {
   username: redisUrl.username || undefined,
   password: redisUrl.password || undefined,
   tls: redisUrl.protocol === 'rediss:' ? {} : undefined,
+  connectTimeout: 10000, // Fail fast after 10 seconds if connection is blocked
 };
 
 // Initialize the main queue
