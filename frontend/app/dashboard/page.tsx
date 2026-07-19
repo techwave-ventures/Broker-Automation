@@ -8,8 +8,7 @@ import {
     BotMessageSquare,
     Circle,
 } from "lucide-react";
-import { auth0 } from "@/lib/auth0";
-import { fetchProperties, fetchLeads, fetchChats } from "@/lib/api";
+import { fetchProperties, fetchLeads, fetchChats, getSessionUser } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
     new: "bg-primary text-primary-foreground",
@@ -19,8 +18,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-    const session = await auth0.getSession();
-    const displayName = session?.user?.name || (session?.user?.email ? session.user.email.split('@')[0] : "Local Dev User");
+    const user = await getSessionUser();
+    const displayName = user?.name || (user?.email ? user.email.split('@')[0] : "Local Dev User");
 
     // Fetch dynamic database counts
     const [properties, leads, chats] = await Promise.all([

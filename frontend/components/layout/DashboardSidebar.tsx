@@ -113,7 +113,7 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
                         Settings
                     </Link>
                     <Link
-                        href="/auth/logout"
+                        href="/api/auth/logout"
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground/70 hover:bg-destructive/10 hover:text-red-500 transition-all"
                     >
                         <LogOut className="h-4 w-4" />

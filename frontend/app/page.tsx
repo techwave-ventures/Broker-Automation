@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth0 } from "@/lib/auth0";
+import { getSessionUser } from "@/lib/api";
 import {
   ArrowRight,
   BotMessageSquare,
@@ -208,8 +208,8 @@ const PLANS = [
 
 /* ─── Page ──────────────────────────────────────────────────────── */
 export default async function HomePage() {
-  const session = await auth0.getSession();
-  const isLoggedIn = !!session;
+  const user = await getSessionUser();
+  const isLoggedIn = !!user;
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden transition-colors duration-300">
 

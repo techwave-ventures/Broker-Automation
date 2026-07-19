@@ -1,7 +1,9 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.js';
-import { getMe } from '../controllers/authController.js';
+import * as AuthController from '../controllers/authController.js';
 
 export const authRouter = Router();
 
-authRouter.get('/me', requireAuth, getMe);
+authRouter.get('/login', AuthController.login);
+authRouter.get('/callback', AuthController.callback);
+authRouter.get('/logout', AuthController.logout);
+authRouter.get('/me', AuthController.me);

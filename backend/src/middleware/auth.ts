@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { env, isAuthBypassed } from '../config/env.js';
 import { verifyAccessToken } from '../config/auth0.js';
+import { decryptSession, parseCookies } from '../controllers/authController.js';
 
 export type AuthenticatedRequest = Request & {
   auth?: {
@@ -21,11 +22,27 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
       return next();
     }
 
+    // 1. Authenticate via secure session cookie first
+    const cookies = parseCookies(req.headers.cookie);
+    const sessionToken = cookies['session_token'];
+    if (sessionToken) {
+      const sessionPayload = await decryptSession(sessionToken);
+      if (sessionPayload) {
+        req.auth = {
+          sub: sessionPayload.sub || undefined,
+          email: sessionPayload.email || undefined,
+          name: sessionPayload.name || undefined,
+        };
+        return next();
+      }
+    }
+
+    // 2. Fallback to Authorization header
     const authorization = req.header('authorization');
     const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
 
     if (!token) {
-      return res.status(401).json({ error: 'Unauthorized', message: 'Missing bearer token' });
+      return res.status(401).json({ error: 'Unauthorized', message: 'Missing session cookie or bearer token' });
     }
 
     const payload = await verifyAccessToken(token);
@@ -38,6 +55,6 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     return next();
   } catch (error) {
     console.error('Auth error:', error);
-    return res.status(401).json({ error: 'Unauthorized', message: 'Invalid token' });
+    return res.status(401).json({ error: 'Unauthorized', message: 'Invalid session or token' });
   }
 }

@@ -1,18 +1,38 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { auth0 } from '@/lib/auth0';
+
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function middleware(request: NextRequest) {
-  // Bypass auth check for local development only
-  if (process.env.BYPASS_AUTH === 'true' && process.env.NODE_ENV === 'development') {
-    return NextResponse.next();
-  }
-
-  // Bypass auth check for public detail page (e.g. /p/[id])
+  // Bypass auth check for public property detail page (e.g. /p/[id])
   if (request.nextUrl.pathname.startsWith('/p/')) {
     return NextResponse.next();
   }
 
-  return await auth0.middleware(request);
+  // Bypass auth pages to avoid redirect loop
+  if (request.nextUrl.pathname.startsWith('/auth/')) {
+    return NextResponse.next();
+  }
+
+  // Verify auth session on Express backend
+  try {
+    const cookieHeader = request.headers.get('cookie') || '';
+    const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+      headers: {
+        'cookie': cookieHeader,
+      },
+      next: { revalidate: 0 },
+    });
+
+    if (res.ok) {
+      return NextResponse.next();
+    }
+  } catch (error) {
+    console.error('Middleware: failed to verify session with backend:', error);
+  }
+
+  // Redirect to local login page if not authenticated
+  const loginUrl = new URL('/auth/login', request.url);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {

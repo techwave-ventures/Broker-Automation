@@ -1,22 +1,37 @@
-import { auth0 } from "@/lib/auth0";
+import { headers } from "next/headers";
 import type { Property } from "./properties";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
 export async function getAuthHeaders() {
-  const headers: Record<string, string> = {
+  const nextHeaders = await headers();
+  const cookieHeader = nextHeaders.get("cookie") || "";
+
+  return {
     "Content-Type": "application/json",
+    "cookie": cookieHeader,
   };
+}
+
+export async function getSessionUser() {
   try {
-    const tokenRes = await auth0.getAccessToken();
-    if (tokenRes?.accessToken) {
-      headers["Authorization"] = `Bearer ${tokenRes.accessToken}`;
-    }
+    const nextHeaders = await headers();
+    const cookieHeader = nextHeaders.get("cookie") || "";
+
+    const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
+      headers: {
+        "cookie": cookieHeader,
+      },
+      next: { revalidate: 0 },
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.user || null;
   } catch (error) {
-    // Session token bypass or not logged in
-    console.warn("Failed to get access token:", error);
+    console.error("Failed to get session user:", error);
+    return null;
   }
-  return headers;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
