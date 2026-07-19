@@ -18,8 +18,9 @@ export const redisConnection = {
   port: Number(redisUrl.port || 6379),
   username: redisUrl.username || undefined,
   password: redisUrl.password || undefined,
-  tls: redisUrl.protocol === 'rediss:' ? {} : undefined,
+  tls: (redisUrl.protocol === 'rediss:' || redisUrl.hostname.endsWith('upstash.io')) ? {} : undefined,
   connectTimeout: 10000, // Fail fast after 10 seconds if connection is blocked
+  maxRetriesPerRequest: null, // Required by BullMQ to manage connection recovery
 };
 
 // Initialize the main queue
