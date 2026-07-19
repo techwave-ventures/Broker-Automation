@@ -41,7 +41,7 @@ async function startWorker() {
       connection: redisConnection,
       concurrency: 5, // Process up to 5 jobs concurrently per worker instance
       stalledInterval: 300000, // Check for stalled jobs every 5 minutes (instead of 30s) to save Redis commands
-      drainDelay: 10, // Wait 10s before checking again when queue is empty
+      drainDelay: 60, // Wait 60s (1 minute) before checking again when queue is empty
     }
   );
 
