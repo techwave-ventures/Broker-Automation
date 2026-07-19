@@ -18,6 +18,7 @@ export const redisConnection = {
   port: Number(redisUrl.port || 6379),
   username: redisUrl.username || undefined,
   password: redisUrl.password || undefined,
+  tls: redisUrl.protocol === 'rediss:' ? {} : undefined,
 };
 
 // Initialize the main queue
