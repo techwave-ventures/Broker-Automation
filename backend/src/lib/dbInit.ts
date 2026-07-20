@@ -3,6 +3,20 @@ import { pool } from './db.js';
 export async function initDatabase() {
   const queries = [
     `
+    CREATE TABLE IF NOT EXISTS users (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      name VARCHAR(255),
+      avatar TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+    `,
+    `
     CREATE TABLE IF NOT EXISTS messages (
       id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       waba_id VARCHAR(100),

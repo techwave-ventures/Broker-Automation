@@ -8,8 +8,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Bypass auth pages to avoid redirect loop
-  if (request.nextUrl.pathname.startsWith('/auth/')) {
+  // Bypass auth pages and API routes to avoid redirect loop or breaking API calls
+  if (request.nextUrl.pathname.startsWith('/auth/') || request.nextUrl.pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
 

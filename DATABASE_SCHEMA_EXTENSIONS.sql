@@ -1,5 +1,16 @@
--- Real Estate Portal Extensions Schema
--- Consistently uses BIGINT GENERATED ALWAYS AS IDENTITY keys to match original schema.
+-- 0. Users
+CREATE TABLE IF NOT EXISTS users (
+  key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id VARCHAR(100) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  name VARCHAR(255),
+  avatar TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
 
 -- 1. Properties
 CREATE TABLE IF NOT EXISTS properties (
