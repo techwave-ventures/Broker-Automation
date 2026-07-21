@@ -215,18 +215,41 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
     });
 
     // Check if user has WABA & phone configured for live WhatsApp dispatch
-    const wabaRes = await pool.query(
+    let wabaRes = await pool.query(
       'SELECT waba_id, access_token FROM wabas WHERE user_id = $1 OR user_id = $2 LIMIT 1',
       [userId, email || userId]
     );
-    const wabaId = wabaRes.rows[0]?.waba_id;
-    const accessToken = wabaRes.rows[0]?.access_token;
+    let wabaId = wabaRes.rows[0]?.waba_id;
+    let accessToken = wabaRes.rows[0]?.access_token;
 
-    const phoneRes = await pool.query(
+    if (!wabaId || !accessToken) {
+      wabaRes = await pool.query(
+        'SELECT waba_id, access_token FROM wabas WHERE user_id = $1 LIMIT 1',
+        [conv.user_id]
+      );
+      wabaId = wabaRes.rows[0]?.waba_id;
+      accessToken = wabaRes.rows[0]?.access_token;
+    }
+    if (!wabaId || !accessToken) {
+      wabaRes = await pool.query('SELECT waba_id, access_token FROM wabas ORDER BY last_updated DESC LIMIT 1');
+      wabaId = wabaRes.rows[0]?.waba_id;
+      accessToken = wabaRes.rows[0]?.access_token;
+    }
+
+    let phoneRes = await pool.query(
       'SELECT phone_id FROM phones WHERE user_id = $1 OR user_id = $2 LIMIT 1',
       [userId, email || userId]
     );
-    const phoneNumberId = phoneRes.rows[0]?.phone_id;
+    let phoneNumberId = phoneRes.rows[0]?.phone_id;
+
+    if (!phoneNumberId) {
+      phoneRes = await pool.query('SELECT phone_id FROM phones WHERE user_id = $1 LIMIT 1', [conv.user_id]);
+      phoneNumberId = phoneRes.rows[0]?.phone_id;
+    }
+    if (!phoneNumberId) {
+      phoneRes = await pool.query('SELECT phone_id FROM phones LIMIT 1');
+      phoneNumberId = phoneRes.rows[0]?.phone_id;
+    }
 
     if (wabaId && accessToken && phoneNumberId) {
       try {
@@ -238,8 +261,19 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
           wabaId,
         });
       } catch (err) {
-        console.error('Failed to enqueue WhatsApp send job:', err);
+        console.error('Failed to enqueue WhatsApp send job, attempting direct send:', err);
+        try {
+          const { send } = await import('../services/business.js');
+          const apiRes = await send(phoneNumberId, accessToken, conv.customer_phone, parsed.data.text);
+          if (apiRes?.error) {
+            console.error('Meta Graph API direct send error:', apiRes.error);
+          }
+        } catch (directErr) {
+          console.error('Direct WhatsApp send failed:', directErr);
+        }
       }
+    } else {
+      console.warn(`[postChatMessage] Unable to send WhatsApp message: Missing WABA or Phone configuration (wabaId=${wabaId}, phoneId=${phoneNumberId})`);
     }
 
     return res.status(201).json({
