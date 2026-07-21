@@ -49,15 +49,23 @@ async function handle(req: NextRequest, { params }: { params: Promise<{ path: st
       }
     });
 
-    // Extract all Set-Cookie headers properly
+    const isHttps = req.url.startsWith("https://") || req.headers.get("x-forwarded-proto") === "https";
+
+    // Extract all Set-Cookie headers properly and adapt Secure flag to protocol
     if (typeof res.headers.getSetCookie === "function") {
       const cookies = res.headers.getSetCookie();
-      for (const cookie of cookies) {
+      for (let cookie of cookies) {
+        if (!isHttps) {
+          cookie = cookie.replace(/;\s*Secure/gi, "");
+        }
         responseHeaders.append("set-cookie", cookie);
       }
     } else {
-      const cookieHeader = res.headers.get("set-cookie");
+      let cookieHeader = res.headers.get("set-cookie");
       if (cookieHeader) {
+        if (!isHttps) {
+          cookieHeader = cookieHeader.replace(/;\s*Secure/gi, "");
+        }
         responseHeaders.set("set-cookie", cookieHeader);
       }
     }
