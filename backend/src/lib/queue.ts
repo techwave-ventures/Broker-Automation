@@ -20,11 +20,20 @@ import {
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
 
-// Universal Redis connection using ioredis - supports any provider (Redis.io Cloud, Render, Aiven, Local, etc.)
+// Universal Redis connection with silent error handling and fallback
 export const redisConnection = new Redis(redisUrl, {
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
+  retryStrategy(times) {
+    if (times > 3) return null; // Stop infinite reconnect loop if Redis service is offline
+    return Math.min(times * 200, 1000);
+  },
   tls: isTls ? { rejectUnauthorized: false } : undefined,
+});
+
+redisConnection.on('error', (err) => {
+  // Gracefully log Redis connection warnings without crashing
+  console.warn('⚠️ [REDIS WARNING] Connection alert:', err.message);
 });
 
 export const whatsappQueue = new Queue('whatsapp-queue', {
@@ -95,6 +104,7 @@ export async function handleWhatsappSend(payload: any) {
     status: 'sent',
   });
 
+  console.log(`🤖 [ACKBOT AUTO-REPLY SENT] Sent to ${destPhone}: "${messageContent}"`);
   return result;
 }
 
@@ -319,14 +329,25 @@ export async function handleWebhookProcess(payload: any) {
           const customMessage = phoneResult.rows[0]?.ack_bot_message;
           const ackText = customMessage || `ack: ${body}`;
 
-          // Enqueue outbound reply
-          await enqueueJob('whatsapp_send', {
-            phoneNumberId,
-            accessToken,
-            destPhone: senderNumber,
-            messageContent: ackText,
-            wabaId: entry.id,
-          });
+          // Enqueue outbound reply (with direct fallback if Redis is offline)
+          try {
+            await enqueueJob('whatsapp_send', {
+              phoneNumberId,
+              accessToken,
+              destPhone: senderNumber,
+              messageContent: ackText,
+              wabaId: entry.id,
+            });
+          } catch (queueErr: any) {
+            console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending auto-reply directly via WhatsApp API...');
+            await handleWhatsappSend({
+              phoneNumberId,
+              accessToken,
+              destPhone: senderNumber,
+              messageContent: ackText,
+              wabaId: entry.id,
+            });
+          }
 
           // Publish to Ably
           await publishToChannel('get-started', 'first', {
