@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
     console.error('Proxy: failed to verify session with backend:', error);
   }
 
-  // Redirect to local login page if not authenticated
+  // Redirect to login page if not authenticated
   const loginUrl = new URL('/auth/login', request.url);
   return NextResponse.redirect(loginUrl);
 }
