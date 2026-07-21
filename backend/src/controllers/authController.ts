@@ -163,12 +163,5 @@ export function logout(req: Request, res: Response) {
     sameSite: 'lax',
   });
 
-  if (req.accepts('html') && req.method === 'GET') {
-    const redirectUrl = env.NODE_ENV === 'production'
-      ? 'https://broker-automation.vercel.app/auth/login'
-      : 'http://localhost:3000/auth/login';
-    return res.redirect(redirectUrl);
-  }
-
   return res.json({ success: true, message: 'Logged out successfully' });
 }

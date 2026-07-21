@@ -1,26 +1,41 @@
-import { headers } from "next/headers";
 import type { Property } from "./properties";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
 export async function getAuthHeaders() {
-  const nextHeaders = await headers();
-  const cookieHeader = nextHeaders.get("cookie") || "";
+  let cookieHeader = "";
+  if (typeof window === "undefined") {
+    try {
+      const { headers } = await import("next/headers");
+      const nextHeaders = await headers();
+      cookieHeader = nextHeaders.get("cookie") || "";
+    } catch {
+      // Ignore in client side
+    }
+  }
 
   return {
     "Content-Type": "application/json",
-    "cookie": cookieHeader,
+    ...(cookieHeader ? { "cookie": cookieHeader } : {}),
   };
 }
 
 export async function getSessionUser() {
   try {
-    const nextHeaders = await headers();
-    const cookieHeader = nextHeaders.get("cookie") || "";
+    let cookieHeader = "";
+    if (typeof window === "undefined") {
+      try {
+        const { headers } = await import("next/headers");
+        const nextHeaders = await headers();
+        cookieHeader = nextHeaders.get("cookie") || "";
+      } catch {
+        // Ignore in client side
+      }
+    }
 
     const res = await fetch(`${BACKEND_URL}/api/auth/me`, {
       headers: {
-        "cookie": cookieHeader,
+        ...(cookieHeader ? { "cookie": cookieHeader } : {}),
       },
       next: { revalidate: 0 },
     });
