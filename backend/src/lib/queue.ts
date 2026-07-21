@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq';
+import { Redis } from 'ioredis';
 import { env } from '../config/env.js';
 import { pool } from './db.js';
 import {
@@ -16,9 +17,15 @@ import {
   updateMessageStatus,
 } from '../models/conversationModel.js';
 
-export const redisConnection = {
-  url: env.REDIS_URL || 'redis://localhost:6379',
-};
+const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
+const isTls = redisUrl.startsWith('rediss://');
+
+// Universal Redis connection using ioredis - supports any provider (Redis.io Cloud, Render, Aiven, Local, etc.)
+export const redisConnection = new Redis(redisUrl, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+  tls: isTls ? { rejectUnauthorized: false } : undefined,
+});
 
 export const whatsappQueue = new Queue('whatsapp-queue', {
   connection: redisConnection,

@@ -20,7 +20,7 @@ async function startWorker() {
   }
 
   const worker = new Worker(
-    'whatsapp-jobs',
+    'whatsapp-queue',
     async (job: Job) => {
       console.log(`Processing job ${job.id} (type: ${job.name})...`);
       
