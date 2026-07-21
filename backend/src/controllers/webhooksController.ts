@@ -9,10 +9,17 @@ export async function getWebhookChallenge(req: Request, res: Response) {
   const verifyToken = String(req.query['hub.verify_token'] ?? '');
   const challenge = String(req.query['hub.challenge'] ?? '');
 
+  console.log(`\n================================================================`);
+  console.log(`🔔 [WEBHOOK VERIFY] Incoming Meta Verification Challenge`);
+  console.log(`Mode: ${mode} | Token: ${verifyToken}`);
+  console.log(`================================================================\n`);
+
   if (mode === 'subscribe' && verifyToken === env.FB_VERIFY_TOKEN) {
+    console.log(`✅ [WEBHOOK VERIFY SUCCESS] Verification token matched! Responding with challenge.`);
     return res.status(200).send(challenge);
   }
 
+  console.warn(`⚠️ [WEBHOOK VERIFY FAILED] Verification token did not match expected env.FB_VERIFY_TOKEN`);
   return res.json({ status: 'ok' });
 }
 
@@ -27,6 +34,7 @@ export async function postWebhook(req: Request, res: Response) {
     if (env.FB_APP_SECRET) {
       const signature = req.header('x-hub-signature-256');
       if (!signature) {
+        console.warn(`⚠️ [WEBHOOK REJECTED] Missing x-hub-signature-256 header`);
         return res.json({ status: 'ok' });
       }
 
@@ -35,18 +43,24 @@ export async function postWebhook(req: Request, res: Response) {
       const expectedBuffer = Buffer.from(expected);
 
       if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+        console.warn(`⚠️ [WEBHOOK REJECTED] Signature mismatch`);
         return res.json({ status: 'ok' });
       }
     }
 
     const data = JSON.parse(rawBody) as WebhookPayloadModel;
 
+    console.log(`\n================================================================`);
+    console.log(`📥 [WEBHOOK EVENT RECEIVED] ${new Date().toISOString()}`);
+    console.log(JSON.stringify(data, null, 2));
+    console.log(`================================================================\n`);
+
     // Enqueue job for background processing
     await enqueueJob('webhook_process', data);
 
     return res.json({ status: 'ok' });
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('❌ [WEBHOOK ERROR]:', error);
     return res.status(500).json({ error: 'Webhook processing failed' });
   }
 }
