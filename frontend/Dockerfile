@@ -15,6 +15,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Build arguments for client-side environment variables
+ARG NEXT_PUBLIC_FB_APP_ID
+ARG NEXT_PUBLIC_FB_CONFIG_ID
+
+ENV NEXT_PUBLIC_FB_APP_ID=$NEXT_PUBLIC_FB_APP_ID
+ENV NEXT_PUBLIC_FB_CONFIG_ID=$NEXT_PUBLIC_FB_CONFIG_ID
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Build Next.js app in standalone output mode

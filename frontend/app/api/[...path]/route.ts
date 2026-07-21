@@ -37,8 +37,14 @@ async function handle(req: NextRequest, { params }: { params: Promise<{ path: st
 
     res.headers.forEach((val, key) => {
       const lowerKey = key.toLowerCase();
-      // Avoid forwarding content encoding chunking that Next.js handles, and handle set-cookie separately
-      if (lowerKey !== "content-encoding" && lowerKey !== "transfer-encoding" && lowerKey !== "set-cookie") {
+      // Strip content-length, content-encoding, transfer-encoding, and set-cookie (handled separately)
+      // to prevent truncation when Next.js recalculates or decompresses body length.
+      if (
+        lowerKey !== "content-length" &&
+        lowerKey !== "content-encoding" &&
+        lowerKey !== "transfer-encoding" &&
+        lowerKey !== "set-cookie"
+      ) {
         responseHeaders.set(key, val);
       }
     });

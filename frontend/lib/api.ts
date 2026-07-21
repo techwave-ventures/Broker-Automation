@@ -2,6 +2,16 @@ import type { Property } from "./properties";
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
 
+async function safeJsonParse(res: Response) {
+  try {
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  } catch (e) {
+    console.error("Failed to parse JSON response:", e);
+    return null;
+  }
+}
+
 export async function getAuthHeaders() {
   let cookieHeader = "";
   if (typeof window === "undefined") {
@@ -41,8 +51,8 @@ export async function getSessionUser() {
     });
 
     if (!res.ok) return null;
-    const data = await res.json();
-    return data.user || null;
+    const data = await safeJsonParse(res);
+    return data?.user || null;
   } catch (error) {
     console.error("Failed to get session user:", error);
     return null;
@@ -94,7 +104,7 @@ export async function fetchProperties(): Promise<Property[]> {
     const headers = await getAuthHeaders();
     const res = await fetch(`${BACKEND_URL}/api/properties`, { headers, next: { revalidate: 0 } });
     if (!res.ok) return [];
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     return Array.isArray(data) ? data.map(mapBackendPropertyToFrontend) : [];
   } catch (error) {
     console.error("Failed to fetch properties from backend:", error);
@@ -107,7 +117,7 @@ export async function fetchLeads() {
     const headers = await getAuthHeaders();
     const res = await fetch(`${BACKEND_URL}/api/leads`, { headers, next: { revalidate: 0 } });
     if (!res.ok) return [];
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Failed to fetch leads from backend:", error);
@@ -120,7 +130,7 @@ export async function fetchChats() {
     const headers = await getAuthHeaders();
     const res = await fetch(`${BACKEND_URL}/api/chats`, { headers, next: { revalidate: 0 } });
     if (!res.ok) return [];
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error("Failed to fetch chats from backend:", error);

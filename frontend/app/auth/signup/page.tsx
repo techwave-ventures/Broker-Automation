@@ -35,10 +35,16 @@ export default function SignupPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        // Non-JSON response
+      }
 
       if (!res.ok) {
-        throw new Error(data.message || 'Signup failed');
+        throw new Error(data.message || 'Signup failed. Please try again.');
       }
 
       // Successful signup - redirect to WhatsApp onboarding
