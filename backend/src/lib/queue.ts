@@ -78,6 +78,12 @@ export async function handleWhatsappSend(payload: any) {
   const { phoneNumberId, accessToken, destPhone, messageContent, wabaId } = payload;
   
   const result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+  
+  if (result?.error) {
+    console.error(`❌ [ACKBOT SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
+    throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
+  }
+
   const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
 
   // Find owner user_id
@@ -129,7 +135,12 @@ export async function handleWhatsappTemplateSend(payload: any) {
     componentParams || [],
     bizOpaqueCallbackData
   );
-  
+
+  if (result?.error) {
+    console.error(`❌ [TEMPLATE SEND FAILED] Meta Graph API Error for ${to}:`, JSON.stringify(result.error));
+    throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
+  }
+
   const messageId = result?.messages?.[0]?.id || `out-temp-${Date.now()}`;
 
   let userId = 'local-dev';
