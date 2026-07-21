@@ -4,39 +4,33 @@ import { pool } from './db.js';
 import {
   send,
   sendTemplateMessage,
-  saveTokens,
   registerNumber,
   subscribeWebhook,
   graphApiEnableCallingWithToken,
+  saveTokens,
 } from '../services/business.js';
 import { publishToChannel } from './ably.js';
+import {
+  findOrCreateConversation,
+  saveMessage,
+  updateMessageStatus,
+} from '../models/conversationModel.js';
 
-// Setup connection config for Redis by parsing the connection URL
-const redisUrl = new URL(env.REDIS_URL);
 export const redisConnection = {
-  host: redisUrl.hostname,
-  port: Number(redisUrl.port || 6379),
-  username: redisUrl.username || undefined,
-  password: redisUrl.password || undefined,
-  tls: (redisUrl.protocol === 'rediss:' || redisUrl.hostname.endsWith('upstash.io')) ? {} : undefined,
-  connectTimeout: 10000, // Fail fast after 10 seconds if connection is blocked
-  maxRetriesPerRequest: null, // Required by BullMQ to manage connection recovery
+  url: env.REDIS_URL || 'redis://localhost:6379',
 };
 
-// Initialize the main queue
-export const whatsappQueue = new Queue('whatsapp-jobs', {
+export const whatsappQueue = new Queue('whatsapp-queue', {
   connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 5000,
+    },
+  },
 });
 
-/**
- * Enqueues a task to BullMQ with priority and backoff rules.
- * 
- * Priorities (lower number runs first):
- * - 1: whatsapp_send (immediate chat responses)
- * - 2: whatsapp_template_send (paid templates/notifications)
- * - 3: token_exchange_followup (account registrations)
- * - 4: webhook_process (inbound message logging/receipts)
- */
 export async function enqueueJob(type: string, payload: any) {
   let priority = 4;
   if (type === 'whatsapp_send') {
@@ -54,10 +48,10 @@ export async function enqueueJob(type: string, payload: any) {
     attempts: 6,
     backoff: {
       type: 'exponential',
-      delay: 60000, // 1 minute base delay
+      delay: 60000,
     },
-    removeOnComplete: true, // Keep Redis memory clean
-    removeOnFail: false,    // Retain failed jobs for inspection
+    removeOnComplete: true,
+    removeOnFail: false,
   });
 
   return job.id as string;
@@ -70,12 +64,29 @@ export async function handleWhatsappSend(payload: any) {
   const result = await send(phoneNumberId, accessToken, destPhone, messageContent);
   const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
 
-  await pool.query(
-    `INSERT INTO messages (waba_id, phone_number_id, message_id, sender_number, recipient_number, message_type, body, direction, status)
-     VALUES ($1, $2, $3, $4, $5, 'text', $6, 'outbound', 'sent')
-     ON CONFLICT (message_id) DO UPDATE SET status = 'sent', updated_at = CURRENT_TIMESTAMP`,
-    [wabaId || null, phoneNumberId, messageId, phoneNumberId, destPhone, messageContent]
-  );
+  // Find owner user_id
+  let userId = 'local-dev';
+  if (wabaId) {
+    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+    if (wabaRes.rows[0]?.user_id) {
+      userId = wabaRes.rows[0].user_id;
+    }
+  }
+
+  const conversation = await findOrCreateConversation(userId, destPhone, undefined, phoneNumberId);
+  await saveMessage({
+    conversationId: conversation.id,
+    wabaId: wabaId || undefined,
+    phoneNumberId,
+    messageId,
+    senderNumber: phoneNumberId,
+    recipientNumber: destPhone,
+    senderType: 'bot',
+    messageType: 'text',
+    body: messageContent,
+    direction: 'outbound',
+    status: 'sent',
+  });
 
   return result;
 }
@@ -104,12 +115,28 @@ export async function handleWhatsappTemplateSend(payload: any) {
   
   const messageId = result?.messages?.[0]?.id || `out-temp-${Date.now()}`;
 
-  await pool.query(
-    `INSERT INTO messages (waba_id, phone_number_id, message_id, sender_number, recipient_number, message_type, body, direction, status)
-     VALUES ($1, $2, $3, $4, $5, 'template', $6, 'outbound', 'sent')
-     ON CONFLICT (message_id) DO UPDATE SET status = 'sent', updated_at = CURRENT_TIMESTAMP`,
-    [wabaId || null, phoneNumberId, messageId, phoneNumberId, to, `template: ${templateName}`,]
-  );
+  let userId = 'local-dev';
+  if (wabaId) {
+    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+    if (wabaRes.rows[0]?.user_id) {
+      userId = wabaRes.rows[0].user_id;
+    }
+  }
+
+  const conversation = await findOrCreateConversation(userId, to, undefined, phoneNumberId);
+  await saveMessage({
+    conversationId: conversation.id,
+    wabaId: wabaId || undefined,
+    phoneNumberId,
+    messageId,
+    senderNumber: phoneNumberId,
+    recipientNumber: to,
+    senderType: 'bot',
+    messageType: 'template',
+    body: `template: ${templateName}`,
+    direction: 'outbound',
+    status: 'sent',
+  });
 
   return result;
 }
@@ -175,6 +202,8 @@ export async function handleWebhookProcess(payload: any) {
       const field = change.field;
       const value = change.value;
       const metadata = value?.metadata;
+      const contactObj = value?.contacts?.[0];
+      const customerName = contactObj?.profile?.name;
 
       // Persist raw webhook events in Postgres
       if (field) {
@@ -221,12 +250,7 @@ export async function handleWebhookProcess(payload: any) {
           const status = statusObj.status;
           const msgId = statusObj.id;
           if (msgId && status) {
-            await pool.query(
-              `UPDATE messages
-               SET status = $1, updated_at = CURRENT_TIMESTAMP
-               WHERE message_id = $2`,
-              [status, msgId]
-            );
+            await updateMessageStatus(msgId, status);
           }
         }
       }
@@ -239,15 +263,37 @@ export async function handleWebhookProcess(payload: any) {
           const body = message.text.body;
           const messageId = message.id;
 
-          // Store incoming message in DB
-          await pool.query(
-            `INSERT INTO messages (waba_id, phone_number_id, message_id, sender_number, recipient_number, message_type, body, direction, status)
-             VALUES ($1, $2, $3, $4, $5, 'text', $6, 'inbound', 'delivered')
-             ON CONFLICT (message_id) DO NOTHING`,
-            [wabaId, phoneNumberId, messageId, senderNumber, phoneNumberId, body]
+          // Find owner user_id from WABA
+          let userId = 'local-dev';
+          const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+          if (wabaRes.rows[0]?.user_id) {
+            userId = wabaRes.rows[0].user_id;
+          }
+
+          // 1. Find or Create Conversation
+          const conversation = await findOrCreateConversation(
+            userId,
+            senderNumber,
+            customerName,
+            metadata.display_phone_number || phoneNumberId
           );
 
-          // Get WABA token
+          // 2. Save linked Message
+          await saveMessage({
+            conversationId: conversation.id,
+            wabaId,
+            phoneNumberId,
+            messageId,
+            senderNumber,
+            recipientNumber: phoneNumberId,
+            senderType: 'customer',
+            messageType: 'text',
+            body,
+            direction: 'inbound',
+            status: 'delivered',
+          });
+
+          // Get WABA token for auto-reply
           const accessTokenResult = await pool.query(
             'SELECT access_token FROM wabas WHERE waba_id = $1 LIMIT 1',
             [entry.id]
@@ -266,7 +312,7 @@ export async function handleWebhookProcess(payload: any) {
           const customMessage = phoneResult.rows[0]?.ack_bot_message;
           const ackText = customMessage || `ack: ${body}`;
 
-          // Enqueue the outbound reply to the queue
+          // Enqueue outbound reply
           await enqueueJob('whatsapp_send', {
             phoneNumberId,
             accessToken,
@@ -275,7 +321,7 @@ export async function handleWebhookProcess(payload: any) {
             wabaId: entry.id,
           });
 
-          // Publish status update to Ably
+          // Publish to Ably
           await publishToChannel('get-started', 'first', {
             object: 'whatsapp_business_account',
             entry: [

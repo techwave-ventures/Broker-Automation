@@ -17,28 +17,49 @@ export async function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
     `,
     `
+    CREATE TABLE IF NOT EXISTS conversations (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      business_phone VARCHAR(50),
+      customer_phone VARCHAR(50) NOT NULL,
+      customer_name VARCHAR(255),
+      status VARCHAR(20) DEFAULT 'bot_active',
+      last_message_text TEXT,
+      last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      unread_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, customer_phone)
+    );
+    CREATE INDEX IF NOT EXISTS idx_conversations_user_customer ON conversations(user_id, customer_phone);
+    `,
+    `
     CREATE TABLE IF NOT EXISTS messages (
       id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      conversation_id BIGINT REFERENCES conversations(id) ON DELETE CASCADE,
       waba_id VARCHAR(100),
       phone_number_id VARCHAR(100),
       message_id VARCHAR(100) UNIQUE,
       sender_number VARCHAR(50),
       recipient_number VARCHAR(50),
-      message_type VARCHAR(20),
+      sender_type VARCHAR(20) DEFAULT 'customer',
+      message_type VARCHAR(20) DEFAULT 'text',
       body TEXT,
-      direction VARCHAR(10), -- 'inbound' or 'outbound'
-      status VARCHAR(20) DEFAULT 'sent', -- 'sent', 'delivered', 'read', 'failed'
+      direction VARCHAR(10),
+      status VARCHAR(20) DEFAULT 'sent',
       error_message TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id BIGINT REFERENCES conversations(id) ON DELETE CASCADE;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_type VARCHAR(20) DEFAULT 'customer';
     `,
     `
     CREATE TABLE IF NOT EXISTS messaging_events (
       id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       waba_id VARCHAR(100),
       phone_number_id VARCHAR(100),
-      event_type VARCHAR(50), -- 'call_event', 'call_status', 'message_status', etc.
+      event_type VARCHAR(50),
       event_id VARCHAR(100),
       payload JSONB,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -103,25 +124,6 @@ export async function initDatabase() {
     );
     `,
     `
-    CREATE TABLE IF NOT EXISTS chats (
-      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-      user_id VARCHAR(100) NOT NULL,
-      phone_number_id VARCHAR(100),
-      customer_name VARCHAR(255),
-      customer_phone VARCHAR(50) NOT NULL,
-      avatar TEXT,
-      status VARCHAR(20) DEFAULT 'bot_active' CHECK (status IN ('bot_active', 'human_takeover')),
-      unread_count INTEGER DEFAULT 0,
-      last_message_text TEXT,
-      last_message_time TIMESTAMP,
-      requirement VARCHAR(255),
-      budget VARCHAR(100),
-      property_id BIGINT REFERENCES properties(key) ON DELETE SET NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    `,
-    `
     CREATE TABLE IF NOT EXISTS bot_configs (
       key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       phone_id VARCHAR(100) UNIQUE NOT NULL,
@@ -146,6 +148,10 @@ export async function initDatabase() {
   ];
 
   for (const query of queries) {
-    await pool.query(query);
+    try {
+      await pool.query(query);
+    } catch (err) {
+      console.error('Table init query warning:', err);
+    }
   }
 }
