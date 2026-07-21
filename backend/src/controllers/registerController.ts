@@ -7,9 +7,9 @@ import { registerSchema, type RegisterInput } from '../modules/schemas.js';
 export async function postRegister(req: AuthenticatedRequest, res: Response) {
   try {
     const body = parseBody<RegisterInput>(registerSchema, req.body);
-    const userId = req.auth?.email;
+    const userId = req.auth?.user_id || req.auth?.email || req.auth?.sub;
     if (!userId) {
-      return jsonError(res, 401, 'Missing user email in session');
+      return jsonError(res, 401, 'Missing user session');
     }
 
     const accessToken = await getTokenForWaba(body.wabaId, userId);

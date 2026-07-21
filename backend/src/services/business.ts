@@ -44,9 +44,9 @@ async function graphApiWrapperPost(path: string, accessToken: string, body: Grap
   });
 }
 
-export async function getToken(code: string, appId: string) {
+export async function getToken(code: string, appId: string, redirectUri: string = '') {
   const path = `/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
-    env.APP_BASE_URL,
+    redirectUri,
   )}&client_secret=${env.FB_APP_SECRET}&code=${encodeURIComponent(code)}`;
   const data = await graphApiWrapperGet(path);
   if (data.error) {

@@ -8,9 +8,9 @@ import { tokenExchangeSchema, type TokenExchangeInput } from '../modules/schemas
 import { enqueueJob } from '../lib/queue.js';
 
 export async function postTokenExchange(req: AuthenticatedRequest, res: Response) {
-  const userId = req.auth?.email;
+  const userId = req.auth?.user_id || req.auth?.email || req.auth?.sub;
   if (!userId) {
-    return jsonError(res, 401, 'Missing user email in session');
+    return jsonError(res, 401, 'Missing user session');
   }
 
   try {
@@ -30,7 +30,8 @@ export async function postTokenExchange(req: AuthenticatedRequest, res: Response
 
     const tokenResult = await wrapOperation('getToken', getToken(body.code, appId));
     if (tokenResult.status !== 'completed' || !tokenResult.result) {
-      return jsonError(res, 500, 'Failed to exchange token', { details: tokenResult.error });
+      console.error('Token exchange failed with error:', tokenResult.error);
+      return res.status(500).json({ error: 'Failed to exchange token', details: tokenResult.error });
     }
 
     const accessToken = tokenResult.result as string;

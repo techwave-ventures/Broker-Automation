@@ -41,8 +41,8 @@ export default function SignupPage() {
         throw new Error(data.message || 'Signup failed');
       }
 
-      // Successful signup and login
-      window.location.href = '/dashboard';
+      // Successful signup - redirect to WhatsApp onboarding
+      window.location.href = '/auth/onboarding';
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {

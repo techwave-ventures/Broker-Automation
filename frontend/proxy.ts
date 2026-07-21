@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Bypass auth check for public property detail page (e.g. /p/[id])
   if (request.nextUrl.pathname.startsWith('/p/')) {
     return NextResponse.next();
@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
   } catch (error) {
-    console.error('Middleware: failed to verify session with backend:', error);
+    console.error('Proxy: failed to verify session with backend:', error);
   }
 
   // Redirect to local login page if not authenticated
@@ -37,12 +37,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     */
     '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };
