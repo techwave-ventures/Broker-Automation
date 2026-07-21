@@ -214,40 +214,43 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
       status: 'sent',
     });
 
-    // Check if user has WABA & phone configured for live WhatsApp dispatch
-    let wabaRes = await pool.query(
-      'SELECT waba_id, access_token FROM wabas WHERE user_id = $1 OR user_id = $2 LIMIT 1',
-      [userId, email || userId]
+    // Check if conversation already has an active phone_number_id and waba_id from recent messages
+    const lastMsgRes = await pool.query(
+      `SELECT phone_number_id, waba_id FROM messages 
+       WHERE conversation_id = $1 AND phone_number_id IS NOT NULL 
+       ORDER BY created_at DESC LIMIT 1`,
+      [conv.id]
     );
-    let wabaId = wabaRes.rows[0]?.waba_id;
-    let accessToken = wabaRes.rows[0]?.access_token;
+
+    let phoneNumberId = lastMsgRes.rows[0]?.phone_number_id;
+    let wabaId = lastMsgRes.rows[0]?.waba_id;
+    let accessToken: string | undefined;
+
+    if (wabaId) {
+      const tokenRes = await pool.query('SELECT access_token FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+      accessToken = tokenRes.rows[0]?.access_token;
+    }
 
     if (!wabaId || !accessToken) {
-      wabaRes = await pool.query(
-        'SELECT waba_id, access_token FROM wabas WHERE user_id = $1 LIMIT 1',
-        [conv.user_id]
+      let wabaRes = await pool.query(
+        'SELECT waba_id, access_token FROM wabas WHERE user_id = $1 OR user_id = $2 ORDER BY last_updated DESC LIMIT 1',
+        [userId, email || userId]
       );
-      wabaId = wabaRes.rows[0]?.waba_id;
-      accessToken = wabaRes.rows[0]?.access_token;
-    }
-    if (!wabaId || !accessToken) {
-      wabaRes = await pool.query('SELECT waba_id, access_token FROM wabas ORDER BY last_updated DESC LIMIT 1');
+      if (!wabaRes.rows[0]?.waba_id) {
+        wabaRes = await pool.query('SELECT waba_id, access_token FROM wabas ORDER BY last_updated DESC LIMIT 1');
+      }
       wabaId = wabaRes.rows[0]?.waba_id;
       accessToken = wabaRes.rows[0]?.access_token;
     }
 
-    let phoneRes = await pool.query(
-      'SELECT phone_id FROM phones WHERE user_id = $1 OR user_id = $2 LIMIT 1',
-      [userId, email || userId]
-    );
-    let phoneNumberId = phoneRes.rows[0]?.phone_id;
-
     if (!phoneNumberId) {
-      phoneRes = await pool.query('SELECT phone_id FROM phones WHERE user_id = $1 LIMIT 1', [conv.user_id]);
-      phoneNumberId = phoneRes.rows[0]?.phone_id;
-    }
-    if (!phoneNumberId) {
-      phoneRes = await pool.query('SELECT phone_id FROM phones LIMIT 1');
+      let phoneRes = await pool.query(
+        'SELECT phone_id FROM phones WHERE user_id = $1 OR user_id = $2 ORDER BY last_updated DESC LIMIT 1',
+        [userId, email || userId]
+      );
+      if (!phoneRes.rows[0]?.phone_id) {
+        phoneRes = await pool.query('SELECT phone_id FROM phones ORDER BY last_updated DESC LIMIT 1');
+      }
       phoneNumberId = phoneRes.rows[0]?.phone_id;
     }
 

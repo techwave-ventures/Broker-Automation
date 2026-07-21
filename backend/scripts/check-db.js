@@ -36,6 +36,14 @@ async function check() {
     const phones = await pool.query("SELECT key, phone_id, user_id, is_ack_bot_enabled, last_updated FROM phones");
     console.table(phones.rows);
 
+    console.log('\n--- CONVERSATIONS ---');
+    const convs = await pool.query("SELECT id, user_id, customer_phone, customer_name, business_phone, status, last_message_text, updated_at FROM conversations ORDER BY updated_at DESC LIMIT 5");
+    console.table(convs.rows);
+
+    console.log('\n--- MESSAGES ---');
+    const msgs = await pool.query("SELECT id, conversation_id, phone_number_id, sender_type, direction, status, body, created_at FROM messages ORDER BY created_at DESC LIMIT 10");
+    console.table(msgs.rows);
+
     console.log('\n--- RECENT MESSAGING EVENTS (Webhooks) ---');
     const events = await pool.query("SELECT id, waba_id, phone_number_id, event_type, created_at FROM messaging_events ORDER BY created_at DESC LIMIT 5");
     console.table(events.rows);
