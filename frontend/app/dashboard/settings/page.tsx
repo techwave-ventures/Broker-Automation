@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
-    BotMessageSquare, Bell, CreditCard, Shield, Trash2, ChevronRight,
-    CheckCircle2, Smartphone, QrCode, Zap, Globe, Lock, LogOut, RefreshCw,
-    ToggleLeft, ToggleRight, Info
+    BotMessageSquare, Bell, CreditCard, Shield, Trash2,
+    CheckCircle2, Smartphone, Zap, Globe, Lock, LogOut, RefreshCw,
+    Info, Calendar, Hash, Building2, Check
 } from "lucide-react";
+import { WhatsAppEmbeddedSignup } from "@/components/WhatsAppEmbeddedSignup";
 
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
     return (
@@ -49,8 +50,13 @@ function SettingRow({ label, description, children }: { label: string; descripti
 export default function SettingsPage() {
     const [toast, setToast] = useState<string | null>(null);
 
-    // WhatsApp Bot
-    const [botConnected] = useState(true);
+    // Connected Accounts from Database
+    const [wabas, setWabas] = useState<any[]>([]);
+    const [phones, setPhones] = useState<any[]>([]);
+    const [loadingWabas, setLoadingWabas] = useState(true);
+    const [showConnectModal, setShowConnectModal] = useState(false);
+
+    // WhatsApp Bot Settings
     const [autoReply, setAutoReply] = useState(true);
     const [language, setLanguage] = useState("English");
 
@@ -65,10 +71,33 @@ export default function SettingsPage() {
     const [notifAppointment, setNotifAppointment] = useState(true);
     const [notifWeeklyReport, setNotifWeeklyReport] = useState(false);
 
+    const fetchWabas = async () => {
+        try {
+            const res = await fetch("/api/auth/waba");
+            if (res.ok) {
+                const data = await res.json();
+                setWabas(data.wabas || []);
+                setPhones(data.phones || []);
+            }
+        } catch (err) {
+            console.error("Failed to fetch connected WhatsApp accounts:", err);
+        } finally {
+            setLoadingWabas(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchWabas();
+    }, []);
+
     const triggerToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3000);
     };
+
+    const hasConnectedAccount = wabas.length > 0 || phones.length > 0;
+    const primaryWaba = wabas[0];
+    const primaryPhone = phones[0];
 
     return (
         <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6 relative">
@@ -84,29 +113,124 @@ export default function SettingsPage() {
             {/* Page Header */}
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-sm text-foreground/50 mt-1">Manage your PropBot AI workspace and integrations.</p>
+                <p className="text-sm text-foreground/50 mt-1">Manage your PropBot AI workspace, WhatsApp integration, and preferences.</p>
             </div>
 
             {/* ── 1. WhatsApp Bot Connection ── */}
-            <SectionCard title="WhatsApp Bot" icon={Smartphone}>
-                {/* Connection Status */}
-                <div className={`flex items-center gap-4 p-4 rounded-2xl border mb-6 ${botConnected ? "bg-emerald-500/5 border-emerald-500/20" : "bg-destructive/5 border-destructive/20"}`}>
-                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${botConnected ? "bg-emerald-500/10" : "bg-destructive/10"}`}>
-                        <Smartphone className={`h-6 w-6 ${botConnected ? "text-emerald-500" : "text-destructive"}`} />
+            <SectionCard title="Connected WhatsApp Account" icon={Smartphone}>
+                {loadingWabas ? (
+                    <div className="flex items-center justify-center p-8 text-foreground/50 text-sm">
+                        <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin mr-2" />
+                        Loading connected WhatsApp accounts...
                     </div>
-                    <div className="flex-1">
-                        <p className="font-bold">{botConnected ? "Bot Connected" : "Not Connected"}</p>
-                        <p className="text-sm text-foreground/60">{botConnected ? "+91 98765 43210 — Sunrise Realty WhatsApp" : "Scan the QR code below to connect your WhatsApp"}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${botConnected ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"}`}>
-                        {botConnected ? "● Live" : "Offline"}
-                    </span>
-                </div>
+                ) : hasConnectedAccount ? (
+                    <div className="space-y-4 mb-6">
+                        {/* Live Connection Banner */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                    <Smartphone className="h-6 w-6 text-emerald-500" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-base">WhatsApp Account Connected</p>
+                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 flex items-center gap-1">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                            Live
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-foreground/60 mt-0.5">
+                                        {primaryPhone?.display_phone_number || primaryPhone?.phone_id || "WhatsApp Business API Connected"}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
 
-                {!botConnected && (
-                    <div className="flex flex-col items-center bg-muted/50 border border-dashed border-border rounded-2xl p-8 mb-6">
-                        <QrCode className="h-32 w-32 text-foreground/20 mb-3" />
-                        <p className="text-sm font-medium text-foreground/60">Scan with WhatsApp on your phone</p>
+                        {/* Account Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            {primaryWaba?.waba_id && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Hash className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">WABA Account ID</p>
+                                        <p className="text-xs font-mono font-bold truncate">{primaryWaba.waba_id}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {primaryWaba?.business_id && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Building2 className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">Business Portfolio ID</p>
+                                        <p className="text-xs font-mono font-bold truncate">{primaryWaba.business_id}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {primaryPhone?.phone_id && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                        <Smartphone className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">Phone Number ID</p>
+                                        <p className="text-xs font-mono font-bold truncate">{primaryPhone.phone_id}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {primaryWaba?.last_updated && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Calendar className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">Last Sync Date</p>
+                                        <p className="text-xs font-bold truncate">{new Date(primaryWaba.last_updated).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-500">
+                                <Smartphone className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-sm">No WhatsApp Account Connected</p>
+                                <p className="text-xs text-foreground/60">Connect your WhatsApp Business account below to activate automated responses.</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowConnectModal(true)}
+                            className="px-4 py-2 bg-primary text-white font-bold rounded-xl text-xs hover:bg-primary/90 transition-all flex-shrink-0"
+                        >
+                            Connect Account
+                        </button>
+                    </div>
+                )}
+
+                {/* Embedded Login Connection Box */}
+                {!hasConnectedAccount && (
+                    <div className="p-6 bg-muted/30 border border-border rounded-2xl mb-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-sm">WhatsApp Embedded Login Connection</h3>
+                            <span className="text-xs text-foreground/50">Meta Verified Integration</span>
+                        </div>
+                        <WhatsAppEmbeddedSignup
+                            onSuccess={() => {
+                                fetchWabas();
+                                setShowConnectModal(false);
+                                triggerToast("WhatsApp Account connected successfully!");
+                            }}
+                        />
                     </div>
                 )}
 
@@ -126,12 +250,18 @@ export default function SettingsPage() {
 
                 <div className="mt-4 flex gap-3">
                     <button
-                        onClick={() => triggerToast("Reconnecting WhatsApp bot...")}
+                        onClick={() => {
+                            fetchWabas();
+                            triggerToast("Refreshing connected WhatsApp accounts...");
+                        }}
                         className="px-4 py-2.5 bg-muted border border-border rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-foreground/10 transition-colors"
                     >
-                        <RefreshCw className="h-4 w-4" /> Reconnect
+                        <RefreshCw className="h-4 w-4" /> Refresh Sync
                     </button>
-                    <button className="px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors">
+                    <button
+                        onClick={() => triggerToast("Bot auto-reply test message sent!")}
+                        className="px-4 py-2.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
+                    >
                         <Globe className="h-4 w-4" /> Test Bot Response
                     </button>
                 </div>

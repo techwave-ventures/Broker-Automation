@@ -141,7 +141,7 @@ export function WhatsAppEmbeddedSignup({
     }
 
     if (typeof FB === 'undefined') {
-      const msg = 'Facebook SDK is loading or blocked by a browser ad-blocker extension. Use the Dev Mode button below to test.';
+      const msg = 'Facebook SDK is loading or blocked by a browser ad-blocker extension. Please refresh or disable ad-blocker.';
       setErrorMsg(msg);
       setLoading(false);
       setStatusText(null);
@@ -192,7 +192,7 @@ export function WhatsAppEmbeddedSignup({
       console.error('FB.login error:', err);
       setLoading(false);
       setStatusText(null);
-      setErrorMsg(err.message || 'Failed to open Facebook Login popup. Try Dev Mode connection below.');
+      setErrorMsg(err.message || 'Failed to open Facebook Login popup. Please try again.');
     }
   };
 
@@ -245,22 +245,6 @@ export function WhatsAppEmbeddedSignup({
           </>
         )}
       </button>
-
-      {/* Dev Mode local testing button for HTTP environment */}
-      <div className="w-full mt-3">
-        <button
-          type="button"
-          onClick={() => handleTokenExchange('mock_local_dev_code_123', {
-            waba_id: '2551628275293291',
-            phone_number_id: '1183324568200694',
-            business_id: '424599743751625',
-          })}
-          disabled={loading}
-          className="w-full py-2.5 px-4 bg-slate-800/80 hover:bg-slate-700 active:scale-[0.99] text-xs font-medium text-slate-300 rounded-xl border border-slate-700/80 transition-all flex items-center justify-center gap-2"
-        >
-          <span>⚡ Dev Mode: Connect Sample WhatsApp (Skip SDK/Meta)</span>
-        </button>
-      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { env, isAuthBypassed } from '../config/env.js';
 import { signJWT, verifyJWT, type JWTPayload } from '../config/jwt.js';
 import { createUser, findUserByEmail, findUserById } from '../models/userModel.js';
+import { pool } from '../lib/db.js';
 
 export function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -164,4 +165,41 @@ export function logout(req: Request, res: Response) {
   });
 
   return res.json({ success: true, message: 'Logged out successfully' });
+}
+
+export async function getWabas(req: Request, res: Response) {
+  try {
+    let userId = 'local-dev';
+    if (!isAuthBypassed) {
+      const cookies = parseCookies(req.headers.cookie);
+      const authHeader = req.headers.authorization;
+      const token = cookies['session_token'] || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+      if (!token) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const payload = await verifyJWT(token);
+      if (!payload) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      userId = payload.user_id || payload.email;
+    }
+
+    const wabasRes = await pool.query(
+      `SELECT waba_id, business_id, app_id, last_updated FROM wabas WHERE user_id = $1 ORDER BY last_updated DESC`,
+      [userId]
+    );
+
+    const phonesRes = await pool.query(
+      `SELECT phone_id, is_ack_bot_enabled, ack_bot_message FROM phones WHERE user_id = $1`,
+      [userId]
+    );
+
+    return res.json({
+      wabas: wabasRes.rows,
+      phones: phonesRes.rows,
+    });
+  } catch (err) {
+    console.error('Failed to get user WABAs:', err);
+    return res.status(500).json({ error: 'Failed to retrieve WhatsApp accounts' });
+  }
 }

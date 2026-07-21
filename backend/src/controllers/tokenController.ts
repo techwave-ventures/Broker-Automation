@@ -1,7 +1,8 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { env } from '../config/env.js';
-import { getToken } from '../services/business.js';
+import { getToken, saveTokens } from '../services/business.js';
+import { pool } from '../lib/db.js';
 import { wrapOperation } from '../lib/operation.js';
 import { jsonError, parseBody, validationMessage } from './http.js';
 import { tokenExchangeSchema, type TokenExchangeInput } from '../modules/schemas.js';
@@ -28,15 +29,47 @@ export async function postTokenExchange(req: AuthenticatedRequest, res: Response
     const catalogIds = body.catalog_ids ?? [];
     const instagramAccountIds = body.instagram_account_ids ?? [];
 
+    console.log(`\n🔑 [TOKEN EXCHANGE STARTED] User: ${userId} | WABA: ${wabaId || wabaIds.join(', ')}`);
+
     const tokenResult = await wrapOperation('getToken', getToken(body.code, appId));
     if (tokenResult.status !== 'completed' || !tokenResult.result) {
-      console.error('Token exchange failed with error:', tokenResult.error);
+      console.error('❌ Token exchange failed with error:', tokenResult.error);
       return res.status(500).json({ error: 'Failed to exchange token', details: tokenResult.error });
     }
 
     const accessToken = tokenResult.result as string;
 
-    // Enqueue follow-up operations for background execution
+    // 1. Synchronously save WABA & Business tokens to PostgreSQL
+    try {
+      await saveTokens(
+        userId,
+        appId,
+        body.business_id || '',
+        pageIds,
+        adAccountIds,
+        wabaIds,
+        datasetIds,
+        catalogIds,
+        instagramAccountIds,
+        accessToken
+      );
+
+      // 2. Synchronously save phone number to PostgreSQL
+      if (body.phone_number_id) {
+        await pool.query(
+          `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, last_updated)
+           VALUES ($1, $2, TRUE, CURRENT_TIMESTAMP)
+           ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, last_updated = CURRENT_TIMESTAMP`,
+          [body.phone_number_id, userId]
+        );
+      }
+
+      console.log(`✅ [DB DB_SYNC_SUCCESS] Saved WABA (${wabaIds.join(', ')}) & Phone (${body.phone_number_id}) for User: ${userId}`);
+    } catch (dbErr) {
+      console.error('⚠️ [DB DB_SYNC_ERROR] Direct database insert warning:', dbErr);
+    }
+
+    // 3. Enqueue follow-up operations for background execution
     await enqueueJob('token_exchange_followup', {
       userId,
       appId,

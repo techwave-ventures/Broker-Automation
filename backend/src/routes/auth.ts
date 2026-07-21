@@ -8,3 +8,4 @@ authRouter.post('/login', AuthController.login);
 authRouter.get('/login', AuthController.login);
 authRouter.all('/logout', AuthController.logout);
 authRouter.get('/me', AuthController.me);
+authRouter.get('/waba', AuthController.getWabas);
