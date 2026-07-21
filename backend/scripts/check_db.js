@@ -1,7 +1,19 @@
 import pkg from 'pg';
-const { Pool } = pkg;
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const connectionString = process.env.POSTGRES_URL || 'postgresql://neondb_owner:npg_NfySlBKXtq58@ep-fragrant-moon-au78082c.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
+const { Pool } = pkg;
+const connectionString = process.env.POSTGRES_URL;
+
+if (!connectionString) {
+  console.error('❌ Error: POSTGRES_URL environment variable is missing.');
+  process.exit(1);
+}
 
 const pool = new Pool({
   connectionString,
@@ -16,8 +28,6 @@ async function run() {
 
     console.log('\n=== WABAS ===');
     const wabas = await pool.query('SELECT waba_id, user_id, business_id, last_updated FROM wabas LIMIT 10');
-    console.table(wabas.rows);
-
     console.table(wabas.rows);
 
     console.log('\n=== PHONES ===');

@@ -144,3 +144,6 @@ next-env.d.ts
 
 certificates
 .env*.local
+
+Agents and Dev Sepecifics
+.agents/*
