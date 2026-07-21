@@ -77,7 +77,19 @@ export async function enqueueJob(type: string, payload: any) {
 export async function handleWhatsappSend(payload: any) {
   const { phoneNumberId, accessToken, destPhone, messageContent, wabaId } = payload;
   
-  const result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+  let result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+
+  // Auto-recovery for Error 133010 (Account not registered on Cloud API)
+  if (result?.error?.code === 133010) {
+    console.warn(`⚠️ [AUTO-REGISTERING] Phone ${phoneNumberId} returned Error 133010 (Unregistered). Registering on Cloud API...`);
+    const regResult = await registerNumber(phoneNumberId, accessToken);
+    if (regResult?.error) {
+      console.error(`❌ [AUTO-REGISTRATION FAILED] Failed to register phone ${phoneNumberId}:`, JSON.stringify(regResult.error));
+    } else {
+      console.log(`✅ [AUTO-REGISTRATION SUCCESS] Phone ${phoneNumberId} registered on Cloud API. Retrying send...`);
+      result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+    }
+  }
   
   if (result?.error) {
     console.error(`❌ [ACKBOT SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
@@ -126,7 +138,7 @@ export async function handleWhatsappTemplateSend(payload: any) {
     wabaId,
   } = payload;
 
-  const result = await sendTemplateMessage(
+  let result = await sendTemplateMessage(
     phoneNumberId,
     accessToken,
     to,
@@ -135,6 +147,26 @@ export async function handleWhatsappTemplateSend(payload: any) {
     componentParams || [],
     bizOpaqueCallbackData
   );
+
+  // Auto-recovery for Error 133010 (Account not registered on Cloud API)
+  if (result?.error?.code === 133010) {
+    console.warn(`⚠️ [AUTO-REGISTERING] Phone ${phoneNumberId} returned Error 133010 (Unregistered). Registering on Cloud API...`);
+    const regResult = await registerNumber(phoneNumberId, accessToken);
+    if (regResult?.error) {
+      console.error(`❌ [AUTO-REGISTRATION FAILED] Failed to register phone ${phoneNumberId}:`, JSON.stringify(regResult.error));
+    } else {
+      console.log(`✅ [AUTO-REGISTRATION SUCCESS] Phone ${phoneNumberId} registered on Cloud API. Retrying template send...`);
+      result = await sendTemplateMessage(
+        phoneNumberId,
+        accessToken,
+        to,
+        templateName,
+        templateLanguage,
+        componentParams || [],
+        bizOpaqueCallbackData
+      );
+    }
+  }
 
   if (result?.error) {
     console.error(`❌ [TEMPLATE SEND FAILED] Meta Graph API Error for ${to}:`, JSON.stringify(result.error));

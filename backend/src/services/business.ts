@@ -180,7 +180,7 @@ export async function saveTokens(
 export async function registerNumber(phoneId: string, accessToken: string) {
   return graphApiWrapperPost(`/${phoneId}/register`, accessToken, {
     messaging_product: 'whatsapp',
-    pin: env.FB_REG_PIN,
+    pin: env.FB_REG_PIN || '123456',
   });
 }
 
