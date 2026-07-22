@@ -76,7 +76,7 @@ export function mapBackendPropertyToFrontend(p: any): Property {
     city: p.city,
     locality: p.locality,
     fullAddress: p.full_address,
-    image: p.image || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=900&auto=format&fit=crop&q=80",
+    image: p.image || "",
     images: p.images || [],
     builtUpArea: p.built_up_area ? Number(p.built_up_area) : undefined,
     plotArea: p.plot_area ? Number(p.plot_area) : undefined,

@@ -91,13 +91,7 @@ export default function PropertyDetailPage() {
 
     const gallery = [
         property.image,
-        ...(property.images && property.images.length > 0 ? property.images : [
-            "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
-            "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800&q=80",
-            "https://images.unsplash.com/photo-1600566753086-00f18efc2291?w=800&q=80",
-            "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80",
-            "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80"
-        ])
+        ...(property.images || [])
     ].filter(Boolean);
 
     const priceToDisplay = property.transactionType === "Sell" ? property.expectedPrice : property.monthlyRent;
@@ -151,43 +145,50 @@ export default function PropertyDetailPage() {
 
 
                 {/* ── Seamless Image Gallery ── */}
-                <div className="mb-10">
-                    <div
-                        className="relative h-[300px] sm:h-[450px] lg:h-[550px] w-full rounded-[2rem] overflow-hidden cursor-pointer group shadow-sm bg-muted"
-                        onClick={() => setLightboxOpen(true)}
-                    >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={gallery[currentIndex]}
-                            alt={property.title}
-                            className="w-full h-full object-cover transition-opacity duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
-                        <div className="absolute bottom-5 left-5 bg-background/80 backdrop-blur-lg text-foreground px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 border border-border shadow-sm transform transition-all group-hover:scale-105">
-                            <Maximize className="h-4 w-4" /> View Fullscreen
+                {gallery.length > 0 ? (
+                    <div className="mb-10">
+                        <div
+                            className="relative h-[300px] sm:h-[450px] lg:h-[550px] w-full rounded-[2rem] overflow-hidden cursor-pointer group shadow-sm bg-muted"
+                            onClick={() => setLightboxOpen(true)}
+                        >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={gallery[currentIndex]}
+                                alt={property.title}
+                                className="w-full h-full object-cover transition-opacity duration-300"
+                            />
+                            <div className="absolute inset-0 bg-black/5 group-hover:bg-black/10 transition-colors" />
+                            <div className="absolute bottom-5 left-5 bg-background/80 backdrop-blur-lg text-foreground px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 border border-border shadow-sm transform transition-all group-hover:scale-105">
+                                <Maximize className="h-4 w-4" /> View Fullscreen
+                            </div>
+                            <div className="absolute top-5 right-5 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider">
+                                {currentIndex + 1} / {gallery.length} Images
+                            </div>
                         </div>
-                        <div className="absolute top-5 right-5 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider">
-                            {currentIndex + 1} / {gallery.length} Images
-                        </div>
-                    </div>
 
-                    <div className="mt-4 flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x pt-1 px-1">
-                        {gallery.map((img, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setCurrentIndex(i)}
-                                className={`relative h-20 w-28 sm:h-24 sm:w-36 rounded-2xl overflow-hidden flex-shrink-0 snap-center transition-all transform hover:scale-105 active:scale-95 ${currentIndex === i ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-70 hover:opacity-100'}`}
-                            >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={img}
-                                    alt={`Thumbnail ${i + 1}`}
-                                    className="w-full h-full object-cover"
-                                />
-                            </button>
-                        ))}
+                        <div className="mt-4 flex gap-3 overflow-x-auto pb-4 scrollbar-hide snap-x pt-1 px-1">
+                            {gallery.map((img, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentIndex(i)}
+                                    className={`relative h-20 w-28 sm:h-24 sm:w-36 rounded-2xl overflow-hidden flex-shrink-0 snap-center transition-all transform hover:scale-105 active:scale-95 ${currentIndex === i ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-70 hover:opacity-100'}`}
+                                >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={img}
+                                        alt={`Thumbnail ${i + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="mb-10 h-[300px] sm:h-[450px] lg:h-[550px] bg-muted rounded-[2rem] flex flex-col items-center justify-center text-foreground/40 border border-border">
+                        <Building2 className="h-16 w-16 mb-4 opacity-40 text-primary" />
+                        <p className="font-bold text-lg">No images uploaded for this listing</p>
+                    </div>
+                )}
 
                 {/* ── Header Title Area ── */}
                 <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">
@@ -337,7 +338,7 @@ export default function PropertyDetailPage() {
                                 {property.agent_phone ? (
                                     <a href={`tel:${property.agent_phone}`} className="w-full h-12 text-foreground/70 font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted transition-colors border border-border">
                                         <Phone className="h-4 w-4" />
-                                        Call Agent ({property.agent_phone})
+                                        Call ({property.agent_phone})
                                     </a>
                                 ) : (
                                     <button className="w-full h-12 text-foreground/70 font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted transition-colors">
@@ -347,28 +348,29 @@ export default function PropertyDetailPage() {
                                 )}
                             </div>
 
-                            <div className="mt-8 pt-6 border-t border-border relative z-10">
-                                <p className="text-xs font-bold uppercase tracking-wider text-foreground/40 mb-4">Listed By Agent</p>
-                                <div className="flex items-center gap-4">
-                                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 p-0.5 flex-shrink-0">
-                                        <div className="h-full w-full rounded-full bg-card border-2 border-background flex items-center justify-center text-foreground font-bold text-sm">
-                                            {property.agent_name ? property.agent_name.split(' ').map(n => n[0]).join('').toUpperCase() : "VA"}
+                            {property.agent_name && (
+                                <div className="mt-8 pt-6 border-t border-border relative z-10">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-foreground/40 mb-4">Listed By Agent</p>
+                                    <div className="flex items-center gap-4">
+                                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 p-0.5 flex-shrink-0">
+                                            <div className="h-full w-full rounded-full bg-card border-2 border-background flex items-center justify-center text-foreground font-bold text-sm">
+                                                {property.agent_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase()}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-foreground">{property.agent_name}</p>
+                                            {property.agent_phone && (
+                                                <p className="text-xs text-foreground/60 flex items-center gap-1 mt-0.5">
+                                                    <Phone className="h-3 w-3 text-primary" /> {property.agent_phone}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
-                                    <div>
-                                        <p className="font-bold text-foreground">{property.agent_name || "Vishal Auti"}</p>
-                                        {property.agent_phone && (
-                                            <p className="text-xs text-foreground/60 flex items-center gap-1 mt-0.5">
-                                                <Phone className="h-3 w-3 text-primary" /> {property.agent_phone}
-                                            </p>
-                                        )}
-                                        <p className="text-xs text-foreground/40">Sunrise Realty Group</p>
-                                    </div>
+                                    <Link href="/dashboard/leads" className="mt-4 flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                                        View all listings by agent <ArrowRight className="h-4 w-4" />
+                                    </Link>
                                 </div>
-                                <Link href="/dashboard/leads" className="mt-4 flex items-center gap-1 text-sm font-medium text-primary hover:underline">
-                                    View all listings by agent <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
+                            )}
                         </div>
                     </div>
 

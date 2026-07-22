@@ -66,15 +66,15 @@ export async function getProperty(req: AuthenticatedRequest, res: Response) {
 
     let dbUserId = property.user_id;
     const user = await findUserByEmail(property.user_id);
-    let agentName = 'Local Dev User';
+    let agentName = property.user_id;
     if (user) {
       dbUserId = user.user_id;
-      agentName = user.name || agentName;
+      agentName = user.name || user.email;
     } else {
       const userById = await findUserById(property.user_id);
       if (userById) {
         dbUserId = userById.user_id;
-        agentName = userById.name || agentName;
+        agentName = userById.name || userById.email;
       }
     }
 
