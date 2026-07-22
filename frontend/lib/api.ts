@@ -98,6 +98,7 @@ export function mapBackendPropertyToFrontend(p: any): Property {
     otherAmenities: p.other_amenities || [],
     agent_name: p.agent_name,
     agent_phone: p.agent_phone,
+    slug: p.slug,
   };
 }
 

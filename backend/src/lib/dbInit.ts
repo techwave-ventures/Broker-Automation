@@ -147,6 +147,9 @@ export async function initDatabase() {
     `,
     `
     ALTER TABLE phones ADD COLUMN IF NOT EXISTS display_phone_number VARCHAR(100);
+    `,
+    `
+    ALTER TABLE properties ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;
     `
   ];
 
@@ -156,5 +159,25 @@ export async function initDatabase() {
     } catch (err) {
       console.error('Table init query warning:', err);
     }
+  }
+
+  // Migrate existing properties with null slugs
+  try {
+    const nullSlugsRes = await pool.query('SELECT key, title, locality, city FROM properties WHERE slug IS NULL');
+    for (const row of nullSlugsRes.rows) {
+      const clean = (str: string) => String(str || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+      const titleSlug = clean(row.title || 'property');
+      const localitySlug = clean(row.locality || 'locality');
+      const citySlug = clean(row.city || 'city');
+      const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+      const slug = `${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${row.key}`;
+      
+      await pool.query('UPDATE properties SET slug = $1 WHERE key = $2', [slug, row.key]);
+    }
+  } catch (err) {
+    console.error('Failed to migrate null slugs for properties:', err);
   }
 }

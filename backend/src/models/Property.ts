@@ -36,6 +36,7 @@ export interface Property {
   corner_plot?: boolean;
   amenities?: string[];
   other_amenities?: string[];
+  slug?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -108,7 +109,21 @@ export async function createProperty(
   ];
 
   const result = await pool.query(query, values);
-  return mapRowToProperty(result.rows[0]);
+  const inserted = mapRowToProperty(result.rows[0]);
+
+  const clean = (str: string) => String(str || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+  const titleSlug = clean(inserted.title || 'property');
+  const localitySlug = clean(inserted.locality || 'locality');
+  const citySlug = clean(inserted.city || 'city');
+  const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+  const slug = `${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${inserted.key}`;
+
+  await pool.query('UPDATE properties SET slug = $1 WHERE key = $2', [slug, inserted.key]);
+  inserted.slug = slug;
+  return inserted;
 }
 
 export async function updateProperty(
@@ -249,6 +264,7 @@ function mapRowToProperty(row: any): Property {
     corner_plot: !!row.corner_plot,
     amenities: Array.isArray(row.amenities) ? row.amenities : JSON.parse(row.amenities || '[]'),
     other_amenities: Array.isArray(row.other_amenities) ? row.other_amenities : JSON.parse(row.other_amenities || '[]'),
+    slug: row.slug || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at
   };

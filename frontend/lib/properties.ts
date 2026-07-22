@@ -52,6 +52,7 @@ export interface Property {
     otherAmenities?: string[];
     agent_name?: string;
     agent_phone?: string;
+    slug?: string;
 }
 
 const DEFAULT_PROPERTIES: Property[] = [
@@ -237,6 +238,10 @@ export const deleteProperty = async (id: string): Promise<void> => {
 export function getPropertyShareUrl(property: Property): string {
     if (typeof window === "undefined") return "";
     const baseUrl = window.location.origin;
+
+    if (property.slug) {
+        return `${baseUrl}/p/${property.slug}`;
+    }
 
     const clean = (str: string) => str
         .toLowerCase()
