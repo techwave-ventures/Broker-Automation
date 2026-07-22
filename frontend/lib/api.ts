@@ -96,6 +96,8 @@ export function mapBackendPropertyToFrontend(p: any): Property {
     cornerPlot: p.corner_plot,
     amenities: p.amenities || [],
     otherAmenities: p.other_amenities || [],
+    agent_name: p.agent_name,
+    agent_phone: p.agent_phone,
   };
 }
 

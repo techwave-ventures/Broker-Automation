@@ -56,11 +56,24 @@ export async function postTokenExchange(req: AuthenticatedRequest, res: Response
 
       // 2. Synchronously save phone number to PostgreSQL
       if (body.phone_number_id) {
+        let displayPhone = null;
+        try {
+          const metaRes = await fetch(`https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}/${body.phone_number_id}`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          const metaData = await metaRes.json();
+          if (metaData && metaData.display_phone_number) {
+            displayPhone = metaData.display_phone_number.replace(/[^0-9]/g, '');
+          }
+        } catch (metaErr) {
+          console.error('Error fetching display phone number during token exchange:', metaErr);
+        }
+
         await pool.query(
-          `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, last_updated)
-           VALUES ($1, $2, TRUE, CURRENT_TIMESTAMP)
-           ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, last_updated = CURRENT_TIMESTAMP`,
-          [body.phone_number_id, userId]
+          `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, display_phone_number, last_updated)
+           VALUES ($1, $2, TRUE, $3, CURRENT_TIMESTAMP)
+           ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, display_phone_number = EXCLUDED.display_phone_number, last_updated = CURRENT_TIMESTAMP`,
+          [body.phone_number_id, userId, displayPhone]
         );
       }
 

@@ -50,6 +50,8 @@ export interface Property {
     // Amenities
     amenities: string[];
     otherAmenities?: string[];
+    agent_name?: string;
+    agent_phone?: string;
 }
 
 const DEFAULT_PROPERTIES: Property[] = [
@@ -142,7 +144,10 @@ export const getProperties = async (): Promise<Property[]> => {
 
 export const getPropertyById = async (id: string): Promise<Property | undefined> => {
     try {
-        const res = await fetch(`/api/properties/${id}`);
+        const parts = id.split("-");
+        const realId = parts[parts.length - 1] || id;
+
+        const res = await fetch(`/api/properties/${realId}`);
         if (!res.ok) return undefined;
         const data = await res.json();
         return mapBackendPropertyToFrontend(data);
@@ -228,3 +233,20 @@ export const deleteProperty = async (id: string): Promise<void> => {
         console.error("Failed to delete property:", e);
     }
 };
+
+export function getPropertyShareUrl(property: Property): string {
+    if (typeof window === "undefined") return "";
+    const baseUrl = window.location.origin;
+
+    const clean = (str: string) => str
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+
+    const titleSlug = clean(property.title || "property");
+    const localitySlug = clean(property.locality || "locality");
+    const citySlug = clean(property.city || "city");
+    const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
+
+    return `${baseUrl}/p/${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${property.id}`;
+}

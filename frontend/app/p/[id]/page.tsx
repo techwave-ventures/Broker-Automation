@@ -25,7 +25,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getPropertyById, Property } from "@/lib/properties";
+import { getPropertyById, Property, getPropertyShareUrl } from "@/lib/properties";
 
 const formatPrice = (p: number | undefined) => {
     if (!p) return "Price on Request";
@@ -93,22 +93,65 @@ export default function PublicPropertyPage() {
 
     const gallery = [
         property.image,
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
-        "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800&q=80",
-        "https://images.unsplash.com/photo-1600566753086-00f18efc2291?w=800&q=80",
-        "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80",
-        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80"
-    ];
+        ...(property.images && property.images.length > 0 ? property.images : [
+            "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80",
+            "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?w=800&q=80",
+            "https://images.unsplash.com/photo-1600566753086-00f18efc2291?w=800&q=80",
+            "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80",
+            "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80"
+        ])
+    ].filter(Boolean);
 
     const priceToDisplay = property.transactionType === "Sell" ? property.expectedPrice : property.monthlyRent;
     const isRent = property.transactionType === "Rent";
 
-    const submitBooking = (e: React.FormEvent) => {
+    const handleShare = () => {
+        const shareUrl = getPropertyShareUrl(property);
+        navigator.clipboard.writeText(shareUrl);
+        setToast("Descriptive property link copied to clipboard!");
+        setTimeout(() => setToast(null), 3000);
+    };
+
+    const handleWhatsAppChat = () => {
+        const agentPhone = property.agent_phone || "";
+        const shareUrl = getPropertyShareUrl(property);
+        const whatsappMsg = encodeURIComponent(`Hi, I am interested in your property listing: "${property.title}" in ${property.locality}, ${property.city}.\n\nLink: ${shareUrl}`);
+        window.open(`https://wa.me/${agentPhone.replace(/[^0-9]/g, "")}?text=${whatsappMsg}`, "_blank");
+    };
+
+    const submitBooking = async (e: React.FormEvent) => {
         e.preventDefault();
-        setToast("Appointment Request Sent! Our agent will contact you shortly.");
-        setBookingOpen(false);
-        setTimeout(() => setToast(null), 4000);
-    }
+        try {
+            const target = e.target as HTMLFormElement;
+            const name = (target.elements.namedItem("name") as HTMLInputElement).value;
+            const phone = (target.elements.namedItem("phone") as HTMLInputElement).value;
+
+            const res = await fetch("/api/leads", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customerName: name,
+                    customerPhone: phone,
+                    interestedPropertyId: property.id,
+                    appointmentDate: bookingDate ? new Date(bookingDate).toISOString() : null,
+                    status: "Upcoming Visit",
+                    leadScore: "High",
+                    requestedLocality: property.locality,
+                    otherReqs: `Tour booked for: ${property.title}`
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to submit request");
+
+            setToast("Appointment Request Sent! Our agent will contact you shortly.");
+            setBookingOpen(false);
+        } catch (err) {
+            console.error("Booking error:", err);
+            setToast("Failed to book viewing. Please try again.");
+        } finally {
+            setTimeout(() => setToast(null), 4000);
+        }
+    };
 
     return (
         <div className="pb-24 lg:pb-12 bg-background min-h-screen">
@@ -140,11 +183,11 @@ export default function PublicPropertyPage() {
                             </div>
                             <div>
                                 <label className="text-sm font-bold block mb-2">Your Name</label>
-                                <input required type="text" placeholder="John Doe" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
+                                <input required type="text" name="name" placeholder="John Doe" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
                             </div>
                             <div>
                                 <label className="text-sm font-bold block mb-2">Phone Number</label>
-                                <input required type="tel" placeholder="+91 98765 43210" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
+                                <input required type="tel" name="phone" placeholder="+91 98765 43210" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
                             </div>
                             <button type="submit" className="w-full mt-4 h-14 bg-primary text-white font-bold rounded-xl flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 text-lg">
                                 Confirm Request
@@ -173,7 +216,7 @@ export default function PublicPropertyPage() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button className="h-10 w-10 rounded-full bg-muted flex items-center justify-center hover:bg-foreground/10 transition-colors">
+                        <button onClick={handleShare} className="h-10 w-10 rounded-full bg-muted flex items-center justify-center hover:bg-foreground/10 transition-colors">
                             <Share2 className="h-4 w-4 text-foreground/70" />
                         </button>
                         <button className="h-10 px-4 rounded-full bg-primary/10 text-primary font-bold text-sm flex items-center justify-center hover:bg-primary/20 transition-colors" onClick={() => setBookingOpen(true)}>
@@ -365,7 +408,7 @@ export default function PublicPropertyPage() {
                             <p className="text-sm font-semibold text-foreground/60 mb-8 relative z-10 leading-relaxed">Our AI agent is online 24/7. Ask questions or secure this viewing immediately.</p>
 
                             <div className="space-y-4 relative z-10">
-                                <button className="w-full h-14 bg-[#25D366] hover:bg-[#20BE5A] text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 text-lg tracking-wide">
+                                <button onClick={handleWhatsAppChat} className="w-full h-14 bg-[#25D366] hover:bg-[#20BE5A] text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 text-lg tracking-wide">
                                     <MessageSquare className="h-6 w-6" />
                                     Chat on WhatsApp
                                 </button>
@@ -373,22 +416,34 @@ export default function PublicPropertyPage() {
                                     <Calendar className="h-5 w-5 text-foreground/60" />
                                     Schedule Viewing
                                 </button>
-                                <button className="w-full h-14 text-foreground/60 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors">
-                                    <Phone className="h-5 w-5" />
-                                    Request Callback
-                                </button>
+                                {property.agent_phone ? (
+                                    <a href={`tel:${property.agent_phone}`} className="w-full h-14 text-foreground/60 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors border border-border">
+                                        <Phone className="h-5 w-5" />
+                                        Call Agent ({property.agent_phone})
+                                    </a>
+                                ) : (
+                                    <button className="w-full h-14 text-foreground/60 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors">
+                                        <Phone className="h-5 w-5" />
+                                        Request Callback
+                                    </button>
+                                )}
                             </div>
 
                             <div className="mt-10 pt-8 border-t border-border/50 relative z-10">
                                 <div className="flex items-center gap-4">
                                     <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 p-0.5 flex-shrink-0 shadow-lg">
                                         <div className="h-full w-full rounded-full bg-card border-[3px] border-background flex items-center justify-center text-foreground font-black text-xl">
-                                            VA
+                                            {property.agent_name ? property.agent_name.split(' ').map(n => n[0]).join('').toUpperCase() : "VA"}
                                         </div>
                                     </div>
                                     <div>
                                         <p className="text-xs font-black uppercase tracking-widest text-foreground/40 mb-1">Listed By Expert</p>
-                                        <p className="font-black text-lg tracking-tight text-foreground">Vishal Auti</p>
+                                        <p className="font-black text-lg tracking-tight text-foreground">{property.agent_name || "Vishal Auti"}</p>
+                                        {property.agent_phone && (
+                                            <p className="text-sm font-semibold text-foreground/70 flex items-center gap-1 mt-0.5">
+                                                <Phone className="h-3.5 w-3.5 text-primary" /> {property.agent_phone}
+                                            </p>
+                                        )}
                                         <p className="text-sm font-medium text-foreground/60 mt-0.5">PropBot AI Agent Group</p>
                                     </div>
                                 </div>

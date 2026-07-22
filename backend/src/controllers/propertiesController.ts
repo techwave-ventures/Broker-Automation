@@ -1,6 +1,8 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import * as PropertyModel from '../models/Property.js';
+import { findUserByEmail, findUserById } from '../models/userModel.js';
+import { pool } from '../lib/db.js';
 import { jsonError } from './http.js';
 import { z } from 'zod';
 
@@ -61,7 +63,85 @@ export async function getProperty(req: AuthenticatedRequest, res: Response) {
     if (!property) {
       return jsonError(res, 404, 'Property not found');
     }
-    return res.json(property);
+
+    let dbUserId = property.user_id;
+    const user = await findUserByEmail(property.user_id);
+    let agentName = 'Local Dev User';
+    if (user) {
+      dbUserId = user.user_id;
+      agentName = user.name || agentName;
+    } else {
+      const userById = await findUserById(property.user_id);
+      if (userById) {
+        dbUserId = userById.user_id;
+        agentName = userById.name || agentName;
+      }
+    }
+
+    let agentPhone = '';
+    const phoneRes = await pool.query('SELECT phone_id, display_phone_number FROM phones WHERE user_id = $1 LIMIT 1', [dbUserId]);
+    if (phoneRes.rows.length > 0) {
+      const phoneId = phoneRes.rows[0].phone_id;
+      const dbPhone = phoneRes.rows[0].display_phone_number;
+      if (dbPhone) {
+        agentPhone = dbPhone;
+      } else {
+        const wabaRes = await pool.query('SELECT access_token FROM wabas WHERE user_id = $1 LIMIT 1', [dbUserId]);
+        if (wabaRes.rows.length > 0) {
+          const accessToken = wabaRes.rows[0].access_token;
+          try {
+            const { env } = await import('../config/env.js');
+            const metaRes = await fetch(`https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}/${phoneId}`, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const metaData = await metaRes.json();
+            if (metaData && metaData.display_phone_number) {
+              agentPhone = metaData.display_phone_number.replace(/[^0-9]/g, '');
+              // Save it to the database so next time it is queried instantly!
+              await pool.query('UPDATE phones SET display_phone_number = $1 WHERE phone_id = $2', [agentPhone, phoneId]);
+            }
+          } catch (err) {
+            console.error('Error fetching display phone number from Meta API:', err);
+          }
+        }
+      }
+    } else {
+      // If there's no entry in phones, try to fetch the WABA details and lookup phone numbers from Meta API.
+      const wabaRes = await pool.query('SELECT waba_id, access_token FROM wabas WHERE user_id = $1 LIMIT 1', [dbUserId]);
+      if (wabaRes.rows.length > 0) {
+        const { waba_id: wabaId, access_token: accessToken } = wabaRes.rows[0];
+        try {
+          const { env } = await import('../config/env.js');
+          const metaRes = await fetch(`https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}/${wabaId}/phone_numbers`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          const metaData = await metaRes.json();
+          if (metaData && Array.isArray(metaData.data) && metaData.data.length > 0) {
+            const phoneObj = metaData.data[0];
+            const phoneId = phoneObj.id;
+            const displayPhone = phoneObj.display_phone_number ? phoneObj.display_phone_number.replace(/[^0-9]/g, '') : '';
+            if (displayPhone) {
+              agentPhone = displayPhone;
+            }
+            // Save it to database so next time it is queried instantly!
+            await pool.query(
+              `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, display_phone_number, last_updated)
+               VALUES ($1, $2, TRUE, $3, CURRENT_TIMESTAMP)
+               ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, display_phone_number = EXCLUDED.display_phone_number, last_updated = CURRENT_TIMESTAMP`,
+              [phoneId, dbUserId, displayPhone || null]
+            );
+          }
+        } catch (err) {
+          console.error('Error fetching display phone number from Meta WABA API:', err);
+        }
+      }
+    }
+
+    return res.json({
+      ...property,
+      agent_name: agentName,
+      agent_phone: agentPhone
+    });
   } catch (error) {
     console.error('Failed to get property:', error);
     return jsonError(res, 500, 'Failed to get property');

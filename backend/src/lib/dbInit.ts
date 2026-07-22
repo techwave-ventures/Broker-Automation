@@ -144,6 +144,9 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    `,
+    `
+    ALTER TABLE phones ADD COLUMN IF NOT EXISTS display_phone_number VARCHAR(100);
     `
   ];
 
