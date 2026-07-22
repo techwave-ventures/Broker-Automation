@@ -19,4 +19,5 @@ propertiesRouter.get('/:id', getProperty);
 // Edit property listings (authenticated)
 propertiesRouter.post('/', requireAuth, createProperty);
 propertiesRouter.put('/:id', requireAuth, updateProperty);
+propertiesRouter.patch('/:id', requireAuth, updateProperty);
 propertiesRouter.delete('/:id', requireAuth, deleteProperty);
