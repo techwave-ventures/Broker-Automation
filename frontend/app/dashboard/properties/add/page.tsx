@@ -98,51 +98,50 @@ export default function AddPropertyPage() {
         setForm((prev) => ({ ...prev, category: cat }));
     };
 
-    const handleSave = (status: "Draft" | "Published") => {
+    const handleSave = async (status: "Draft" | "Published") => {
         setLoading(status);
 
-        const price = form.transactionType === "Sell" ? Number(form.expectedPrice) : 0;
-
-        // Minimal mock save logic
-        addProperty({
-            title: form.title || `Beautiful ${form.type} for ${form.transactionType}`,
-            description: form.description || "No description provided.",
-            transactionType: form.transactionType as "Sell" | "Rent",
-            category: form.category,
-            type: form.type,
-            city: form.city || "N/A",
-            locality: form.locality || "N/A",
-            fullAddress: form.fullAddress || "",
-            monthlyRent: Number(form.monthlyRent),
-            expectedPrice: Number(form.expectedPrice),
-            image: form.category === "Commercial"
-                ? "https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&auto=format&fit=crop&q=80"
-                : form.category === "Land"
-                    ? "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&auto=format&fit=crop&q=80"
-                    : form.image,
-            status: status,
-            // Attributes mapping
-            beds: Number(form.beds) || 0,
-            baths: Number(form.baths) || 0,
-            builtUpArea: Number(form.builtUpArea) || 0,
-            plotArea: Number(form.plotArea) || 0,
-            furnishing: form.furnishing,
-            parking: Boolean(form.parking),
-            propertyAge: form.propertyAge,
-            readyToMove: form.readyToMove,
-            floorNumber: form.floorNumber,
-            totalFloors: form.totalFloors,
-            garden: form.garden,
-            washrooms: Number(form.washrooms) || 0,
-            plotWidth: Number(form.plotWidth) || 0,
-            plotLength: Number(form.plotLength) || 0,
-            cornerPlot: form.cornerPlot,
-            amenities: [...form.amenities, ...(form.otherAmenities ? form.otherAmenities.split(",").map(s => s.trim()) : [])].filter(Boolean),
-        });
-
-        setTimeout(() => {
+        try {
+            await addProperty({
+                title: form.title || `Beautiful ${form.type} for ${form.transactionType}`,
+                description: form.description || "No description provided.",
+                transactionType: form.transactionType as "Sell" | "Rent",
+                category: form.category,
+                type: form.type,
+                city: form.city || "N/A",
+                locality: form.locality || "N/A",
+                fullAddress: form.fullAddress || "",
+                monthlyRent: Number(form.monthlyRent),
+                expectedPrice: Number(form.expectedPrice),
+                image: form.category === "Commercial"
+                    ? "https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&auto=format&fit=crop&q=80"
+                    : form.category === "Land"
+                        ? "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&auto=format&fit=crop&q=80"
+                        : form.image,
+                status: status === "Published" ? "Available" : "Hidden",
+                // Attributes mapping
+                beds: Number(form.beds) || 0,
+                baths: Number(form.baths) || 0,
+                builtUpArea: Number(form.builtUpArea) || 0,
+                plotArea: Number(form.plotArea) || 0,
+                furnishing: form.furnishing,
+                parking: form.parking ? "Yes" : "No",
+                propertyAge: form.propertyAge,
+                readyToMove: form.readyToMove,
+                floorNumber: form.floorNumber,
+                totalFloors: form.totalFloors,
+                garden: form.garden,
+                washrooms: Number(form.washrooms) || 0,
+                plotWidth: Number(form.plotWidth) || 0,
+                plotLength: Number(form.plotLength) || 0,
+                cornerPlot: form.cornerPlot,
+                amenities: [...form.amenities, ...(form.otherAmenities ? form.otherAmenities.split(",").map(s => s.trim()) : [])].filter(Boolean),
+            });
             router.push("/dashboard/properties");
-        }, 1000);
+        } catch (e) {
+            console.error("Failed to save property:", e);
+            setLoading(false);
+        }
     };
 
     const nextStep = (e: React.FormEvent) => {

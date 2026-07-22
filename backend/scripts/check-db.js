@@ -48,6 +48,15 @@ async function check() {
     const events = await pool.query("SELECT id, waba_id, phone_number_id, event_type, created_at FROM messaging_events ORDER BY created_at DESC LIMIT 5");
     console.table(events.rows);
 
+    console.log('\n--- PROPERTIES ---');
+    const props = await pool.query('SELECT key, user_id, title, status, transaction_type FROM properties');
+    console.table(props.rows);
+
+    const testUserEmail = process.env.TEST_USER_EMAIL;
+    console.log(`\n--- PROPERTIES FOR ${testUserEmail} ---`);
+    const targetProps = await pool.query('SELECT key, title, status FROM properties WHERE user_id = $1', [testUserEmail]);
+    console.table(targetProps.rows);
+
   } catch (err) {
     console.error('Query Error:', err);
   } finally {

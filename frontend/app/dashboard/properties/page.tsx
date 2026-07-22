@@ -72,18 +72,22 @@ export default function PropertiesPage() {
         setTimeout(() => setToast(null), 3000);
     }
 
-    const confirmAction = () => {
+    const confirmAction = async () => {
         if (!dialog) return;
         const { type, propertyId } = dialog;
 
-        if (type === "Sold") updatePropertyStatus(propertyId, "Sold");
-        if (type === "Rented") updatePropertyStatus(propertyId, "Rented");
-        if (type === "Hide") updatePropertyStatus(propertyId, "Hidden");
-        if (type === "Republish") updatePropertyStatus(propertyId, "Available");
-        if (type === "Delete") deleteProperty(propertyId);
+        try {
+            if (type === "Sold") await updatePropertyStatus(propertyId, "Sold");
+            else if (type === "Rented") await updatePropertyStatus(propertyId, "Rented");
+            else if (type === "Hide") await updatePropertyStatus(propertyId, "Hidden");
+            else if (type === "Republish") await updatePropertyStatus(propertyId, "Available");
+            else if (type === "Delete") await deleteProperty(propertyId);
+        } catch (e) {
+            console.error("Action failed:", e);
+        }
 
         setDialog(null);
-        refresh();
+        await refresh();
         setMenuOpenId(null);
 
         triggerToast(`Property ${type === "Delete" ? "deleted" : `marked as ${type}`} successfully.`);

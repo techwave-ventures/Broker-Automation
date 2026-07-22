@@ -23,7 +23,7 @@ const propertySchema = z.object({
   built_up_area: z.number().optional(),
   plot_area: z.number().optional(),
   furnishing: z.string().optional(),
-  parking: z.string().optional(),
+  parking: z.union([z.string(), z.boolean()]).optional().transform(val => val !== undefined ? String(val) : undefined),
   status: z.enum(['Available', 'Sold', 'Rented', 'Hidden']).default('Available'),
   beds: z.number().optional(),
   baths: z.number().optional(),

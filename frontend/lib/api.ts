@@ -81,7 +81,7 @@ export function mapBackendPropertyToFrontend(p: any): Property {
     builtUpArea: p.built_up_area ? Number(p.built_up_area) : undefined,
     plotArea: p.plot_area ? Number(p.plot_area) : undefined,
     furnishing: p.furnishing,
-    parking: p.parking,
+    parking: p.parking === "Yes" || p.parking === "true" || p.parking === true,
     status: p.status,
     beds: p.beds ? Number(p.beds) : undefined,
     baths: p.baths ? Number(p.baths) : undefined,
