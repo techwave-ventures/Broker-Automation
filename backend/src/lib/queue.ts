@@ -320,8 +320,16 @@ export async function handleWebhookProcess(payload: any) {
         if (message?.type === 'text' && message.text?.body && metadata?.phone_number_id && entry.id) {
           const phoneNumberId = metadata.phone_number_id;
           const senderNumber = message.from ?? '';
-          const body = message.text.body;
           const messageId = message.id;
+          const body = message.text.body;
+
+          if (messageId) {
+            const dupCheck = await pool.query('SELECT id FROM messages WHERE message_id = $1 LIMIT 1', [messageId]);
+            if (dupCheck.rows.length > 0) {
+              console.log(`⚠️ [WEBHOOK PROCESS] Skipping duplicate incoming message event: ${messageId}`);
+              continue;
+            }
+          }
 
           // Find owner user_id from WABA
           let userId = 'local-dev';

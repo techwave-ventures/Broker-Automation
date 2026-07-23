@@ -61,7 +61,7 @@ export async function sendTextMessage(phoneNumberId: string, accessToken: string
     to,
     type: 'text',
     text: {
-      preview_url: false,
+      preview_url: true,
       body,
     },
   });

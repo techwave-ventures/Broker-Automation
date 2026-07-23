@@ -207,7 +207,7 @@ export async function send(phoneNumberId: string, accessToken: string, destPhone
     to: destPhone,
     type: 'text',
     text: {
-      preview_url: false,
+      preview_url: true,
       body: messageContent,
     },
   });

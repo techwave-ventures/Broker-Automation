@@ -1,7 +1,5 @@
 import { VertexAI } from '@google-cloud/vertexai';
 import { env } from '../config/env.js';
-import fs from 'fs';
-import path from 'path';
 
 let vertexAIInstance: any = null;
 
@@ -16,22 +14,23 @@ function getVertexAI() {
     return null;
   }
 
-  // Handle Render / AWS deployment environment variables (written as multiline strings)
   const serviceAccountJson = env.GCP_SERVICE_ACCOUNT_JSON || process.env.GCP_SERVICE_ACCOUNT_JSON;
+  let googleAuthOptions: any = undefined;
+
   if (serviceAccountJson) {
     try {
-      const tempKeyPath = path.join(process.cwd(), 'temp-gcp-key.json');
-      fs.writeFileSync(tempKeyPath, serviceAccountJson.trim());
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = tempKeyPath;
-      console.log('🔑 [VERTEX AI] Successfully wrote service account credentials file from environment variable string.');
+      googleAuthOptions = {
+        credentials: JSON.parse(serviceAccountJson.trim())
+      };
+      console.log('🔑 [VERTEX AI] Loaded GCP service account credentials directly from environment variable.');
     } catch (err) {
-      console.error('❌ [VERTEX AI] Failed to write GCP service account credentials string:', err);
+      console.error('❌ [VERTEX AI] Failed to parse GCP service account credentials string:', err);
     }
   }
 
   try {
-    // VertexAI SDK will automatically pick up standard credentials from local ADC or GOOGLE_APPLICATION_CREDENTIALS path
-    vertexAIInstance = new VertexAI({ project: projectId, location });
+    // VertexAI SDK will automatically pick up standard credentials from googleAuthOptions or local ADC
+    vertexAIInstance = new VertexAI({ project: projectId, location, googleAuthOptions });
     return vertexAIInstance;
   } catch (err) {
     console.error('❌ Failed to initialize Vertex AI client:', err);
