@@ -49,47 +49,70 @@ export async function generateAutoReply(
     return `Thank you for reaching out! One of our agents will get back to you shortly. (GCP Vertex AI is not configured. Please set GCP_PROJECT_ID in your env).`;
   }
 
-  try {
-    const systemInstructionText = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
+  const systemInstructionText = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
 
-    const model = ai.preview.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      systemInstruction: {
-        parts: [{ text: systemInstructionText }]
-      },
-      generationConfig: {
-        maxOutputTokens: 800,
-        temperature: 0.5,
-      },
+  const contents = history
+    .filter(h => h.text && h.text.trim() !== '')
+    .map(h => ({
+      role: h.role === 'model' ? 'model' : 'user',
+      parts: [{ text: h.text }],
+    }));
+
+  if (contents.length === 0) {
+    contents.push({
+      role: 'user',
+      parts: [{ text: 'Hello' }],
     });
-
-    const contents = history
-      .filter(h => h.text && h.text.trim() !== '')
-      .map(h => ({
-        role: h.role === 'model' ? 'model' : 'user',
-        parts: [{ text: h.text }],
-      }));
-
-    if (contents.length === 0) {
-      contents.push({
-        role: 'user',
-        parts: [{ text: 'Hello' }],
-      });
-    }
-
-    const response = await model.generateContent({
-      contents,
-    });
-
-    const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!responseText) {
-      console.warn('⚠️ [VERTEX AI] Empty response object received:', JSON.stringify(response));
-      throw new Error('Empty response from Vertex AI');
-    }
-
-    return responseText.trim();
-  } catch (err: any) {
-    console.error('❌ Error calling Vertex AI Gemini model:', err);
-    return `Thank you for your message. We have received it and will get back to you shortly.`;
   }
+
+  const maxRetries = 3;
+  let delay = 1000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const model = ai.preview.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        systemInstruction: {
+          parts: [{ text: systemInstructionText }]
+        },
+        generationConfig: {
+          maxOutputTokens: 800,
+          temperature: 0.5,
+        },
+      });
+
+      const response = await model.generateContent({
+        contents,
+      });
+
+      const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!responseText) {
+        console.warn('⚠️ [VERTEX AI] Empty response object received:', JSON.stringify(response));
+        throw new Error('Empty response from Vertex AI');
+      }
+
+      return responseText.trim();
+    } catch (err: any) {
+      const isRateLimit =
+        err.status === 429 ||
+        err.code === 429 ||
+        err.message?.includes('429') ||
+        err.message?.includes('Resource exhausted') ||
+        err.message?.toLowerCase().includes('too many requests');
+
+      if (isRateLimit && attempt < maxRetries) {
+        console.warn(`⚠️ [VERTEX AI] Rate limited (429) on attempt ${attempt}. Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+
+      console.error(`❌ Error calling Vertex AI Gemini model (Attempt ${attempt}/${maxRetries}):`, err);
+      if (attempt === maxRetries) {
+        return `Thank you for your message. We have received it and will get back to you shortly.`;
+      }
+    }
+  }
+
+  return `Thank you for your message. We have received it and will get back to you shortly.`;
 }

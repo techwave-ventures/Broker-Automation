@@ -28,7 +28,7 @@ Keep your responses short, conversational, and crisp (maximum 5-10 words per res
 async function run() {
   try {
     // 1. Get or Create a test user
-    let userRes = await pool.query('SELECT user_id, email FROM users LIMIT 1');
+    let userRes = await pool.query("SELECT user_id, email FROM users WHERE email = 'akashjare316@gmail.com' LIMIT 1");
     let user = userRes.rows[0];
 
     if (!user) {
@@ -143,10 +143,15 @@ async function run() {
       });
     }
 
+    const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
     // Simulate dialogue sequence requested by the user
     await runDialogueStep("hii");
+    await delay(1000);
     await runDialogueStep("akash jare");
+    await delay(1000);
     await runDialogueStep("3 bhk flat in koregaon park");
+    await delay(1000);
     await runDialogueStep("my budget is 2 crore");
 
     // Print final DB state
