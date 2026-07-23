@@ -51,7 +51,7 @@ export async function generateAutoReply(
 
   try {
     const model = ai.preview.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.5-flash',
       generationConfig: {
         maxOutputTokens: 800,
         temperature: 0.5,
