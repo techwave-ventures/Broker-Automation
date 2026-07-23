@@ -75,7 +75,6 @@ export async function generateAutoReply(
           parts: [{ text: systemInstructionText }]
         },
         generationConfig: {
-          maxOutputTokens: 800,
           temperature: 0.5,
         },
       });
