@@ -50,13 +50,34 @@ export async function generateAutoReply(
 
   const systemInstructionText = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
 
-  const contents = history
+  // 1. Filter out empty messages
+  const rawContents = history
     .filter(h => h.text && h.text.trim() !== '')
     .map(h => ({
-      role: h.role === 'model' ? 'model' : 'user',
-      parts: [{ text: h.text }],
+      role: (h.role === 'model' ? 'model' : 'user') as 'user' | 'model',
+      text: h.text,
     }));
 
+  // 2. Merge consecutive turns with the same role
+  const contents: { role: 'user' | 'model'; parts: { text: string }[] }[] = [];
+  for (const item of rawContents) {
+    if (contents.length > 0 && contents[contents.length - 1].role === item.role) {
+      const prevParts = contents[contents.length - 1].parts;
+      prevParts[0].text = prevParts[0].text + '\n' + item.text;
+    } else {
+      contents.push({
+        role: item.role,
+        parts: [{ text: item.text }]
+      });
+    }
+  }
+
+  // 3. Ensure the list starts with a 'user' turn (required by Vertex AI)
+  while (contents.length > 0 && contents[0].role !== 'user') {
+    contents.shift();
+  }
+
+  // 4. Fallback if contents is empty
   if (contents.length === 0) {
     contents.push({
       role: 'user',
