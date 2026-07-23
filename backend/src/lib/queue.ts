@@ -76,7 +76,7 @@ export async function enqueueJob(type: string, payload: any) {
 // Handler functions for BullMQ Worker
 export async function handleWhatsappSend(payload: any) {
   const { phoneNumberId, accessToken, destPhone, messageContent, wabaId } = payload;
-  
+
   let result = await send(phoneNumberId, accessToken, destPhone, messageContent);
 
   // Auto-recovery for Error 133010 (Account not registered on Cloud API)
@@ -90,7 +90,7 @@ export async function handleWhatsappSend(payload: any) {
       result = await send(phoneNumberId, accessToken, destPhone, messageContent);
     }
   }
-  
+
   if (result?.error) {
     console.error(`❌ [ACKBOT SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
     throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
@@ -368,13 +368,12 @@ export async function handleWebhookProcess(payload: any) {
               'SELECT is_auto_reply_enabled, bot_instructions FROM bot_configs WHERE phone_id = $1 LIMIT 1',
               [phoneNumberId]
             );
-            
             const botConfig = botConfigResult.rows[0];
             // If there's no config in table yet, it defaults to true
             const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
             if (isAutoReplyEnabled) {
-              const instructions = botConfig?.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property. CRITICAL RULE: You must collect the buyer\'s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.';
-              
+              const instructions = botConfig?.bot_instructions;
+
               // A. Fetch recent message history (last 15 messages)
               const messagesRes = await pool.query(
                 'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 15',
@@ -398,7 +397,7 @@ export async function handleWebhookProcess(payload: any) {
                  WHERE user_id = $1 AND status = 'Available'`,
                 [propertiesUser]
               );
-              
+
               const propertiesContext = propertiesRes.rows.map((p: any, index: number) => {
                 const priceText = p.transaction_type === 'Sell' ? `Price: ₹${p.expected_price}` : `Rent: ₹${p.monthly_rent}/mo`;
                 return `${index + 1}. ${p.title} (${p.type} for ${p.transaction_type})

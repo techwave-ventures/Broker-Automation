@@ -141,7 +141,7 @@ export async function initDatabase() {
       schedule_viewings BOOLEAN DEFAULT TRUE,
       property_recommend BOOLEAN DEFAULT TRUE,
       multilingual BOOLEAN DEFAULT FALSE,
-      bot_instructions TEXT DEFAULT 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer''s requirements.',
+      bot_instructions TEXT DEFAULT 'You are a helpful real estate assistant. Help buyers find the right property. CRITICAL RULE: You must collect the buyer''s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Keep your responses short, conversational, and crisp (maximum 5-10 words per response + If sharing property details then link should be shared). Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -153,7 +153,7 @@ export async function initDatabase() {
     ALTER TABLE properties ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;
     `,
     `
-    ALTER TABLE bot_configs ADD COLUMN IF NOT EXISTS bot_instructions TEXT DEFAULT 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer''s requirements.';
+    ALTER TABLE bot_configs ADD COLUMN IF NOT EXISTS bot_instructions TEXT DEFAULT 'You are a helpful real estate assistant. Help buyers find the right property. CRITICAL RULE: You must collect the buyer''s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Keep your responses short, conversational, and crisp (maximum 5-10 words per response + If sharing property details then link should be shared). Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.';
     `
   ];
 

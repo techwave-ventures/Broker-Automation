@@ -69,7 +69,7 @@ export async function upsertBotConfig(
       config.schedule_viewings !== undefined ? config.schedule_viewings : true,
       config.property_recommend !== undefined ? config.property_recommend : true,
       config.multilingual !== undefined ? config.multilingual : false,
-      config.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property. CRITICAL RULE: You must collect the buyer\'s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.'
+      config.bot_instructions || 'You are a helpful real estate assistant. Help buyers find the right property. CRITICAL RULE: You must collect the buyer\'s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Keep your responses short, conversational, and crisp (maximum 5-10 words per response + If sharing property details then link should be shared). Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.'
     ];
     const result = await pool.query(query, values);
     return mapRowToBotConfig(result.rows[0]);
