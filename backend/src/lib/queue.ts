@@ -361,64 +361,128 @@ export async function handleWebhookProcess(payload: any) {
           const accessToken = accessTokenResult.rows[0]?.access_token;
           if (!accessToken) continue;
 
-          // Check if ack bot is enabled
-          const phoneResult = await pool.query(
-            'SELECT is_ack_bot_enabled, ack_bot_message FROM phones WHERE phone_id = $1 LIMIT 1',
-            [phoneNumberId]
-          );
-          const isAckBotEnabled = phoneResult.rows[0]?.is_ack_bot_enabled === true;
-          if (!isAckBotEnabled) continue;
+          // 3. Process AI auto-reply if enabled
+          if (conversation.status !== 'human_takeover') {
+            // Check if AI auto-reply is enabled in bot configs
+            const botConfigResult = await pool.query(
+              'SELECT is_auto_reply_enabled, bot_instructions FROM bot_configs WHERE phone_id = $1 LIMIT 1',
+              [phoneNumberId]
+            );
+            
+            const botConfig = botConfigResult.rows[0];
+            // If there's no config in table yet, it defaults to true
+            const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
+            
+            if (isAutoReplyEnabled) {
+              const instructions = botConfig?.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer\'s requirements.';
+              
+              // A. Fetch recent message history (last 15 messages)
+              const messagesRes = await pool.query(
+                'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 15',
+                [conversation.id]
+              );
+              const history = messagesRes.rows.map((row: any) => ({
+                role: (row.sender_type === 'customer' ? 'user' : 'model') as 'user' | 'model',
+                text: row.body
+              }));
 
-          const customMessage = phoneResult.rows[0]?.ack_bot_message;
-          const ackText = customMessage || `ack: ${body}`;
+              // B. Fetch active properties listings to recommend
+              let propertiesUser = userId;
+              const userRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+              if (userRes.rows[0]?.email) {
+                propertiesUser = userRes.rows[0].email;
+              }
 
-          // Enqueue outbound reply (with direct fallback if Redis is offline)
-          try {
-            await enqueueJob('whatsapp_send', {
-              phoneNumberId,
-              accessToken,
-              destPhone: senderNumber,
-              messageContent: ackText,
-              wabaId: entry.id,
-            });
-          } catch (queueErr: any) {
-            console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending auto-reply directly via WhatsApp API...');
-            await handleWhatsappSend({
-              phoneNumberId,
-              accessToken,
-              destPhone: senderNumber,
-              messageContent: ackText,
-              wabaId: entry.id,
-            });
-          }
+              const propertiesRes = await pool.query(
+                `SELECT title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status 
+                 FROM properties 
+                 WHERE user_id = $1 AND status = 'Available'`,
+                [propertiesUser]
+              );
+              
+              const propertiesContext = propertiesRes.rows.map((p: any, index: number) => {
+                const priceText = p.transaction_type === 'Sell' ? `Price: ₹${p.expected_price}` : `Rent: ₹${p.monthly_rent}/mo`;
+                return `${index + 1}. ${p.title} (${p.type} for ${p.transaction_type})
+  - Location: ${p.locality}, ${p.city} (${p.full_address})
+  - ${priceText}
+  - Details: ${p.beds ? p.beds + ' BHK, ' : ''}${p.baths ? p.baths + ' baths, ' : ''}${p.description || ''}`;
+              }).join('\n\n');
 
-          // Publish to Ably
-          await publishToChannel('get-started', 'first', {
-            object: 'whatsapp_business_account',
-            entry: [
-              {
-                id: entry.id,
-                changes: [
+              // C. Generate AI reply
+              let aiReplyText = '';
+              try {
+                const { generateAutoReply } = await import('../services/gemini.js');
+                aiReplyText = await generateAutoReply(instructions, history, propertiesContext || 'No property listings are currently available.');
+              } catch (aiErr) {
+                console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
+                aiReplyText = 'Thank you for reaching out! One of our agents will contact you shortly.';
+              }
+
+              // D. Save bot message to database
+              const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              await saveMessage({
+                conversationId: conversation.id,
+                wabaId,
+                phoneNumberId,
+                messageId: botMessageId,
+                senderNumber: phoneNumberId,
+                recipientNumber: senderNumber,
+                senderType: 'bot',
+                messageType: 'text',
+                body: aiReplyText,
+                direction: 'outbound',
+                status: 'sent',
+              });
+
+              // E. Send outbound message via WhatsApp
+              try {
+                await enqueueJob('whatsapp_send', {
+                  phoneNumberId,
+                  accessToken,
+                  destPhone: senderNumber,
+                  messageContent: aiReplyText,
+                  wabaId: entry.id,
+                });
+              } catch (queueErr: any) {
+                console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending auto-reply directly via WhatsApp API...');
+                await handleWhatsappSend({
+                  phoneNumberId,
+                  accessToken,
+                  destPhone: senderNumber,
+                  messageContent: aiReplyText,
+                  wabaId: entry.id,
+                });
+              }
+
+              // F. Publish update to Ably
+              await publishToChannel('get-started', 'first', {
+                object: 'whatsapp_business_account',
+                entry: [
                   {
-                    field: 'messages',
-                    value: {
-                      messaging_product: 'whatsapp',
-                      metadata: { phone_number_id: phoneNumberId },
-                      messages: [
-                        {
-                          from: '_ackbot_',
-                          type: 'text',
-                          text: { body: ackText },
-                          timestamp: Math.floor(Date.now() / 1000),
-                          _ackbot_recipient: senderNumber,
+                    id: entry.id,
+                    changes: [
+                      {
+                        field: 'messages',
+                        value: {
+                          messaging_product: 'whatsapp',
+                          metadata: { phone_number_id: phoneNumberId },
+                          messages: [
+                            {
+                              from: '_bot_',
+                              type: 'text',
+                              text: { body: aiReplyText },
+                              timestamp: Math.floor(Date.now() / 1000),
+                              _ackbot_recipient: senderNumber,
+                            },
+                          ],
                         },
-                      ],
-                    },
+                      },
+                    ],
                   },
                 ],
-              },
-            ],
-          });
+              });
+            }
+          }
         }
       }
     }

@@ -18,6 +18,7 @@ const envSchema = z.object({
   FB_VERIFY_TOKEN: z.string().optional(),
   ABLY_KEY: z.string().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
+  GEMINI_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

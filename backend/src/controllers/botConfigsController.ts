@@ -18,22 +18,24 @@ const botConfigSchema = z.object({
   auto_qualify: z.boolean().optional(),
   schedule_viewings: z.boolean().optional(),
   property_recommend: z.boolean().optional(),
-  multilingual: z.boolean().optional()
+  multilingual: z.boolean().optional(),
+  bot_instructions: z.string().optional()
 });
 
 export async function getBotConfig(req: AuthenticatedRequest, res: Response) {
   try {
-    const userId = req.auth?.email;
+    const userId = req.auth?.user_id || req.auth?.email || req.auth?.sub;
     if (!userId) {
       return jsonError(res, 401, 'Unauthorized');
     }
 
     // Resolve active phone number connected to this user
     const phoneResult = await pool.query(
-      'SELECT phone_id FROM phones WHERE user_id = $1 LIMIT 1',
+      'SELECT phone_id, display_phone_number FROM phones WHERE user_id = $1 LIMIT 1',
       [userId]
     );
     const phoneId = phoneResult.rows[0]?.phone_id || 'mock-phone-id';
+    const displayPhoneNumber = phoneResult.rows[0]?.display_phone_number || '';
 
     let config = await BotConfigModel.getBotConfigByPhone(phoneId);
     if (!config) {
@@ -41,7 +43,10 @@ export async function getBotConfig(req: AuthenticatedRequest, res: Response) {
       config = await BotConfigModel.upsertBotConfig({}, phoneId, userId);
     }
 
-    return res.json(config);
+    return res.json({
+      ...config,
+      display_phone_number: displayPhoneNumber
+    });
   } catch (error) {
     console.error('Failed to get bot config:', error);
     return jsonError(res, 500, 'Failed to get bot config');
@@ -50,7 +55,7 @@ export async function getBotConfig(req: AuthenticatedRequest, res: Response) {
 
 export async function postBotConfig(req: AuthenticatedRequest, res: Response) {
   try {
-    const userId = req.auth?.email;
+    const userId = req.auth?.user_id || req.auth?.email || req.auth?.sub;
     if (!userId) {
       return jsonError(res, 401, 'Unauthorized');
     }
@@ -62,13 +67,17 @@ export async function postBotConfig(req: AuthenticatedRequest, res: Response) {
 
     // Resolve active phone number connected to this user
     const phoneResult = await pool.query(
-      'SELECT phone_id FROM phones WHERE user_id = $1 LIMIT 1',
+      'SELECT phone_id, display_phone_number FROM phones WHERE user_id = $1 LIMIT 1',
       [userId]
     );
     const phoneId = phoneResult.rows[0]?.phone_id || 'mock-phone-id';
+    const displayPhoneNumber = phoneResult.rows[0]?.display_phone_number || '';
 
     const updated = await BotConfigModel.upsertBotConfig(parsed.data, phoneId, userId);
-    return res.json(updated);
+    return res.json({
+      ...updated,
+      display_phone_number: displayPhoneNumber
+    });
   } catch (error) {
     console.error('Failed to update bot config:', error);
     return jsonError(res, 500, 'Failed to update bot config');

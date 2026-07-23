@@ -141,6 +141,7 @@ export async function initDatabase() {
       schedule_viewings BOOLEAN DEFAULT TRUE,
       property_recommend BOOLEAN DEFAULT TRUE,
       multilingual BOOLEAN DEFAULT FALSE,
+      bot_instructions TEXT DEFAULT 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer''s requirements.',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -150,6 +151,9 @@ export async function initDatabase() {
     `,
     `
     ALTER TABLE properties ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;
+    `,
+    `
+    ALTER TABLE bot_configs ADD COLUMN IF NOT EXISTS bot_instructions TEXT DEFAULT 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer''s requirements.';
     `
   ];
 

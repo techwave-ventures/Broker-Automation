@@ -17,6 +17,7 @@ export interface BotConfig {
   schedule_viewings: boolean;
   property_recommend: boolean;
   multilingual: boolean;
+  bot_instructions?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -46,9 +47,10 @@ export async function upsertBotConfig(
         phone_id, user_id, is_auto_reply_enabled, bot_language, send_property_links,
         is_auto_follow_up_enabled, follow_up_delay_hours, bot_tone,
         notify_new_lead, notify_appointment, notify_weekly_report,
-        auto_qualify, schedule_viewings, property_recommend, multilingual
+        auto_qualify, schedule_viewings, property_recommend, multilingual,
+        bot_instructions
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       ) RETURNING *
     `;
     const values = [
@@ -66,7 +68,8 @@ export async function upsertBotConfig(
       config.auto_qualify !== undefined ? config.auto_qualify : true,
       config.schedule_viewings !== undefined ? config.schedule_viewings : true,
       config.property_recommend !== undefined ? config.property_recommend : true,
-      config.multilingual !== undefined ? config.multilingual : false
+      config.multilingual !== undefined ? config.multilingual : false,
+      config.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer\'s requirements.'
     ];
     const result = await pool.query(query, values);
     return mapRowToBotConfig(result.rows[0]);
@@ -87,8 +90,9 @@ export async function upsertBotConfig(
         schedule_viewings = COALESCE($11, schedule_viewings),
         property_recommend = COALESCE($12, property_recommend),
         multilingual = COALESCE($13, multilingual),
+        bot_instructions = COALESCE($14, bot_instructions),
         updated_at = CURRENT_TIMESTAMP
-      WHERE phone_id = $14 AND user_id = $15
+      WHERE phone_id = $15 AND user_id = $16
       RETURNING *
     `;
     const values = [
@@ -105,6 +109,7 @@ export async function upsertBotConfig(
       config.schedule_viewings !== undefined ? config.schedule_viewings : null,
       config.property_recommend !== undefined ? config.property_recommend : null,
       config.multilingual !== undefined ? config.multilingual : null,
+      config.bot_instructions !== undefined ? config.bot_instructions : null,
       phoneId,
       userId
     ];
@@ -132,6 +137,7 @@ function mapRowToBotConfig(row: any): BotConfig {
     schedule_viewings: !!row.schedule_viewings,
     property_recommend: !!row.property_recommend,
     multilingual: !!row.multilingual,
+    bot_instructions: row.bot_instructions,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
