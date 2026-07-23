@@ -372,9 +372,8 @@ export async function handleWebhookProcess(payload: any) {
             const botConfig = botConfigResult.rows[0];
             // If there's no config in table yet, it defaults to true
             const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
-            
             if (isAutoReplyEnabled) {
-              const instructions = botConfig?.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property by understanding their budget, location, and requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering the buyer\'s requirements.';
+              const instructions = botConfig?.bot_instructions || 'You are PropBot, a helpful real estate assistant for Sunrise Realty. Help buyers find the right property. CRITICAL RULE: You must collect the buyer\'s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties.';
               
               // A. Fetch recent message history (last 15 messages)
               const messagesRes = await pool.query(
