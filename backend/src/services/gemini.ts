@@ -63,10 +63,19 @@ export async function generateAutoReply(
       },
     });
 
-    const contents = history.map(h => ({
-      role: h.role === 'model' ? 'model' : 'user',
-      parts: [{ text: h.text }],
-    }));
+    const contents = history
+      .filter(h => h.text && h.text.trim() !== '')
+      .map(h => ({
+        role: h.role === 'model' ? 'model' : 'user',
+        parts: [{ text: h.text }],
+      }));
+
+    if (contents.length === 0) {
+      contents.push({
+        role: 'user',
+        parts: [{ text: 'Hello' }],
+      });
+    }
 
     const response = await model.generateContent({
       contents,
@@ -74,6 +83,7 @@ export async function generateAutoReply(
 
     const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
+      console.warn('⚠️ [VERTEX AI] Empty response object received:', JSON.stringify(response));
       throw new Error('Empty response from Vertex AI');
     }
 
