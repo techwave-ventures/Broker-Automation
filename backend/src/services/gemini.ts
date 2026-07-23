@@ -1,17 +1,42 @@
-import { GoogleGenerativeAI as GoogleGenAI } from '@google/generative-ai';
+import { VertexAI } from '@google-cloud/vertexai';
 import { env } from '../config/env.js';
+import fs from 'fs';
+import path from 'path';
 
-let genAIInstance: GoogleGenAI | null = null;
+let vertexAIInstance: any = null;
 
-function getGenAI(): GoogleGenAI | null {
-  if (genAIInstance) return genAIInstance;
-  const apiKey = env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn('⚠️ [GEMINI AI] GEMINI_API_KEY environment variable is missing.');
+function getVertexAI() {
+  if (vertexAIInstance) return vertexAIInstance;
+  
+  const projectId = env.GCP_PROJECT_ID;
+  const location = env.GCP_LOCATION || 'us-central1';
+
+  if (!projectId) {
+    console.warn('⚠️ [VERTEX AI] GCP_PROJECT_ID environment variable is missing. Vertex AI is not initialized.');
     return null;
   }
-  genAIInstance = new GoogleGenAI(apiKey);
-  return genAIInstance;
+
+  // Handle Render / AWS deployment environment variables (written as multiline strings)
+  const serviceAccountJson = env.GCP_SERVICE_ACCOUNT_JSON || process.env.GCP_SERVICE_ACCOUNT_JSON;
+  if (serviceAccountJson) {
+    try {
+      const tempKeyPath = path.join(process.cwd(), 'temp-gcp-key.json');
+      fs.writeFileSync(tempKeyPath, serviceAccountJson.trim());
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = tempKeyPath;
+      console.log('🔑 [VERTEX AI] Successfully wrote service account credentials file from environment variable string.');
+    } catch (err) {
+      console.error('❌ [VERTEX AI] Failed to write GCP service account credentials string:', err);
+    }
+  }
+
+  try {
+    // VertexAI SDK will automatically pick up standard credentials from local ADC or GOOGLE_APPLICATION_CREDENTIALS path
+    vertexAIInstance = new VertexAI({ project: projectId, location });
+    return vertexAIInstance;
+  } catch (err) {
+    console.error('❌ Failed to initialize Vertex AI client:', err);
+    return null;
+  }
 }
 
 export async function generateAutoReply(
@@ -19,38 +44,40 @@ export async function generateAutoReply(
   history: { role: 'user' | 'model'; text: string }[],
   propertiesContext: string
 ): Promise<string> {
-  const genAI = getGenAI();
-  if (!genAI) {
-    return `Thank you for reaching out! One of our agents will get back to you shortly. (Gemini API key is not configured. Please set GEMINI_API_KEY in your env).`;
+  const ai = getVertexAI();
+  if (!ai) {
+    return `Thank you for reaching out! One of our agents will get back to you shortly. (GCP Vertex AI is not configured. Please set GCP_PROJECT_ID in your env).`;
   }
 
   try {
-    const model = genAI.getGenerativeModel({
+    const model = ai.preview.getGenerativeModel({
       model: 'gemini-1.5-flash',
       generationConfig: {
         maxOutputTokens: 800,
         temperature: 0.5,
       },
-      systemInstruction: `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`
     });
+
+    const systemInstruction = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
 
     const contents = history.map(h => ({
       role: h.role === 'model' ? 'model' : 'user',
       parts: [{ text: h.text }],
     }));
 
-    const result = await model.generateContent({
-      contents
+    const response = await model.generateContent({
+      contents,
+      systemInstruction,
     });
 
-    const responseText = result.response.text();
+    const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
-      throw new Error('Empty response from Gemini');
+      throw new Error('Empty response from Vertex AI');
     }
 
     return responseText.trim();
   } catch (err: any) {
-    console.error('❌ Error calling Gemini model:', err);
+    console.error('❌ Error calling Vertex AI Gemini model:', err);
     return `Thank you for your message. We have received it and will get back to you shortly.`;
   }
 }

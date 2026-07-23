@@ -111,7 +111,7 @@ REDIS_URL=redis://localhost:6379
 APP_BASE_URL=http://localhost:3000
 
 # Auth & Tech Provider contact
-AUTH0_DOMAIN=your-tenant.us.auth0.com
+JWT_SECRET=super-secret-jwt-key-for-broker-automation-32bytes!
 BYPASS_AUTH=false  # Set to true for local testing without JWT verification
 TP_CONTACT_EMAIL=dev@example.com
 

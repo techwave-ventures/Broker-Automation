@@ -4,7 +4,7 @@ Standalone Express backend for the business messaging app.
 
 ## What it covers
 
-- Auth0 token validation for API requests
+- JWT token validation for API requests
 - PostgreSQL access through a capped connection pool (max: 10)
 - Background task queueing and prioritization (Redis + BullMQ)
 - Meta WhatsApp Cloud API helpers with rate-limiting and exponential backoff

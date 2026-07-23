@@ -18,7 +18,10 @@ const envSchema = z.object({
   FB_VERIFY_TOKEN: z.string().optional(),
   ABLY_KEY: z.string().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
-  GEMINI_API_KEY: z.string().optional(),
+  GCP_PROJECT_ID: z.string().optional(),
+  GCP_LOCATION: z.string().default('us-central1'),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+  GCP_SERVICE_ACCOUNT_JSON: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
