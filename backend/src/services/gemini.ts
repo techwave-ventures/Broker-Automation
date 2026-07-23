@@ -50,15 +50,18 @@ export async function generateAutoReply(
   }
 
   try {
+    const systemInstructionText = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
+
     const model = ai.preview.getGenerativeModel({
       model: 'gemini-2.5-flash',
+      systemInstruction: {
+        parts: [{ text: systemInstructionText }]
+      },
       generationConfig: {
         maxOutputTokens: 800,
         temperature: 0.5,
       },
     });
-
-    const systemInstruction = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
 
     const contents = history.map(h => ({
       role: h.role === 'model' ? 'model' : 'user',
@@ -67,7 +70,6 @@ export async function generateAutoReply(
 
     const response = await model.generateContent({
       contents,
-      systemInstruction,
     });
 
     const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
