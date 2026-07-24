@@ -147,3 +147,4 @@ certificates
 
 Agents and Dev Sepecifics
 .agents/*
+*.md
