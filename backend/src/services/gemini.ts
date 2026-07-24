@@ -49,6 +49,8 @@ export interface GeminiStructuredResponse {
   recommended_property_ids: number[];
   missing_fields: string[];
   stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
+  /** ISO 8601 datetime string for the agreed site-visit appointment, or null if not yet scheduled. */
+  appointmentDate: string | null;
 }
 
 export async function generateAutoReply(
@@ -63,7 +65,8 @@ export async function generateAutoReply(
     action: 'CHITCHAT',
     recommended_property_ids: [],
     missing_fields: [],
-    stage: aiState.stage || 'GREETING'
+    stage: aiState.stage || 'GREETING',
+    appointmentDate: null,
   };
 
   if (!ai) {
@@ -143,7 +146,8 @@ export async function generateAutoReply(
           action: parsed.action || 'CHITCHAT',
           recommended_property_ids: parsed.recommended_property_ids || [],
           missing_fields: parsed.missing_fields || [],
-          stage: parsed.stage || aiState.stage || 'GREETING'
+          stage: parsed.stage || aiState.stage || 'GREETING',
+          appointmentDate: parsed.appointmentDate || null,
         };
       } catch (jsonErr) {
         console.error('❌ Failed to parse Gemini JSON output:', jsonErr, 'Raw text:', responseText);
@@ -152,7 +156,8 @@ export async function generateAutoReply(
           action: 'CHITCHAT',
           recommended_property_ids: [],
           missing_fields: [],
-          stage: aiState.stage || 'GREETING'
+          stage: aiState.stage || 'GREETING',
+          appointmentDate: null,
         };
       }
     } catch (err: any) {

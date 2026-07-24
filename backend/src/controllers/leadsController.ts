@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '../middleware/auth.js';
 import * as LeadModel from '../models/Lead.js';
 import { jsonError } from './http.js';
 import { z } from 'zod';
+import { publishToChannel } from '../lib/ably.js';
 
 const leadSchema = z.object({
   customerName: z.string().min(1),
@@ -22,7 +23,14 @@ export async function getLeads(req: AuthenticatedRequest, res: Response) {
     if (!userId) {
       return jsonError(res, 401, 'Unauthorized');
     }
-    const leads = await LeadModel.getLeadsByUser(userId);
+
+    const filters: LeadModel.LeadFilters = {
+      search: typeof req.query.search === 'string' ? req.query.search : undefined,
+      status: typeof req.query.status === 'string' ? req.query.status : undefined,
+      leadScore: typeof req.query.leadScore === 'string' ? req.query.leadScore : undefined,
+    };
+
+    const leads = await LeadModel.getLeadsByUser(userId, filters);
     return res.json(leads);
   } catch (error) {
     console.error('Failed to get leads:', error);
@@ -57,6 +65,10 @@ export async function createLead(req: AuthenticatedRequest, res: Response) {
     }
 
     const newLead = await LeadModel.createLead(parsed.data, userId);
+
+    // Notify connected clients
+    await publishToChannel(`leads:${userId}`, 'lead:created', newLead).catch(() => {});
+
     return res.status(201).json(newLead);
   } catch (error) {
     console.error('Failed to create lead:', error);
@@ -82,6 +94,9 @@ export async function updateLead(req: AuthenticatedRequest, res: Response) {
       return jsonError(res, 404, 'Lead not found or unauthorized');
     }
 
+    // Notify connected clients
+    await publishToChannel(`leads:${userId}`, 'lead:updated', updated).catch(() => {});
+
     return res.json(updated);
   } catch (error) {
     console.error('Failed to update lead:', error);
@@ -101,6 +116,9 @@ export async function deleteLead(req: AuthenticatedRequest, res: Response) {
     if (!deleted) {
       return jsonError(res, 404, 'Lead not found or unauthorized');
     }
+
+    // Notify connected clients
+    await publishToChannel(`leads:${userId}`, 'lead:deleted', { key }).catch(() => {});
 
     return res.json({ success: true });
   } catch (error) {

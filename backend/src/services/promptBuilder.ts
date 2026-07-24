@@ -48,7 +48,8 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
   "action": "GREET" | "ASK_SLOTS" | "SEARCH" | "RECOMMEND" | "OFFER_SITE_VISIT" | "SCHEDULE_SITE_VISIT" | "LOAN_INFO" | "NEGOTIATE" | "HUMAN_TAKEOVER" | "CHITCHAT",
   "recommended_property_ids": [number], // Array of database key IDs of properties you recommended in this specific response.
   "missing_fields": [string], // List of critical fields that are still needed (choose from: 'transaction_type', 'locality', 'budget', 'beds', 'property_type')
-  "stage": "GREETING" | "COLLECT_INFO" | "SEARCHING" | "RECOMMENDING" | "SITE_VISIT" | "FOLLOW_UP" | "COMPLETED" // Propose the next stage of the conversation
+  "stage": "GREETING" | "COLLECT_INFO" | "SEARCHING" | "RECOMMENDING" | "SITE_VISIT" | "FOLLOW_UP" | "COMPLETED", // Propose the next stage of the conversation
+  "appointmentDate": string | null // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${new Date().toDateString()}.
 }
 
 ### Field Explanations for Output:
@@ -66,5 +67,7 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
     *   **SITE_VISIT**: Pitching or booking a visit.
     *   **FOLLOW_UP**: Following up on viewings or offers.
     *   **COMPLETED**: Lead closed or transaction finished.
+*   **appointmentDate**: The confirmed or proposed date/time for a site viewing. Keep it null until the client proposes or confirms a date/time. Parse expressions like "tomorrow at 4pm" relative to current time: ${new Date().toISOString()}.
+
 `;
 }

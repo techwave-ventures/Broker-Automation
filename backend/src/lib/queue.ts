@@ -12,6 +12,7 @@ import {
 } from '../services/business.js';
 import { sendImageMessage } from './meta.js';
 import { publishToChannel } from './ably.js';
+import { createLead, getLeadsByUser } from '../models/Lead.js';
 import {
   findOrCreateConversation,
   saveMessage,
@@ -485,9 +486,62 @@ export async function handleWebhookProcess(payload: any) {
                 );
 
                 // Resolve state machine transitions & recommendations
+                const prevStage = conversation.ai_state.stage;
                 const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
-                console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${conversation.ai_state.stage} -> ${nextStateUpdates.stage}`);
+                console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${prevStage} -> ${nextStateUpdates.stage}`);
                 conversation.ai_state = await updateConversationAIState(conversation.id, nextStateUpdates);
+
+                // ── Auto Lead Promotion ─────────────────────────────────────
+                // The first time a conversation enters SITE_VISIT stage, create
+                // a lead automatically from the AI-extracted slot data.
+                if (nextStateUpdates.stage === 'SITE_VISIT' && prevStage !== 'SITE_VISIT') {
+                  try {
+                    // Resolve the agent's email (used as user_id in leads table)
+                    let leadUserId = userId;
+                    const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+                    if (emailRes.rows[0]?.email) leadUserId = emailRes.rows[0].email;
+
+                    // Idempotency: only create if no lead for this phone already exists
+                    const existing = await getLeadsByUser(leadUserId);
+                    const alreadyExists = existing.some(l => l.customerPhone === senderNumber);
+
+                    if (!alreadyExists) {
+                      const aiState = conversation.ai_state;
+                      const firstRecommendedId = Array.isArray(aiState.recommended_property_ids) && aiState.recommended_property_ids.length > 0
+                        ? String(aiState.recommended_property_ids[0])
+                        : undefined;
+
+                      const newLead = await createLead(
+                        {
+                          customerName:       conversation.customer_name || senderNumber,
+                          customerPhone:      senderNumber,
+                          requestedLocality:  aiState.locality || undefined,
+                          budget:             aiState.budget || undefined,
+                          otherReqs:          [
+                            aiState.property_type,
+                            aiState.beds ? `${aiState.beds} BHK` : null,
+                            aiState.furnishing,
+                          ].filter(Boolean).join(', ') || undefined,
+                          interestedPropertyId: firstRecommendedId,
+                          appointmentDate:    structuredRes.appointmentDate || null,
+                          status:             'Upcoming Visit',
+                          leadScore:          'High',
+                        },
+                        leadUserId
+                      );
+
+                      // Notify connected dashboard clients in real-time
+                      await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => {});
+                      console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversation.id} → Lead ${newLead.key} for ${senderNumber}`);
+                    } else {
+                      console.log(`ℹ️ [LEAD SKIP] Lead for ${senderNumber} already exists — skipping auto-creation.`);
+                    }
+                  } catch (leadErr) {
+                    // Never crash the message pipeline over a lead creation failure
+                    console.error('❌ [LEAD AUTO-PROMOTE] Failed to create lead from conversation:', leadErr);
+                  }
+                }
+                // ────────────────────────────────────────────────────────────
 
                 // Format messages sequentially using the WhatsApp formatter
                 messagesToSend = formatOutboundMessages(structuredRes, properties);

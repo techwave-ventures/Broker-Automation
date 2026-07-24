@@ -17,15 +17,40 @@ export interface Lead {
   updated_at?: string;
 }
 
-export async function getLeadsByUser(userId: string): Promise<Lead[]> {
+export interface LeadFilters {
+  search?: string;
+  status?: string;
+  leadScore?: string;
+}
+
+export async function getLeadsByUser(userId: string, filters?: LeadFilters): Promise<Lead[]> {
+  const conditions: string[] = ['l.user_id = $1'];
+  const values: unknown[] = [userId];
+  let paramIdx = 2;
+
+  if (filters?.status && filters.status !== 'All') {
+    conditions.push(`l.status = $${paramIdx++}`);
+    values.push(filters.status);
+  }
+
+  if (filters?.leadScore && filters.leadScore !== 'All') {
+    conditions.push(`l.lead_score = $${paramIdx++}`);
+    values.push(filters.leadScore);
+  }
+
+  if (filters?.search) {
+    conditions.push(`(LOWER(l.customer_name) LIKE $${paramIdx} OR l.customer_phone LIKE $${paramIdx++})`);
+    values.push(`%${filters.search.toLowerCase()}%`);
+  }
+
   const query = `
     SELECT l.*, p.title as property_title
     FROM leads l
     LEFT JOIN properties p ON l.interested_property_id = p.key
-    WHERE l.user_id = $1
+    WHERE ${conditions.join(' AND ')}
     ORDER BY l.created_at DESC
   `;
-  const result = await pool.query(query, [userId]);
+  const result = await pool.query(query, values);
   return result.rows.map(row => mapRowToLead(row));
 }
 

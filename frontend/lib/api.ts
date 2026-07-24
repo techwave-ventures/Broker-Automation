@@ -140,3 +140,77 @@ export async function fetchChats() {
     return [];
   }
 }
+
+// ─── Client-side Leads CRUD (used from "use client" components) ──────────────
+
+export interface LeadPayload {
+  customerName: string;
+  customerPhone: string;
+  requestedLocality?: string;
+  budget?: string;
+  otherReqs?: string;
+  interestedPropertyId?: string;
+  appointmentDate?: string | null;
+  status?: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed";
+  leadScore?: "High" | "Medium" | "Low";
+}
+
+export async function createLeadApi(data: LeadPayload) {
+  const res = await fetch("/api/leads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to create lead");
+  }
+  return res.json();
+}
+
+export async function updateLeadApi(id: string, data: Partial<LeadPayload>) {
+  const res = await fetch(`/api/leads/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to update lead");
+  }
+  return res.json();
+}
+
+export async function deleteLeadApi(id: string) {
+  const res = await fetch(`/api/leads/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to delete lead");
+  }
+  return res.json();
+}
+
+// Minimal property info for dropdowns
+export interface PropertyOption {
+  id: string;
+  title: string;
+  locality: string;
+}
+
+export async function fetchPropertiesMinimal(): Promise<PropertyOption[]> {
+  try {
+    const res = await fetch("/api/properties");
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data)
+      ? data.map((p: { key: string | number; title: string; locality: string }) => ({
+          id: String(p.key),
+          title: p.title,
+          locality: p.locality,
+        }))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
