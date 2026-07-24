@@ -33,7 +33,7 @@ export async function findMatchingProperties(
 ): Promise<{ properties: any[]; contextString: string }> {
   // Base query: fetch available properties
   let query = `
-    SELECT key, title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status, slug 
+    SELECT key, title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status, slug, image 
     FROM properties 
     WHERE user_id = $1 AND status = 'Available'
   `;
