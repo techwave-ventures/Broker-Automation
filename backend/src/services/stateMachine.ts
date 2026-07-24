@@ -26,7 +26,7 @@ export function resolveNextState(
     }
   } else {
     // If all slots are collected and we were collecting, transition to SEARCHING or RECOMMEND
-    if (currentState.stage === 'COLREETING' || currentState.stage === 'GREETING' || currentState.stage === 'COLLECT_INFO') {
+    if (currentState.stage === 'GREETING' || currentState.stage === 'COLLECT_INFO') {
       if (nextStage === 'GREETING' || nextStage === 'COLLECT_INFO') {
         nextStage = 'SEARCHING';
       }

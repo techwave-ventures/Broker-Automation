@@ -544,7 +544,7 @@ export async function handleWebhookProcess(payload: any) {
                             {
                               from: '_bot_',
                               type: 'text',
-                              text: { body: aiReplyText },
+                              text: { body: messagesToSend.join('\n\n') },
                               timestamp: Math.floor(Date.now() / 1000),
                               _ackbot_recipient: senderNumber,
                             },
