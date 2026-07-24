@@ -5,18 +5,17 @@ import {
     Building2,
     Home,
     Map,
-    Upload,
     IndianRupee,
     Check,
     X,
     ChevronRight,
     ChevronLeft,
-    Image as ImageIcon
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { addProperty } from "@/lib/properties";
+import ImageUploader from "@/components/ui/ImageUploader";
 
 const CATEGORIES = [
     { id: "Residential", icon: Home },
@@ -37,6 +36,15 @@ export default function AddPropertyPage() {
     const router = useRouter();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState<boolean | string>(false);
+
+    // Image state — managed separately from the text form
+    const [coverImage, setCoverImage] = useState("");
+    const [galleryImages, setGalleryImages] = useState<string[]>([]);
+
+    const handleImagesChange = (cover: string, gallery: string[]) => {
+        setCoverImage(cover);
+        setGalleryImages(gallery);
+    };
 
     // Form State
     const [form, setForm] = useState({
@@ -70,7 +78,6 @@ export default function AddPropertyPage() {
         washrooms: "",
         amenities: [] as string[],
         otherAmenities: "",
-        image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=900&auto=format&fit=crop&q=80",
     });
 
     // Track category changes to reset type
@@ -113,11 +120,8 @@ export default function AddPropertyPage() {
                 fullAddress: form.fullAddress || "",
                 monthlyRent: Number(form.monthlyRent),
                 expectedPrice: Number(form.expectedPrice),
-                image: form.category === "Commercial"
-                    ? "https://images.unsplash.com/photo-1497366216548-37526070297c?w=900&auto=format&fit=crop&q=80"
-                    : form.category === "Land"
-                        ? "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&auto=format&fit=crop&q=80"
-                        : form.image,
+                image: coverImage,
+                images: galleryImages,
                 status: status === "Published" ? "Available" : "Hidden",
                 // Attributes mapping
                 beds: Number(form.beds) || 0,
@@ -251,10 +255,10 @@ export default function AddPropertyPage() {
 
             <div>
                 <label className="text-sm font-medium text-foreground/70 block mb-1.5">Photos</label>
-                <div className="border-2 border-dashed border-border rounded-xl p-8 text-center bg-card hover:bg-muted/50 transition-colors cursor-pointer group">
-                    <ImageIcon className="h-8 w-8 mx-auto text-foreground/30 group-hover:text-primary transition-colors mb-3" />
-                    <p className="text-sm text-foreground/60 transition-colors">Drag & drop cover image here, or <span className="text-primary font-medium">browse</span></p>
-                </div>
+                <ImageUploader
+                    maxImages={10}
+                    onImagesChange={handleImagesChange}
+                />
             </div>
         </div>
     );

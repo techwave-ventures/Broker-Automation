@@ -16,6 +16,7 @@ import { propertiesRouter } from './properties.js';
 import { leadsRouter } from './leads.js';
 import { chatsRouter } from './chats.js';
 import { botConfigsRouter } from './bot-configs.js';
+import { uploadRouter } from './upload.js';
 
 export const apiRouter = Router();
 
@@ -36,3 +37,4 @@ apiRouter.use('/properties', propertiesRouter);
 apiRouter.use('/leads', leadsRouter);
 apiRouter.use('/chats', chatsRouter);
 apiRouter.use('/bot-configs', botConfigsRouter);
+apiRouter.use('/upload', uploadRouter);

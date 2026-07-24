@@ -20,12 +20,17 @@ import {
     ArrowRight,
     X,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Camera,
+    Save,
+    ChevronDown,
+    Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getPropertyById, Property, getPropertyShareUrl } from "@/lib/properties";
+import ImageUploader from "@/components/ui/ImageUploader";
 
 const formatPrice = (p: number | undefined) => {
     if (!p) return "Price on Request";
@@ -42,6 +47,44 @@ export default function PropertyDetailPage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
+
+    // Image editing state
+    const [photosPanelOpen, setPhotosPanelOpen] = useState(false);
+    const [pendingCover, setPendingCover] = useState("");
+    const [pendingGallery, setPendingGallery] = useState<string[]>([]);
+    const [savingImages, setSavingImages] = useState(false);
+
+    const handleImagesChange = (cover: string, gallery: string[]) => {
+        setPendingCover(cover);
+        setPendingGallery(gallery);
+    };
+
+    const saveImages = async () => {
+        if (!property) return;
+        setSavingImages(true);
+        try {
+            const res = await fetch(`/api/properties/${property.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: pendingCover, images: pendingGallery }),
+            });
+            if (!res.ok) throw new Error("Failed to save images");
+            setProperty(prev => prev ? { ...prev, image: pendingCover, images: pendingGallery } : prev);
+            setPhotosPanelOpen(false);
+            setCurrentIndex(0);
+            showToast("Photos updated successfully!");
+        } catch (e) {
+            console.error(e);
+            showToast("Failed to save photos. Please try again.");
+        } finally {
+            setSavingImages(false);
+        }
+    };
+
+    const showToast = (msg: string) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3000);
+    };
 
     useEffect(() => {
         if (!id) return;
@@ -100,8 +143,7 @@ export default function PropertyDetailPage() {
     const handleShare = () => {
         const shareUrl = getPropertyShareUrl(property);
         navigator.clipboard.writeText(shareUrl);
-        setToast("Descriptive property link copied to clipboard!");
-        setTimeout(() => setToast(null), 3000);
+        showToast("Descriptive property link copied to clipboard!");
     };
 
     const handleWhatsAppChat = () => {
@@ -184,11 +226,61 @@ export default function PropertyDetailPage() {
                         </div>
                     </div>
                 ) : (
-                    <div className="mb-10 h-[300px] sm:h-[450px] lg:h-[550px] bg-muted rounded-[2rem] flex flex-col items-center justify-center text-foreground/40 border border-border">
+                    <div className="mb-6 h-[300px] sm:h-[450px] lg:h-[550px] bg-muted rounded-[2rem] flex flex-col items-center justify-center text-foreground/40 border border-border">
                         <Building2 className="h-16 w-16 mb-4 opacity-40 text-primary" />
                         <p className="font-bold text-lg">No images uploaded for this listing</p>
                     </div>
                 )}
+
+                {/* ── Manage Photos Panel ── */}
+                <div className="mb-8 rounded-2xl border border-border bg-card overflow-hidden">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!photosPanelOpen) {
+                                // Pre-seed pending state with current images
+                                setPendingCover(property.image || "");
+                                setPendingGallery(property.images || []);
+                            }
+                            setPhotosPanelOpen(o => !o);
+                        }}
+                        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <Camera className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm font-semibold">Manage Photos</p>
+                                <p className="text-xs text-foreground/50">{gallery.length} photo{gallery.length !== 1 ? "s" : ""} · Click to add, remove, or reorder</p>
+                            </div>
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-foreground/50 transition-transform duration-200 ${photosPanelOpen ? "rotate-180" : ""}`} />
+                    </button>
+
+                    {photosPanelOpen && (
+                        <div className="border-t border-border p-5 space-y-4">
+                            <ImageUploader
+                                initialImages={[property.image, ...(property.images || [])].filter(Boolean) as string[]}
+                                maxImages={10}
+                                onImagesChange={handleImagesChange}
+                            />
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={saveImages}
+                                    disabled={savingImages}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold text-sm rounded-xl hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                    {savingImages
+                                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                                        : <><Save className="h-4 w-4" /> Save Photos</>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* ── Header Title Area ── */}
                 <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-10">

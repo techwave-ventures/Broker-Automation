@@ -23,6 +23,12 @@ const envSchema = z.object({
   GCP_LOCATION: z.string().default('us-central1'),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
   GCP_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  // AWS S3 Image Storage
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_S3_BUCKET: z.string().optional(),
+  AWS_S3_PUBLIC_URL: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

@@ -5,6 +5,7 @@ import { findUserByEmail, findUserById } from '../models/userModel.js';
 import { pool } from '../lib/db.js';
 import { jsonError } from './http.js';
 import { z } from 'zod';
+import { deleteS3Objects } from './uploadController.js';
 
 const propertySchema = z.object({
   title: z.string().min(1),
@@ -290,6 +291,20 @@ export async function deleteProperty(req: AuthenticatedRequest, res: Response) {
     }
 
     const key = String(req.params.id);
+
+    // Fetch the property first so we can clean up its S3 images
+    const existing = await PropertyModel.getPropertyByKey(key);
+    if (existing && existing.user_id === userId) {
+      const allUrls = [
+        existing.image,
+        ...(existing.images || []),
+      ].filter((u): u is string => Boolean(u));
+      // Fire-and-forget — don't block the delete response
+      if (allUrls.length > 0) {
+        deleteS3Objects(allUrls).catch(() => { /* logged inside */ });
+      }
+    }
+
     const deleted = await PropertyModel.deleteProperty(key, userId);
     if (!deleted) {
       return jsonError(res, 404, 'Property not found or unauthorized');
