@@ -53,6 +53,36 @@ async function requestPresignedUrl(filename: string, contentType: string, fileSi
     return res.json() as Promise<{ uploadUrl: string; publicUrl: string }>;
 }
 
+/**
+ * Upload a file directly to S3 using the native XMLHttpRequest API.
+ *
+ * We intentionally avoid window.fetch here because browser extensions
+ * (ad-blockers, VPNs, proxy tools) commonly monkey-patch window.fetch and
+ * silently fail on cross-origin PUT requests to third-party origins like S3.
+ * XMLHttpRequest is not patched by these extensions in the same way, making
+ * it a reliable fallback for direct-to-S3 uploads.
+ */
+function xhrPutToS3(url: string, file: File): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", url, true);
+        xhr.setRequestHeader("Content-Type", file.type);
+        // Abort if S3 takes longer than 60 s (large files may need more time)
+        xhr.timeout = 60_000;
+        xhr.onload = () => {
+            // S3 returns 200 on success; anything else is a failure
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+            } else {
+                reject(new Error(`S3 upload failed (HTTP ${xhr.status})`));
+            }
+        };
+        xhr.onerror = () => reject(new Error("S3 upload failed (network error)"));
+        xhr.ontimeout = () => reject(new Error("S3 upload timed out"));
+        xhr.send(file);
+    });
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function ImageUploader({
@@ -96,14 +126,9 @@ export default function ImageUploader({
         try {
             const { uploadUrl, publicUrl } = await requestPresignedUrl(file.name, file.type, file.size);
 
-            // PUT directly to S3
-            const uploadRes = await fetch(uploadUrl, {
-                method: "PUT",
-                headers: { "Content-Type": file.type },
-                body: file,
-            });
-
-            if (!uploadRes.ok) throw new Error("S3 upload failed");
+            // PUT directly to S3 via native XHR (not window.fetch) so that
+            // browser extensions which monkey-patch fetch cannot interfere.
+            await xhrPutToS3(uploadUrl, file);
 
             setImages((prev) => {
                 const next = [...prev];
