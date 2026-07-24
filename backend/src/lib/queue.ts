@@ -19,6 +19,7 @@ import {
 } from '../models/conversationModel.js';
 import { detectIntent } from '../services/intentDetector.js';
 import { resolveNextState } from '../services/stateMachine.js';
+import { findMatchingProperties } from '../services/propertyMatcher.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -441,20 +442,8 @@ export async function handleWebhookProcess(payload: any) {
                 propertiesUser = userRes.rows[0].email;
               }
 
-              const propertiesRes = await pool.query(
-                `SELECT title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status 
-                 FROM properties 
-                 WHERE user_id = $1 AND status = 'Available'`,
-                [propertiesUser]
-              );
-
-              const propertiesContext = propertiesRes.rows.map((p: any, index: number) => {
-                const priceText = p.transaction_type === 'Sell' ? `Price: ₹${p.expected_price}` : `Rent: ₹${p.monthly_rent}/mo`;
-                return `${index + 1}. ${p.title} (${p.type} for ${p.transaction_type})
-  - Location: ${p.locality}, ${p.city} (${p.full_address})
-  - ${priceText}
-  - Details: ${p.beds ? p.beds + ' BHK, ' : ''}${p.baths ? p.baths + ' baths, ' : ''}${p.description || ''}`;
-              }).join('\n\n');
+              // Call the deterministic property matching and ranking logic
+              const { contextString: propertiesContext } = await findMatchingProperties(propertiesUser, conversation.ai_state);
 
               // C. Generate AI reply
               let aiReplyText = '';
