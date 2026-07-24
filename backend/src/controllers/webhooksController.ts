@@ -55,8 +55,36 @@ export async function postWebhook(req: Request, res: Response) {
     console.log(JSON.stringify(data, null, 2));
     console.log(`================================================================\n`);
 
-    // Enqueue job for background processing
-    await enqueueJob('webhook_process', data);
+    // Check if the payload contains any actual incoming user messages
+    let hasMessages = false;
+    if (data.entry) {
+      for (const entry of data.entry) {
+        if (entry.changes) {
+          for (const change of entry.changes) {
+            if (change.value?.messages && change.value.messages.length > 0) {
+              hasMessages = true;
+              break;
+            }
+          }
+        }
+        if (hasMessages) break;
+      }
+    }
+
+    if (hasMessages) {
+      // Enqueue message processing job (handles LLM / Gemini)
+      await enqueueJob('webhook_process', data);
+    } else {
+      // Process status updates and non-message events inline asynchronously
+      // to bypass the BullMQ worker queue entirely
+      import('../lib/queue.js').then(({ handleWebhookProcess }) => {
+        handleWebhookProcess(data).catch(err => {
+          console.error('❌ Error processing non-message webhook inline:', err);
+        });
+      }).catch(err => {
+        console.error('❌ Failed to load queue module for inline webhook processing:', err);
+      });
+    }
 
     return res.json({ status: 'ok' });
   } catch (error) {
