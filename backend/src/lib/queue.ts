@@ -18,6 +18,7 @@ import {
   updateConversationAIState,
 } from '../models/conversationModel.js';
 import { detectIntent } from '../services/intentDetector.js';
+import { resolveNextState } from '../services/stateMachine.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -467,6 +468,11 @@ export async function handleWebhookProcess(payload: any) {
                 );
                 aiReplyText = structuredRes.reply;
                 console.log(`🤖 [GEMINI STRUCTURED RESPONSE] Action: ${structuredRes.action}, Proposed Stage: ${structuredRes.stage}`);
+
+                // Resolve state machine transitions & recommendations
+                const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
+                console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${conversation.ai_state.stage} -> ${nextStateUpdates.stage}`);
+                conversation.ai_state = await updateConversationAIState(conversation.id, nextStateUpdates);
               } catch (aiErr) {
                 console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
                 aiReplyText = 'Thank you for reaching out! One of our agents will contact you shortly.';
