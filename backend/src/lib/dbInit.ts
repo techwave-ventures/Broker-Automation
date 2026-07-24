@@ -27,6 +27,22 @@ export async function initDatabase() {
       last_message_text TEXT,
       last_message_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       unread_count INTEGER DEFAULT 0,
+      ai_state JSONB DEFAULT '{
+        "transaction_type": null,
+        "locality": null,
+        "city": null,
+        "budget": null,
+        "beds": null,
+        "property_type": null,
+        "amenities": [],
+        "parking": null,
+        "furnishing": null,
+        "move_in_date": null,
+        "purpose": null,
+        "recommended_property_ids": [],
+        "stage": "GREETING",
+        "rolling_summary": ""
+      }'::jsonb,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(user_id, customer_phone)
@@ -154,6 +170,24 @@ export async function initDatabase() {
     `,
     `
     ALTER TABLE bot_configs ADD COLUMN IF NOT EXISTS bot_instructions TEXT DEFAULT 'You are a helpful real estate assistant. Help buyers find the right property. CRITICAL RULE: You must collect the buyer''s basic information first (such as their name, budget, preferred location, and configuration like 2BHK/3BHK) BEFORE recommending any specific properties. Do not suggest or list any properties until you have gathered these requirements. Keep your responses short, conversational, and crisp (maximum 5-10 words per response + If sharing property details then link should be shared). Be polite, professional, and respond in the same language the user writes in. Always try to schedule a site visit after gathering requirements and recommending suitable properties. CONTEXT SWITCHES: If the user changes their requirement, is interested in another property, or starts a new search at any point, immediately switch context, discard the old scheduling flow, and qualify/help them with their new requirement instead of repeating previous scheduling questions. SITE VISITS: We are already chatting on WhatsApp, so we already have the customer''s phone number. NEVER ask the customer for their contact number. Confirm the booking directly without asking for a phone number.';
+    `,
+    `
+    ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ai_state JSONB DEFAULT '{
+      "transaction_type": null,
+      "locality": null,
+      "city": null,
+      "budget": null,
+      "beds": null,
+      "property_type": null,
+      "amenities": [],
+      "parking": null,
+      "furnishing": null,
+      "move_in_date": null,
+      "purpose": null,
+      "recommended_property_ids": [],
+      "stage": "GREETING",
+      "rolling_summary": ""
+    }'::jsonb;
     `
   ];
 

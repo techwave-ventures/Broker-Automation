@@ -1,5 +1,22 @@
 import { pool } from '../lib/db.js';
 
+export interface ConversationAIState {
+  transaction_type: 'Sell' | 'Rent' | null;
+  locality: string | null;
+  city: string | null;
+  budget: string | null;
+  beds: number | null;
+  property_type: string | null;
+  amenities: string[];
+  parking: string | null;
+  furnishing: string | null;
+  move_in_date: string | null;
+  purpose: string | null;
+  recommended_property_ids: number[];
+  stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
+  rolling_summary: string;
+}
+
 export interface Conversation {
   id: number;
   user_id: string;
@@ -10,6 +27,7 @@ export interface Conversation {
   last_message_text: string | null;
   last_message_at: Date;
   unread_count: number;
+  ai_state: ConversationAIState;
   created_at: Date;
   updated_at: Date;
 }
@@ -156,4 +174,19 @@ export async function getMessagesForConversation(conversationId: number, userId:
   );
 
   return res.rows;
+}
+
+export async function updateConversationAIState(
+  conversationId: number,
+  state: Partial<ConversationAIState>
+): Promise<ConversationAIState> {
+  const res = await pool.query(
+    `UPDATE conversations 
+     SET ai_state = ai_state || $1::jsonb,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $2
+     RETURNING ai_state`,
+    [JSON.stringify(state), conversationId]
+  );
+  return res.rows[0]?.ai_state;
 }
