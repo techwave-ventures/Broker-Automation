@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Upload, X, ImagePlus, Loader2, AlertCircle, Star } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
