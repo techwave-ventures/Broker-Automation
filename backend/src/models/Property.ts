@@ -55,6 +55,12 @@ export async function getPropertyByKey(key: string | number): Promise<Property |
   return mapRowToProperty(result.rows[0]);
 }
 
+export async function getPropertyBySlug(slug: string): Promise<Property | null> {
+  const result = await pool.query('SELECT * FROM properties WHERE slug = $1', [slug]);
+  if (result.rows.length === 0) return null;
+  return mapRowToProperty(result.rows[0]);
+}
+
 export async function createProperty(
   prop: Omit<Property, 'key' | 'user_id' | 'created_at' | 'updated_at'>,
   userId: string

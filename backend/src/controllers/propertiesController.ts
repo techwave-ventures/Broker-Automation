@@ -148,6 +148,95 @@ export async function getProperty(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+export async function getPropertyBySlug(req: AuthenticatedRequest, res: Response) {
+  try {
+    const slug = String(req.params.slug);
+    const property = await PropertyModel.getPropertyBySlug(slug);
+    if (!property) {
+      return jsonError(res, 404, 'Property not found');
+    }
+
+    let dbUserId = property.user_id;
+    const user = await findUserByEmail(property.user_id);
+    let agentName = property.user_id;
+    if (user) {
+      dbUserId = user.user_id;
+      agentName = user.name || user.email;
+    } else {
+      const userById = await findUserById(property.user_id);
+      if (userById) {
+        dbUserId = userById.user_id;
+        agentName = userById.name || userById.email;
+      }
+    }
+
+    let agentPhone = '';
+    const phoneRes = await pool.query('SELECT phone_id, display_phone_number FROM phones WHERE user_id = $1 LIMIT 1', [dbUserId]);
+    if (phoneRes.rows.length > 0) {
+      const phoneId = phoneRes.rows[0].phone_id;
+      const dbPhone = phoneRes.rows[0].display_phone_number;
+      if (dbPhone) {
+        agentPhone = dbPhone;
+      } else {
+        const wabaRes = await pool.query('SELECT access_token FROM wabas WHERE user_id = $1 LIMIT 1', [dbUserId]);
+        if (wabaRes.rows.length > 0) {
+          const accessToken = wabaRes.rows[0].access_token;
+          try {
+            const { env } = await import('../config/env.js');
+            const metaRes = await fetch(`https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}/${phoneId}`, {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const metaData = await metaRes.json();
+            if (metaData && metaData.display_phone_number) {
+              agentPhone = metaData.display_phone_number.replace(/[^0-9]/g, '');
+              await pool.query('UPDATE phones SET display_phone_number = $1 WHERE phone_id = $2', [agentPhone, phoneId]);
+            }
+          } catch (err) {
+            console.error('Error fetching display phone number from Meta API:', err);
+          }
+        }
+      }
+    } else {
+      const wabaRes = await pool.query('SELECT waba_id, access_token FROM wabas WHERE user_id = $1 LIMIT 1', [dbUserId]);
+      if (wabaRes.rows.length > 0) {
+        const { waba_id: wabaId, access_token: accessToken } = wabaRes.rows[0];
+        try {
+          const { env } = await import('../config/env.js');
+          const metaRes = await fetch(`https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}/${wabaId}/phone_numbers`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          const metaData = await metaRes.json();
+          if (metaData && Array.isArray(metaData.data) && metaData.data.length > 0) {
+            const phoneObj = metaData.data[0];
+            const phoneId = phoneObj.id;
+            const displayPhone = phoneObj.display_phone_number ? phoneObj.display_phone_number.replace(/[^0-9]/g, '') : '';
+            if (displayPhone) {
+              agentPhone = displayPhone;
+            }
+            await pool.query(
+              `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, display_phone_number, last_updated)
+               VALUES ($1, $2, TRUE, $3, CURRENT_TIMESTAMP)
+               ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, display_phone_number = EXCLUDED.display_phone_number, last_updated = CURRENT_TIMESTAMP`,
+              [phoneId, dbUserId, displayPhone || null]
+            );
+          }
+        } catch (err) {
+          console.error('Error fetching display phone number from Meta WABA API:', err);
+        }
+      }
+    }
+
+    return res.json({
+      ...property,
+      agent_name: agentName,
+      agent_phone: agentPhone
+    });
+  } catch (error) {
+    console.error('Failed to get property by slug:', error);
+    return jsonError(res, 500, 'Failed to get property by slug');
+  }
+}
+
 export async function createProperty(req: AuthenticatedRequest, res: Response) {
   try {
     const userId = req.auth?.email;

@@ -158,6 +158,18 @@ export const getPropertyById = async (id: string): Promise<Property | undefined>
     }
 };
 
+export const getPropertyBySlug = async (slug: string): Promise<Property | undefined> => {
+    try {
+        const res = await fetch(`/api/properties/slug/${slug}`);
+        if (!res.ok) return undefined;
+        const data = await res.json();
+        return mapBackendPropertyToFrontend(data);
+    } catch (e) {
+        console.error(`Failed to get property by slug ${slug}:`, e);
+        return undefined;
+    }
+};
+
 export const addProperty = async (prop: Omit<Property, "id">): Promise<void> => {
     try {
         const backendPayload = {

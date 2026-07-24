@@ -25,7 +25,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getPropertyById, Property, getPropertyShareUrl } from "@/lib/properties";
+import { getPropertyBySlug, Property, getPropertyShareUrl } from "@/lib/properties";
 
 const formatPrice = (p: number | undefined) => {
     if (!p) return "Price on Request";
@@ -50,7 +50,7 @@ export default function PublicPropertyPage() {
     useEffect(() => {
         if (!id) return;
         const load = async () => {
-            const prop = await getPropertyById(id);
+            const prop = await getPropertyBySlug(id);
             setProperty(prop || null);
         };
         load();
