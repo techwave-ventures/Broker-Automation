@@ -18,9 +18,7 @@ export function generatePropertyCard(p: any): OutboundMessage {
 📍 *Locality*: ${p.locality}, ${p.city}
 ${priceText}
 🛏️ *Details*: ${detailsText}
-🔗 *Link*: ${slugLink}
-
-📝 *Description*: ${p.description || 'No description available.'}`;
+🔗 *Link*: ${slugLink}`;
 
   return {
     text,
