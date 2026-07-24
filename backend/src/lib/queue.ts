@@ -20,6 +20,7 @@ import {
 import { detectIntent } from '../services/intentDetector.js';
 import { resolveNextState } from '../services/stateMachine.js';
 import { findMatchingProperties } from '../services/propertyMatcher.js';
+import { updateRollingSummary } from '../services/summaryService.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -425,9 +426,9 @@ export async function handleWebhookProcess(payload: any) {
             if (isAutoReplyEnabled) {
               const instructions = botConfig?.bot_instructions;
 
-              // A. Fetch recent message history (last 15 messages)
+              // A. Fetch recent message history (last 4 messages)
               const messagesRes = await pool.query(
-                'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 15',
+                'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 4',
                 [conversation.id]
               );
               const history = messagesRes.rows.map((row: any) => ({
@@ -501,6 +502,21 @@ export async function handleWebhookProcess(payload: any) {
                   messageContent: aiReplyText,
                   wabaId: entry.id,
                 });
+              }
+
+              // Update rolling summary in background
+              try {
+                const lastTurns = [
+                  { role: 'user', text: body },
+                  { role: 'model', text: aiReplyText }
+                ];
+                const updatedSummary = await updateRollingSummary(conversation.ai_state.rolling_summary || '', lastTurns);
+                console.log(`📝 [SUMMARY UPDATE] Old: "${conversation.ai_state.rolling_summary}" ➔ New: "${updatedSummary}"`);
+                conversation.ai_state = await updateConversationAIState(conversation.id, {
+                  rolling_summary: updatedSummary
+                });
+              } catch (sumErr) {
+                console.error('❌ Failed to update rolling summary:', sumErr);
               }
 
               // F. Publish update to Ably
