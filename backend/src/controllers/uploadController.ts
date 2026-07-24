@@ -83,8 +83,9 @@ export async function presignUpload(req: AuthenticatedRequest, res: Response) {
       ContentType: contentType,
     });
 
-    // Pre-signed URL expires in 60 seconds
-    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
+    // Pre-signed URL expires in 5 minutes (300 s) — gives enough time for
+    // large files and slower connections before the signature expires.
+    const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
 
     // Derive the public URL from the configured base URL
     const publicUrl = `${AWS_S3_PUBLIC_URL.replace(/\/$/, '')}/${key}`;

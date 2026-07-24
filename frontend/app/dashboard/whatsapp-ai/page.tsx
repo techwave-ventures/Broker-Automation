@@ -1,6 +1,6 @@
 "use client";
 
-import { BotMessageSquare, Circle, MessageSquare, Settings2, Zap, Phone, Globe, RefreshCw } from "lucide-react";
+import { BotMessageSquare, Circle, Settings2, Zap, Phone, Globe, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 
 const BOT_FEATURES = [
@@ -14,7 +14,6 @@ const BOT_FEATURES = [
 export default function WhatsAppAIPage() {
     const [features, setFeatures] = useState(BOT_FEATURES);
     const [masterEnabled, setMasterEnabled] = useState(true);
-    const [instructions, setInstructions] = useState("");
     const [displayPhoneNumber, setDisplayPhoneNumber] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -26,7 +25,6 @@ export default function WhatsAppAIPage() {
             if (res.ok) {
                 const data = await res.json();
                 setMasterEnabled(data.is_auto_reply_enabled ?? true);
-                setInstructions(data.bot_instructions ?? "");
                 setDisplayPhoneNumber(data.display_phone_number ?? "");
                 setFeatures([
                     { id: "auto_qualify", label: "Auto-qualify leads", description: "Automatically score and qualify incoming leads based on budget and intent.", enabled: data.auto_qualify ?? true },
@@ -69,7 +67,7 @@ export default function WhatsAppAIPage() {
     const toggle = (id: string) => {
         setFeatures((prev) => {
             const updated = prev.map((feat) => feat.id === id ? { ...feat, enabled: !feat.enabled } : feat);
-            
+
             // Map list of features back to backend fields
             const payload: any = {};
             updated.forEach(f => {
@@ -80,7 +78,7 @@ export default function WhatsAppAIPage() {
                 }
             });
             saveConfig(payload);
-            
+
             return updated;
         });
     };
@@ -89,10 +87,6 @@ export default function WhatsAppAIPage() {
         const nextValue = !masterEnabled;
         setMasterEnabled(nextValue);
         saveConfig({ is_auto_reply_enabled: nextValue });
-    };
-
-    const handleSaveInstructions = () => {
-        saveConfig({ bot_instructions: instructions });
     };
 
     if (loading) {
@@ -146,13 +140,12 @@ export default function WhatsAppAIPage() {
                                 {masterEnabled ? 'ACTIVE' : 'INACTIVE'}
                             </p>
                         </div>
-                        <button 
+                        <button
                             onClick={toggleMaster}
-                            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-250 ${
-                                masterEnabled 
-                                    ? "bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white" 
+                            className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-250 ${masterEnabled
+                                    ? "bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
                                     : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white"
-                            }`}
+                                }`}
                         >
                             {masterEnabled ? "Pause Bot" : "Activate Bot"}
                         </button>
@@ -226,28 +219,6 @@ export default function WhatsAppAIPage() {
                         </div>
                     ))}
                 </div>
-            </div>
-
-            {/* Instructions */}
-            <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <MessageSquare className="h-5 w-5 text-primary" />
-                    <h2 className="font-semibold">Bot Instructions</h2>
-                </div>
-                <textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    rows={6}
-                    className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none leading-relaxed"
-                    placeholder="Provide system instructions for the AI bot..."
-                />
-                <button 
-                    onClick={handleSaveInstructions}
-                    disabled={saving}
-                    className="mt-3 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                    {saving ? "Saving..." : "Save Instructions"}
-                </button>
             </div>
         </div>
     );
