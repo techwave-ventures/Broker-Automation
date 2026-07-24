@@ -368,6 +368,31 @@ export async function handleWebhookProcess(payload: any) {
             status: 'delivered',
           });
 
+          // FIX 1: Acquire a per-conversation PostgreSQL advisory lock to prevent concurrent
+          // workers from processing the same conversation at the same time (race condition fix).
+          const lockAcquired = await pool.query(
+            'SELECT pg_try_advisory_xact_lock($1)',
+            [conversation.id]
+          );
+          if (!lockAcquired.rows[0]?.pg_try_advisory_xact_lock) {
+            console.warn(`⚠️ [LOCK] Another worker is already processing conversation ${conversation.id}. Skipping to prevent duplicate reply.`);
+            continue;
+          }
+
+          // FIX 2: Skip if the bot already replied to this conversation in the last 5 seconds
+          // (secondary safety net against race conditions and Meta webhook retries).
+          const recentBotReply = await pool.query(
+            `SELECT id FROM messages
+             WHERE conversation_id = $1 AND sender_type = 'bot' AND direction = 'outbound'
+             AND created_at > NOW() - INTERVAL '5 seconds'
+             LIMIT 1`,
+            [conversation.id]
+          );
+          if (recentBotReply.rows.length > 0) {
+            console.warn(`⚠️ [DEDUP] Skipping AI reply — bot already replied to conversation ${conversation.id} within the last 5 seconds.`);
+            continue;
+          }
+
           // Run Intent and Entity Detection
           const intentResult = await detectIntent(body, conversation.ai_state?.stage || 'GREETING');
           console.log(`🔍 [INTENT DETECTED] Customer message intent: ${intentResult.intent}`, intentResult.slots);
