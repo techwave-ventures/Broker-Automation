@@ -236,22 +236,6 @@ export const deleteProperty = async (id: string): Promise<void> => {
 };
 
 export function getPropertyShareUrl(property: Property): string {
-    if (typeof window === "undefined") return "";
-    const baseUrl = window.location.origin;
-
-    if (property.slug) {
-        return `${baseUrl}/p/${property.slug}`;
-    }
-
-    const clean = (str: string) => str
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-
-    const titleSlug = clean(property.title || "property");
-    const localitySlug = clean(property.locality || "locality");
-    const citySlug = clean(property.city || "city");
-    const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
-
-    return `${baseUrl}/p/${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${property.id}`;
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
+    return `${baseUrl}/p/${property.slug || ''}`;
 }

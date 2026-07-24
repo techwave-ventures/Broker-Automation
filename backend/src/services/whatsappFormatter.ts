@@ -1,3 +1,4 @@
+import { env } from '../config/env.js';
 import { GeminiStructuredResponse } from './gemini.js';
 
 export function generatePropertyCard(p: any): string {
@@ -6,7 +7,7 @@ export function generatePropertyCard(p: any): string {
     : `💰 *Rent*: ₹${p.monthly_rent}/mo`;
 
   const detailsText = `${p.beds ? p.beds + ' BHK, ' : ''}${p.baths ? p.baths + ' baths' : ''}`;
-  const slugLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/properties/${p.slug || p.key}`;
+  const slugLink = `${env.FRONTEND_BASE_URL}/p/${p.slug}`;
 
   return `🏠 *${p.title}* (${p.type} for ${p.transaction_type})
 📍 *Locality*: ${p.locality}, ${p.city}
