@@ -449,7 +449,7 @@ export async function handleWebhookProcess(payload: any) {
               const { contextString: propertiesContext, properties } = await findMatchingProperties(propertiesUser, conversation.ai_state);
 
               // C. Generate AI reply
-              let messagesToSend: string[] = [];
+              let messagesToSend: OutboundMessage[] = [];
               try {
                 const { generateAutoReply } = await import('../services/gemini.js');
                 const structuredRes = await generateAutoReply(
@@ -543,7 +543,7 @@ export async function handleWebhookProcess(payload: any) {
               // Update rolling summary in background
               if (messagesToSend.length > 0) {
                 try {
-                  const combinedReply = messagesToSend.join('\n');
+                  const combinedReply = messagesToSend.map(m => m.text).join('\n');
                   const lastTurns = [
                     { role: 'user', text: body },
                     { role: 'model', text: combinedReply }
@@ -574,7 +574,7 @@ export async function handleWebhookProcess(payload: any) {
                             {
                               from: '_bot_',
                               type: 'text',
-                              text: { body: messagesToSend.join('\n\n') },
+                              text: { body: messagesToSend.map(m => m.text).join('\n\n') },
                               timestamp: Math.floor(Date.now() / 1000),
                               _ackbot_recipient: senderNumber,
                             },
