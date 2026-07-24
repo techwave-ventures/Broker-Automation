@@ -459,7 +459,14 @@ export async function handleWebhookProcess(payload: any) {
               let aiReplyText = '';
               try {
                 const { generateAutoReply } = await import('../services/gemini.js');
-                aiReplyText = await generateAutoReply(instructions, history, propertiesContext || 'No property listings are currently available.');
+                const structuredRes = await generateAutoReply(
+                  instructions,
+                  history,
+                  conversation.ai_state,
+                  propertiesContext || 'No property listings are currently available.'
+                );
+                aiReplyText = structuredRes.reply;
+                console.log(`🤖 [GEMINI STRUCTURED RESPONSE] Action: ${structuredRes.action}, Proposed Stage: ${structuredRes.stage}`);
               } catch (aiErr) {
                 console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
                 aiReplyText = 'Thank you for reaching out! One of our agents will contact you shortly.';

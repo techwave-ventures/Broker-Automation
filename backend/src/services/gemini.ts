@@ -38,17 +38,38 @@ export function getVertexAI() {
   }
 }
 
+import { buildSystemInstruction } from './promptBuilder.js';
+import { ConversationAIState } from '../models/conversationModel.js';
+
+export interface GeminiStructuredResponse {
+  reply: string;
+  action: 'GREET' | 'ASK_SLOTS' | 'SEARCH' | 'RECOMMEND' | 'OFFER_SITE_VISIT' | 'SCHEDULE_SITE_VISIT' | 'LOAN_INFO' | 'NEGOTIATE' | 'HUMAN_TAKEOVER' | 'CHITCHAT';
+  recommended_property_ids: number[];
+  missing_fields: string[];
+  stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
+}
+
 export async function generateAutoReply(
   instructions: string,
   history: { role: 'user' | 'model'; text: string }[],
+  aiState: ConversationAIState,
   propertiesContext: string
-): Promise<string> {
+): Promise<GeminiStructuredResponse> {
   const ai = getVertexAI();
+  const fallbackResponse: GeminiStructuredResponse = {
+    reply: `Thank you for reaching out! One of our agents will get back to you shortly.`,
+    action: 'CHITCHAT',
+    recommended_property_ids: [],
+    missing_fields: [],
+    stage: aiState.stage || 'GREETING'
+  };
+
   if (!ai) {
-    return `Thank you for reaching out! One of our agents will get back to you shortly. (GCP Vertex AI is not configured. Please set GCP_PROJECT_ID in your env).`;
+    fallbackResponse.reply += ' (GCP Vertex AI is not configured. Please set GCP_PROJECT_ID in your env).';
+    return fallbackResponse;
   }
 
-  const systemInstructionText = `${instructions}\n\nHere are our active property listings. Recommend matching listings from this list ONLY. Do not invent properties:\n${propertiesContext}`;
+  const systemInstructionText = buildSystemInstruction(instructions, aiState, propertiesContext);
 
   // 1. Filter out empty messages
   const rawContents = history
@@ -96,6 +117,7 @@ export async function generateAutoReply(
           parts: [{ text: systemInstructionText }]
         },
         generationConfig: {
+          responseMimeType: 'application/json',
           temperature: 0.5,
         },
       });
@@ -110,7 +132,25 @@ export async function generateAutoReply(
         throw new Error('Empty response from Vertex AI');
       }
 
-      return responseText.trim();
+      try {
+        const parsed = JSON.parse(responseText.trim()) as GeminiStructuredResponse;
+        return {
+          reply: parsed.reply || '',
+          action: parsed.action || 'CHITCHAT',
+          recommended_property_ids: parsed.recommended_property_ids || [],
+          missing_fields: parsed.missing_fields || [],
+          stage: parsed.stage || aiState.stage || 'GREETING'
+        };
+      } catch (jsonErr) {
+        console.error('❌ Failed to parse Gemini JSON output:', jsonErr, 'Raw text:', responseText);
+        return {
+          reply: responseText.trim(),
+          action: 'CHITCHAT',
+          recommended_property_ids: [],
+          missing_fields: [],
+          stage: aiState.stage || 'GREETING'
+        };
+      }
     } catch (err: any) {
       const isRateLimit =
         err.status === 429 ||
@@ -128,10 +168,10 @@ export async function generateAutoReply(
 
       console.error(`❌ Error calling Vertex AI Gemini model (Attempt ${attempt}/${maxRetries}):`, err);
       if (attempt === maxRetries) {
-        return `Thank you for your message. We have received it and will get back to you shortly.`;
+        return fallbackResponse;
       }
     }
   }
 
-  return `Thank you for your message. We have received it and will get back to you shortly.`;
+  return fallbackResponse;
 }
