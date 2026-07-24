@@ -309,39 +309,113 @@ export default function PublicPropertyPage() {
 
                         {/* Quick Stats Banner */}
                         <div className="flex flex-wrap items-center gap-4 sm:gap-8 bg-card border border-border p-6 sm:p-8 rounded-[2rem] shadow-sm">
-                            {property.beds ? (
-                                <div className="flex items-center gap-4">
-                                    <div className="h-14 w-14 rounded-2xl bg-blue-500/10 flex items-center justify-center">
-                                        <BedDouble className="h-7 w-7 text-blue-500" />
+                            {property.category === "Land" ? (
+                                <>
+                                    {property.plotArea ? (
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                                                <Maximize className="h-7 w-7 text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.plotArea.toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Plot Area (sq ft)</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    {property.plotLength && property.plotWidth ? (
+                                        <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                            <div className="h-14 w-14 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                                                <Map className="h-7 w-7 text-blue-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.plotLength} × {property.plotWidth}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Dimensions (ft)</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                        <div className="h-14 w-14 rounded-2xl bg-purple-500/10 flex items-center justify-center">
+                                            <Building2 className="h-7 w-7 text-purple-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-2xl font-black leading-none tracking-tight">{property.cornerPlot ? "Corner Plot" : "Standard Plot"}</p>
+                                            <p className="text-sm font-bold text-foreground/50 mt-1">Plot Type</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-2xl font-black leading-none tracking-tight">{property.beds}</p>
-                                        <p className="text-sm font-bold text-foreground/50 mt-1">Beds</p>
-                                    </div>
-                                </div>
-                            ) : null}
-                            {property.baths ? (
-                                <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
-                                    <div className="h-14 w-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
-                                        <Bath className="h-7 w-7 text-cyan-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-black leading-none tracking-tight">{property.baths}</p>
-                                        <p className="text-sm font-bold text-foreground/50 mt-1">Baths</p>
-                                    </div>
-                                </div>
-                            ) : null}
-                            {(property.builtUpArea || property.plotArea) ? (
-                                <div className={`flex items-center gap-4 ${(property.beds || property.baths) ? 'border-l border-border pl-4 sm:pl-8' : ''}`}>
-                                    <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
-                                        <Maximize className="h-7 w-7 text-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <p className="text-2xl font-black leading-none tracking-tight">{property.builtUpArea || property.plotArea}</p>
-                                        <p className="text-sm font-bold text-foreground/50 mt-1">Sq Ft</p>
-                                    </div>
-                                </div>
-                            ) : null}
+                                </>
+                            ) : property.category === "Commercial" ? (
+                                <>
+                                    {property.builtUpArea ? (
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                                                <Maximize className="h-7 w-7 text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.builtUpArea.toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Built-up Sq Ft</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    {property.washrooms ? (
+                                        <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                            <div className="h-14 w-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
+                                                <Bath className="h-7 w-7 text-cyan-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.washrooms}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Washrooms</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                    {property.furnishing ? (
+                                        <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                            <div className="h-14 w-14 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                                                <Wind className="h-7 w-7 text-blue-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.furnishing}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Furnishing</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </>
+                            ) : (
+                                <>
+                                    {(property.beds ?? 0) > 0 && (
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-14 w-14 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+                                                <BedDouble className="h-7 w-7 text-blue-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.beds} BHK</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Bedrooms</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(property.baths ?? 0) > 0 && (
+                                        <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                            <div className="h-14 w-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
+                                                <Bath className="h-7 w-7 text-cyan-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{property.baths}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Baths</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(property.builtUpArea || property.plotArea) ? (
+                                        <div className="flex items-center gap-4 border-l border-border pl-4 sm:pl-8">
+                                            <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                                                <Maximize className="h-7 w-7 text-emerald-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-2xl font-black leading-none tracking-tight">{(property.builtUpArea || property.plotArea)?.toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-foreground/50 mt-1">Sq Ft</p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </>
+                            )}
                         </div>
 
                         {/* Description */}
@@ -359,23 +433,74 @@ export default function PublicPropertyPage() {
                             <h2 className="text-2xl font-black tracking-tight mb-6">Property Overview</h2>
                             <div className="grid grid-cols-2 lg:grid-cols-3 gap-y-8 gap-x-6">
 
-                                {[
-                                    { label: "Status", value: property.status, icon: CheckCircle2 },
-                                    { label: "Furnishing", value: property.furnishing, icon: Wind },
-                                    { label: "Parking", value: property.parking ? "Available" : "No", icon: Car },
-                                    { label: "Ready to Move", value: property.readyToMove ? "Yes" : "No", icon: Calendar },
-                                    { label: "Plot Dimensions", value: property.plotLength ? `${property.plotLength} x ${property.plotWidth} ft` : null, icon: Map },
-                                    { label: "Floor", value: property.floorNumber ? `${property.floorNumber} / ${property.totalFloors}` : null, icon: Building2 },
-                                    { label: "Washrooms", value: property.washrooms, icon: Bath },
-                                ].filter(x => x.value).map((stat, i) => (
-                                    <div key={i} className="flex flex-col">
-                                        <span className="flex items-center gap-2 text-sm font-bold text-foreground/40 uppercase tracking-widest mb-1.5">
-                                            <stat.icon className="h-4 w-4" />
-                                            {stat.label}
-                                        </span>
-                                        <span className="font-bold text-lg">{stat.value}</span>
-                                    </div>
-                                ))}
+                                {(() => {
+                                    const items: { label: string; value: string | number; icon: any }[] = [];
+                                    items.push({ label: "Category", value: `${property.category} (${property.type})`, icon: Building2 });
+                                    items.push({ label: "Listing Type", value: `For ${property.transactionType}`, icon: CheckCircle2 });
+                                    items.push({ label: "Status", value: property.status, icon: CheckCircle2 });
+
+                                    if (property.category === "Land") {
+                                        if (property.plotArea) items.push({ label: "Plot Area", value: `${property.plotArea.toLocaleString()} sq ft`, icon: Maximize });
+                                        if (property.plotLength && property.plotWidth) {
+                                            items.push({ label: "Plot Dimensions", value: `${property.plotLength} ft × ${property.plotWidth} ft`, icon: Map });
+                                        }
+                                        if (property.cornerPlot !== undefined) {
+                                            items.push({ label: "Corner Plot", value: property.cornerPlot ? "Yes" : "No", icon: Map });
+                                        }
+                                    } else if (property.category === "Commercial") {
+                                        if (property.builtUpArea) items.push({ label: "Built-up Area", value: `${property.builtUpArea.toLocaleString()} sq ft`, icon: Maximize });
+                                        if (property.washrooms) items.push({ label: "Washrooms", value: property.washrooms, icon: Bath });
+                                        if (property.furnishing) items.push({ label: "Furnishing", value: property.furnishing, icon: Wind });
+                                        if (property.parking !== undefined && property.parking !== null) {
+                                            items.push({ label: "Parking Facility", value: property.parking ? "Available" : "No", icon: Car });
+                                        }
+                                        if (property.floorNumber || property.totalFloors) {
+                                            const floorText = [property.floorNumber ? `Floor ${property.floorNumber}` : null, property.totalFloors ? `Total ${property.totalFloors} Floors` : null].filter(Boolean).join(" / ");
+                                            items.push({ label: "Floor Details", value: floorText, icon: Building2 });
+                                        }
+                                    } else {
+                                        // Residential
+                                        if (property.builtUpArea) items.push({ label: "Built-up Area", value: `${property.builtUpArea.toLocaleString()} sq ft`, icon: Maximize });
+                                        if (property.plotArea) items.push({ label: "Plot Area", value: `${property.plotArea.toLocaleString()} sq ft`, icon: Map });
+                                        if (property.beds) items.push({ label: "Bedrooms", value: `${property.beds} BHK`, icon: BedDouble });
+                                        if (property.baths) items.push({ label: "Bathrooms", value: `${property.baths}`, icon: Bath });
+                                        if (property.furnishing) items.push({ label: "Furnishing", value: property.furnishing, icon: Wind });
+                                        if (property.parking !== undefined && property.parking !== null) {
+                                            items.push({ label: "Dedicated Parking", value: property.parking ? "Available" : "No", icon: Car });
+                                        }
+                                        if (property.readyToMove !== undefined) {
+                                            items.push({ label: "Ready to Move", value: property.readyToMove ? "Yes" : "Under Construction", icon: Calendar });
+                                        }
+                                        if (property.propertyAge) items.push({ label: "Property Age", value: property.propertyAge, icon: Calendar });
+                                        if (property.floorNumber || property.totalFloors) {
+                                            const floorText = [property.floorNumber ? `Floor ${property.floorNumber}` : null, property.totalFloors ? `Total ${property.totalFloors} Floors` : null].filter(Boolean).join(" / ");
+                                            items.push({ label: "Floor Details", value: floorText, icon: Building2 });
+                                        }
+                                        if (property.garden) items.push({ label: "Private Garden", value: "Yes", icon: CheckCircle2 });
+                                    }
+
+                                    if (property.transactionType === "Sell" && property.negotiable !== undefined) {
+                                        items.push({ label: "Price Negotiable", value: property.negotiable ? "Yes" : "Fixed Price", icon: IndianRupee });
+                                    }
+                                    if (property.transactionType === "Rent") {
+                                        if (property.securityDeposit) {
+                                            items.push({ label: "Security Deposit", value: `₹${property.securityDeposit.toLocaleString()}`, icon: IndianRupee });
+                                        }
+                                        if (property.availableFrom) {
+                                            items.push({ label: "Available From", value: property.availableFrom, icon: Calendar });
+                                        }
+                                    }
+
+                                    return items.map((stat, i) => (
+                                        <div key={i} className="flex flex-col">
+                                            <span className="flex items-center gap-2 text-sm font-bold text-foreground/40 uppercase tracking-widest mb-1.5">
+                                                <stat.icon className="h-4 w-4" />
+                                                {stat.label}
+                                            </span>
+                                            <span className="font-bold text-lg text-foreground">{stat.value}</span>
+                                        </div>
+                                    ));
+                                })()}
 
                             </div>
                         </div>
