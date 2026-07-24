@@ -15,7 +15,9 @@ import {
   findOrCreateConversation,
   saveMessage,
   updateMessageStatus,
+  updateConversationAIState,
 } from '../models/conversationModel.js';
+import { detectIntent } from '../services/intentDetector.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -360,6 +362,45 @@ export async function handleWebhookProcess(payload: any) {
             direction: 'inbound',
             status: 'delivered',
           });
+
+          // Run Intent and Entity Detection
+          const intentResult = await detectIntent(body, conversation.ai_state?.stage || 'GREETING');
+          console.log(`🔍 [INTENT DETECTED] Customer message intent: ${intentResult.intent}`, intentResult.slots);
+
+          if (intentResult.intent === 'HUMAN_TAKEOVER') {
+            console.log(`🤖 [HUMAN TAKEOVER] Triggered. Disabling AI response for conversation ID: ${conversation.id}`);
+            await pool.query(
+              "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+              [conversation.id]
+            );
+            
+            // Publish status update to Ably so dashboard UI refreshes
+            await publishToChannel('get-started', 'webhook', {
+              type: 'status_change',
+              conversationId: conversation.id,
+              status: 'human_takeover'
+            });
+            continue; // Bypasses Gemini and auto-reply entirely
+          }
+
+          // Merge any extracted slots/preferences into conversation.ai_state
+          if (intentResult.slots && Object.values(intentResult.slots).some(v => v !== null && v !== undefined)) {
+            const slotsToMerge: Record<string, any> = {};
+            for (const [key, value] of Object.entries(intentResult.slots)) {
+              if (value !== null && value !== undefined) {
+                if (key === 'beds') {
+                  slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
+                } else {
+                  slotsToMerge[key] = value;
+                }
+              }
+            }
+
+            if (Object.keys(slotsToMerge).length > 0) {
+              console.log(`📝 [SLOTS EXTRACTED] Merging slots into ai_state for conversation ${conversation.id}:`, slotsToMerge);
+              conversation.ai_state = await updateConversationAIState(conversation.id, slotsToMerge);
+            }
+          }
 
           // Get WABA token for auto-reply
           const accessTokenResult = await pool.query(

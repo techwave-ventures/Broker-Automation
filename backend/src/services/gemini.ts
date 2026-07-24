@@ -3,7 +3,7 @@ import { env } from '../config/env.js';
 
 let vertexAIInstance: any = null;
 
-function getVertexAI() {
+export function getVertexAI() {
   if (vertexAIInstance) return vertexAIInstance;
   
   const projectId = env.GCP_PROJECT_ID;
