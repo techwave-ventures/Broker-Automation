@@ -6,6 +6,7 @@ import {
   handleWhatsappTemplateSend,
   handleTokenExchangeFollowup,
   handleWebhookProcess,
+  handleUpdateRollingSummary,
 } from './lib/queue.js';
 
 async function startWorker() {
@@ -33,15 +34,31 @@ async function startWorker() {
           return await handleTokenExchangeFollowup(job.data);
         case 'webhook_process':
           return await handleWebhookProcess(job.data);
+        case 'update_rolling_summary':
+          return await handleUpdateRollingSummary(job.data);
         default:
           throw new Error(`Unknown job type: ${job.name}`);
       }
     },
     {
       connection: redisConnection,
-      concurrency: 5, // Process up to 5 jobs concurrently — advisory lock in queue.ts prevents per-conversation races
-      stalledInterval: 300000, // Check for stalled jobs every 5 minutes (instead of 30s) to save Redis commands
-      drainDelay: 60, // Wait 60s (1 minute) before checking again when queue is empty
+      concurrency: 5, // Process up to 5 jobs concurrently
+      stalledInterval: 300000, // Check for stalled jobs every 5 minutes
+      drainDelay: 60, // Wait 60s before checking again when queue is empty
+      settings: {
+        backoffStrategies: {
+          custom(attemptsMade: number, err: any) {
+            // If it is a rate limit error (status 429), respect retryAfterMs or backoff
+            if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
+              const delay = err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
+              console.warn(`⚠️ [BULLMQ BACKOFF] Job rate limited (Attempt ${attemptsMade}). Retrying in ${delay}ms. Error: ${err.message}`);
+              return delay;
+            }
+            // Standard backoff for other errors
+            return Math.min(2 ** attemptsMade * 5000, 60000);
+          }
+        }
+      } as any
     }
   );
 

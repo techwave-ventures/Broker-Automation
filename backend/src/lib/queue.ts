@@ -65,20 +65,30 @@ export async function enqueueJob(type: string, payload: any) {
     priority = 3;
   } else if (type === 'webhook_process') {
     priority = 4;
+  } else if (type === 'update_rolling_summary') {
+    priority = 5;
   }
 
   const job = await whatsappQueue.add(type, payload, {
     priority,
     attempts: 6,
     backoff: {
-      type: 'exponential',
-      delay: 60000,
+      type: 'custom',
     },
     removeOnComplete: true,
     removeOnFail: false,
   });
 
   return job.id as string;
+}
+
+export async function handleUpdateRollingSummary(payload: any) {
+  const { conversationId, currentSummary, lastTurns } = payload;
+  const updatedSummary = await updateRollingSummary(currentSummary, lastTurns);
+  console.log(`📝 [BACKGROUND SUMMARY UPDATE] Conversation ${conversationId} - Old: "${currentSummary}" ➔ New: "${updatedSummary}"`);
+  await updateConversationAIState(conversationId, {
+    rolling_summary: updatedSummary
+  });
 }
 
 // Handler functions for BullMQ Worker
@@ -482,7 +492,8 @@ export async function handleWebhookProcess(payload: any) {
                   instructions,
                   history,
                   conversation.ai_state,
-                  propertiesContext || 'No property listings are currently available.'
+                  propertiesContext || 'No property listings are currently available.',
+                  conversation.id
                 );
 
                 // Resolve state machine transitions & recommendations
@@ -546,7 +557,11 @@ export async function handleWebhookProcess(payload: any) {
                 // Format messages sequentially using the WhatsApp formatter
                 messagesToSend = formatOutboundMessages(structuredRes, properties);
                 console.log(`🤖 [GEMINI RESPONSE] Action: ${structuredRes.action}. Generated ${messagesToSend.length} sequential messages.`);
-              } catch (aiErr) {
+              } catch (aiErr: any) {
+                if (aiErr.name === 'AbortError' || aiErr.message?.includes('Aborted')) {
+                  console.log(`[ABORT] Skipping reply processing for conversation ${conversation.id} due to abortion.`);
+                  continue;
+                }
                 console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
                 messagesToSend = [{ text: 'Thank you for reaching out! One of our agents will contact you shortly.' }];
               }
@@ -621,20 +636,17 @@ export async function handleWebhookProcess(payload: any) {
 
               // Update rolling summary in background
               if (messagesToSend.length > 0) {
-                try {
-                  const combinedReply = messagesToSend.map(m => m.text).join('\n');
-                  const lastTurns = [
+                const combinedReply = messagesToSend.map(m => m.text).join('\n');
+                await enqueueJob('update_rolling_summary', {
+                  conversationId: conversation.id,
+                  currentSummary: conversation.ai_state.rolling_summary || '',
+                  lastTurns: [
                     { role: 'user', text: body },
                     { role: 'model', text: combinedReply }
-                  ];
-                  const updatedSummary = await updateRollingSummary(conversation.ai_state.rolling_summary || '', lastTurns);
-                  console.log(`📝 [SUMMARY UPDATE] Old: "${conversation.ai_state.rolling_summary}" ➔ New: "${updatedSummary}"`);
-                  conversation.ai_state = await updateConversationAIState(conversation.id, {
-                    rolling_summary: updatedSummary
-                  });
-                } catch (sumErr) {
-                  console.error('❌ Failed to update rolling summary:', sumErr);
-                }
+                  ]
+                }).catch(sumErr => {
+                  console.error('❌ Failed to enqueue rolling summary update job:', sumErr);
+                });
               }
 
               // F. Publish update to Ably
