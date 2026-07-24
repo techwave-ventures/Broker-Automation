@@ -148,3 +148,4 @@ certificates
 Agents and Dev Sepecifics
 .agents/*
 *.md
+/backend/scripts/*.js
