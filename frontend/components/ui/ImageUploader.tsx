@@ -6,22 +6,22 @@ import { Upload, X, ImagePlus, Loader2, AlertCircle, Star } from "lucide-react";
 // ── Types ────────────────────────────────────────────────────────────────────
 
 interface UploadedImage {
-  url: string;
-  /** true while the PUT to S3 is in progress */
-  uploading: boolean;
-  /** error message if upload failed */
-  error?: string;
-  /** local blob URL for preview before upload finishes */
-  preview: string;
+    url: string;
+    /** true while the PUT to S3 is in progress */
+    uploading: boolean;
+    /** error message if upload failed */
+    error?: string;
+    /** local blob URL for preview before upload finishes */
+    preview: string;
 }
 
 interface ImageUploaderProps {
-  /** Initial images to display (already-saved URLs from the DB) */
-  initialImages?: string[];
-  /** Max total images including cover. Default: 10 */
-  maxImages?: number;
-  /** Called whenever the image list changes. First element is the cover. */
-  onImagesChange: (cover: string, gallery: string[]) => void;
+    /** Initial images to display (already-saved URLs from the DB) */
+    initialImages?: string[];
+    /** Max total images including cover. Default: 10 */
+    maxImages?: number;
+    /** Called whenever the image list changes. First element is the cover. */
+    onImagesChange: (cover: string, gallery: string[]) => void;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -96,19 +96,27 @@ export default function ImageUploader({
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Notify parent whenever the images array changes
-    const notifyParent = useCallback((imgs: UploadedImage[]) => {
-        const done = imgs.filter((i) => !i.uploading && !i.error && i.url);
-        const [cover, ...gallery] = done.map((i) => i.url);
-        onImagesChange(cover ?? "", gallery);
+    // Keep ref to onImagesChange callback so effect always calls latest version
+    const onImagesChangeRef = useRef(onImagesChange);
+    useEffect(() => {
+        onImagesChangeRef.current = onImagesChange;
     }, [onImagesChange]);
+
+    // Notify parent asynchronously when images change (prevents setState during render warning)
+    useEffect(() => {
+        const done = images.filter((i) => !i.uploading && !i.error && i.url);
+        const [cover, ...gallery] = done.map((i) => i.url);
+        onImagesChangeRef.current(cover ?? "", gallery);
+    }, [images]);
 
     const uploadFile = useCallback(async (file: File, index: number) => {
         // Validate type
         if (!ACCEPTED_TYPES.includes(file.type)) {
             setImages((prev) => {
                 const next = [...prev];
-                next[index] = { ...next[index], uploading: false, error: "Unsupported file type. Use JPEG, PNG, WebP or HEIC." };
+                if (next[index]) {
+                    next[index] = { ...next[index], uploading: false, error: "Unsupported file type. Use JPEG, PNG, WebP or HEIC." };
+                }
                 return next;
             });
             return;
@@ -117,7 +125,9 @@ export default function ImageUploader({
         if (file.size > MAX_FILE_SIZE_BYTES) {
             setImages((prev) => {
                 const next = [...prev];
-                next[index] = { ...next[index], uploading: false, error: `File too large. Max ${MAX_FILE_SIZE_MB} MB.` };
+                if (next[index]) {
+                    next[index] = { ...next[index], uploading: false, error: `File too large. Max ${MAX_FILE_SIZE_MB} MB.` };
+                }
                 return next;
             });
             return;
@@ -132,48 +142,51 @@ export default function ImageUploader({
 
             setImages((prev) => {
                 const next = [...prev];
-                next[index] = { ...next[index], url: publicUrl, uploading: false };
-                notifyParent(next);
+                if (next[index]) {
+                    next[index] = { ...next[index], url: publicUrl, uploading: false };
+                }
                 return next;
             });
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Upload failed";
             setImages((prev) => {
                 const next = [...prev];
-                next[index] = { ...next[index], uploading: false, error: message };
+                if (next[index]) {
+                    next[index] = { ...next[index], uploading: false, error: message };
+                }
                 return next;
             });
         }
-    }, [notifyParent]);
+    }, []);
 
     const handleFiles = useCallback((files: FileList | File[]) => {
         const arr = Array.from(files);
-        setImages((prev) => {
-            const slots = maxImages - prev.length;
-            if (slots <= 0) return prev;
-            const toAdd = arr.slice(0, slots);
-            const next = [...prev];
-            toAdd.forEach((file) => {
-                const preview = URL.createObjectURL(file);
-                const idx = next.length;
-                next.push({ url: "", uploading: true, preview });
-                // Upload asynchronously (sequential by index)
-                uploadFile(file, idx);
-            });
-            return next;
+        const slots = maxImages - images.length;
+        if (slots <= 0) return;
+
+        const toAdd = arr.slice(0, slots);
+        const startIndex = images.length;
+
+        const newEntries: UploadedImage[] = toAdd.map((file) => ({
+            url: "",
+            uploading: true,
+            preview: URL.createObjectURL(file),
+        }));
+
+        setImages((prev) => [...prev, ...newEntries]);
+
+        toAdd.forEach((file, i) => {
+            uploadFile(file, startIndex + i);
         });
-    }, [maxImages, uploadFile]);
+    }, [maxImages, images.length, uploadFile]);
 
     const removeImage = (idx: number) => {
         setImages((prev) => {
-            // Revoke local blob URL if applicable
             const img = prev[idx];
-            if (img.preview && img.preview.startsWith("blob:")) {
+            if (img && img.preview && img.preview.startsWith("blob:")) {
                 URL.revokeObjectURL(img.preview);
             }
-            const next = prev.filter((_, i) => i !== idx);
-            notifyParent(next);
-            return next;
+            return prev.filter((_, i) => i !== idx);
         });
     };
 
@@ -181,8 +194,7 @@ export default function ImageUploader({
         setImages((prev) => {
             const next = [...prev];
             const [item] = next.splice(idx, 1);
-            next.unshift(item);
-            notifyParent(next);
+            if (item) next.unshift(item);
             return next;
         });
     };
