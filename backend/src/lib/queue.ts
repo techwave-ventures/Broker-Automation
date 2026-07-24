@@ -10,6 +10,7 @@ import {
   graphApiEnableCallingWithToken,
   saveTokens,
 } from '../services/business.js';
+import { sendImageMessage } from './meta.js';
 import { publishToChannel } from './ably.js';
 import {
   findOrCreateConversation,
@@ -21,7 +22,7 @@ import { detectIntent } from '../services/intentDetector.js';
 import { resolveNextState } from '../services/stateMachine.js';
 import { findMatchingProperties } from '../services/propertyMatcher.js';
 import { updateRollingSummary } from '../services/summaryService.js';
-import { formatOutboundMessages } from '../services/whatsappFormatter.js';
+import { formatOutboundMessages, OutboundMessage } from '../services/whatsappFormatter.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -468,12 +469,12 @@ export async function handleWebhookProcess(payload: any) {
                 console.log(`🤖 [GEMINI RESPONSE] Action: ${structuredRes.action}. Generated ${messagesToSend.length} sequential messages.`);
               } catch (aiErr) {
                 console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
-                messagesToSend = ['Thank you for reaching out! One of our agents will contact you shortly.'];
+                messagesToSend = [{ text: 'Thank you for reaching out! One of our agents will contact you shortly.' }];
               }
 
               // D & E. Save and Send bot messages sequentially
               for (let i = 0; i < messagesToSend.length; i++) {
-                const msgText = messagesToSend[i];
+                const msg: OutboundMessage = messagesToSend[i];
                 const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
 
                 await saveMessage({
@@ -484,29 +485,58 @@ export async function handleWebhookProcess(payload: any) {
                   senderNumber: phoneNumberId,
                   recipientNumber: senderNumber,
                   senderType: 'bot',
-                  messageType: 'text',
-                  body: msgText,
+                  messageType: msg.imageUrl ? 'image' : 'text',
+                  body: msg.text,
                   direction: 'outbound',
                   status: 'sent',
                 });
 
-                try {
-                  await enqueueJob('whatsapp_send', {
-                    phoneNumberId,
-                    accessToken,
-                    destPhone: senderNumber,
-                    messageContent: msgText,
-                    wabaId: entry.id,
-                  });
-                } catch (queueErr: any) {
-                  console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending directly via WhatsApp API...');
-                  await handleWhatsappSend({
-                    phoneNumberId,
-                    accessToken,
-                    destPhone: senderNumber,
-                    messageContent: msgText,
-                    wabaId: entry.id,
-                  });
+                if (msg.imageUrl) {
+                  // Send as a single image card with the property text as caption
+                  try {
+                    await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
+                    console.log(`🖼️ [IMAGE+CAPTION SENT] Sent property card with image to ${senderNumber}`);
+                  } catch (imgErr) {
+                    console.warn('⚠️ Failed to send image card, falling back to text:', imgErr);
+                    // Fallback to plain text if image send fails
+                    try {
+                      await enqueueJob('whatsapp_send', {
+                        phoneNumberId,
+                        accessToken,
+                        destPhone: senderNumber,
+                        messageContent: msg.text,
+                        wabaId: entry.id,
+                      });
+                    } catch {
+                      await handleWhatsappSend({
+                        phoneNumberId,
+                        accessToken,
+                        destPhone: senderNumber,
+                        messageContent: msg.text,
+                        wabaId: entry.id,
+                      });
+                    }
+                  }
+                } else {
+                  // Plain text message
+                  try {
+                    await enqueueJob('whatsapp_send', {
+                      phoneNumberId,
+                      accessToken,
+                      destPhone: senderNumber,
+                      messageContent: msg.text,
+                      wabaId: entry.id,
+                    });
+                  } catch (queueErr: any) {
+                    console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending directly via WhatsApp API...');
+                    await handleWhatsappSend({
+                      phoneNumberId,
+                      accessToken,
+                      destPhone: senderNumber,
+                      messageContent: msg.text,
+                      wabaId: entry.id,
+                    });
+                  }
                 }
               }
 

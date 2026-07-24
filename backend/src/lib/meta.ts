@@ -67,6 +67,19 @@ export async function sendTextMessage(phoneNumberId: string, accessToken: string
   });
 }
 
+export async function sendImageMessage(phoneNumberId: string, accessToken: string, to: string, imageUrl: string, caption?: string) {
+  return graphPost(`/${phoneNumberId}/messages`, accessToken, {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to,
+    type: 'image',
+    image: {
+      link: imageUrl,
+      ...(caption ? { caption } : {}),
+    },
+  });
+}
+
 export async function getWabaAccessToken(wabaId: string, userId: string) {
   const result = await pool.query('select access_token from wabas where waba_id = $1 and user_id = $2 limit 1', [
     wabaId,
