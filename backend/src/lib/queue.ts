@@ -21,6 +21,7 @@ import { detectIntent } from '../services/intentDetector.js';
 import { resolveNextState } from '../services/stateMachine.js';
 import { findMatchingProperties } from '../services/propertyMatcher.js';
 import { updateRollingSummary } from '../services/summaryService.js';
+import { formatOutboundMessages } from '../services/whatsappFormatter.js';
 
 const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
 const isTls = redisUrl.startsWith('rediss://');
@@ -444,10 +445,10 @@ export async function handleWebhookProcess(payload: any) {
               }
 
               // Call the deterministic property matching and ranking logic
-              const { contextString: propertiesContext } = await findMatchingProperties(propertiesUser, conversation.ai_state);
+              const { contextString: propertiesContext, properties } = await findMatchingProperties(propertiesUser, conversation.ai_state);
 
               // C. Generate AI reply
-              let aiReplyText = '';
+              let messagesToSend: string[] = [];
               try {
                 const { generateAutoReply } = await import('../services/gemini.js');
                 const structuredRes = await generateAutoReply(
@@ -456,67 +457,75 @@ export async function handleWebhookProcess(payload: any) {
                   conversation.ai_state,
                   propertiesContext || 'No property listings are currently available.'
                 );
-                aiReplyText = structuredRes.reply;
-                console.log(`🤖 [GEMINI STRUCTURED RESPONSE] Action: ${structuredRes.action}, Proposed Stage: ${structuredRes.stage}`);
 
                 // Resolve state machine transitions & recommendations
                 const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
                 console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${conversation.ai_state.stage} -> ${nextStateUpdates.stage}`);
                 conversation.ai_state = await updateConversationAIState(conversation.id, nextStateUpdates);
+
+                // Format messages sequentially using the WhatsApp formatter
+                messagesToSend = formatOutboundMessages(structuredRes, properties);
+                console.log(`🤖 [GEMINI RESPONSE] Action: ${structuredRes.action}. Generated ${messagesToSend.length} sequential messages.`);
               } catch (aiErr) {
                 console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
-                aiReplyText = 'Thank you for reaching out! One of our agents will contact you shortly.';
+                messagesToSend = ['Thank you for reaching out! One of our agents will contact you shortly.'];
               }
 
-              // D. Save bot message to database
-              const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-              await saveMessage({
-                conversationId: conversation.id,
-                wabaId,
-                phoneNumberId,
-                messageId: botMessageId,
-                senderNumber: phoneNumberId,
-                recipientNumber: senderNumber,
-                senderType: 'bot',
-                messageType: 'text',
-                body: aiReplyText,
-                direction: 'outbound',
-                status: 'sent',
-              });
+              // D & E. Save and Send bot messages sequentially
+              for (let i = 0; i < messagesToSend.length; i++) {
+                const msgText = messagesToSend[i];
+                const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
 
-              // E. Send outbound message via WhatsApp
-              try {
-                await enqueueJob('whatsapp_send', {
+                await saveMessage({
+                  conversationId: conversation.id,
+                  wabaId,
                   phoneNumberId,
-                  accessToken,
-                  destPhone: senderNumber,
-                  messageContent: aiReplyText,
-                  wabaId: entry.id,
+                  messageId: botMessageId,
+                  senderNumber: phoneNumberId,
+                  recipientNumber: senderNumber,
+                  senderType: 'bot',
+                  messageType: 'text',
+                  body: msgText,
+                  direction: 'outbound',
+                  status: 'sent',
                 });
-              } catch (queueErr: any) {
-                console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending auto-reply directly via WhatsApp API...');
-                await handleWhatsappSend({
-                  phoneNumberId,
-                  accessToken,
-                  destPhone: senderNumber,
-                  messageContent: aiReplyText,
-                  wabaId: entry.id,
-                });
+
+                try {
+                  await enqueueJob('whatsapp_send', {
+                    phoneNumberId,
+                    accessToken,
+                    destPhone: senderNumber,
+                    messageContent: msgText,
+                    wabaId: entry.id,
+                  });
+                } catch (queueErr: any) {
+                  console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending directly via WhatsApp API...');
+                  await handleWhatsappSend({
+                    phoneNumberId,
+                    accessToken,
+                    destPhone: senderNumber,
+                    messageContent: msgText,
+                    wabaId: entry.id,
+                  });
+                }
               }
 
               // Update rolling summary in background
-              try {
-                const lastTurns = [
-                  { role: 'user', text: body },
-                  { role: 'model', text: aiReplyText }
-                ];
-                const updatedSummary = await updateRollingSummary(conversation.ai_state.rolling_summary || '', lastTurns);
-                console.log(`📝 [SUMMARY UPDATE] Old: "${conversation.ai_state.rolling_summary}" ➔ New: "${updatedSummary}"`);
-                conversation.ai_state = await updateConversationAIState(conversation.id, {
-                  rolling_summary: updatedSummary
-                });
-              } catch (sumErr) {
-                console.error('❌ Failed to update rolling summary:', sumErr);
+              if (messagesToSend.length > 0) {
+                try {
+                  const combinedReply = messagesToSend.join('\n');
+                  const lastTurns = [
+                    { role: 'user', text: body },
+                    { role: 'model', text: combinedReply }
+                  ];
+                  const updatedSummary = await updateRollingSummary(conversation.ai_state.rolling_summary || '', lastTurns);
+                  console.log(`📝 [SUMMARY UPDATE] Old: "${conversation.ai_state.rolling_summary}" ➔ New: "${updatedSummary}"`);
+                  conversation.ai_state = await updateConversationAIState(conversation.id, {
+                    rolling_summary: updatedSummary
+                  });
+                } catch (sumErr) {
+                  console.error('❌ Failed to update rolling summary:', sumErr);
+                }
               }
 
               // F. Publish update to Ably

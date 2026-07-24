@@ -43,6 +43,8 @@ import { ConversationAIState } from '../models/conversationModel.js';
 
 export interface GeminiStructuredResponse {
   reply: string;
+  reply_intro?: string;
+  reply_outro?: string;
   action: 'GREET' | 'ASK_SLOTS' | 'SEARCH' | 'RECOMMEND' | 'OFFER_SITE_VISIT' | 'SCHEDULE_SITE_VISIT' | 'LOAN_INFO' | 'NEGOTIATE' | 'HUMAN_TAKEOVER' | 'CHITCHAT';
   recommended_property_ids: number[];
   missing_fields: string[];
@@ -136,6 +138,8 @@ export async function generateAutoReply(
         const parsed = JSON.parse(responseText.trim()) as GeminiStructuredResponse;
         return {
           reply: parsed.reply || '',
+          reply_intro: parsed.reply_intro || '',
+          reply_outro: parsed.reply_outro || '',
           action: parsed.action || 'CHITCHAT',
           recommended_property_ids: parsed.recommended_property_ids || [],
           missing_fields: parsed.missing_fields || [],

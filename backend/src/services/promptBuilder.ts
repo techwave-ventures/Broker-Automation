@@ -42,7 +42,9 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
 
 ### JSON Output Schema:
 {
-  "reply": "Plain text message to send to the customer on WhatsApp. Use brief, warm, professional language.",
+  "reply": "Conversational reply text when NOT recommending properties. If you ARE recommending properties, set this to an empty string.",
+  "reply_intro": "Introductory text sent before listing properties (e.g. 'I found 2 great properties for you:'). Leave empty if not recommending properties.",
+  "reply_outro": "Closing text sent after listing properties (e.g. 'Would you like to schedule a site visit?'). Leave empty if not recommending properties.",
   "action": "GREET" | "ASK_SLOTS" | "SEARCH" | "RECOMMEND" | "OFFER_SITE_VISIT" | "SCHEDULE_SITE_VISIT" | "LOAN_INFO" | "NEGOTIATE" | "HUMAN_TAKEOVER" | "CHITCHAT",
   "recommended_property_ids": [number], // Array of database key IDs of properties you recommended in this specific response.
   "missing_fields": [string], // List of critical fields that are still needed (choose from: 'transaction_type', 'locality', 'budget', 'beds', 'property_type')
@@ -50,9 +52,11 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
 }
 
 ### Field Explanations for Output:
-*   **reply**: The actual message the customer will read. Must adhere to formatting rules (e.g. bolding property names, using emojis).
+*   **reply**: Conversation text for slot collection, greetings, loan info, chitchat.
+*   **reply_intro**: Greeting/intro leading into property details (CRITICAL: Do NOT write property details/prices/links here, the backend formats them deterministically based on key IDs).
+*   **reply_outro**: Concluding remarks and call-to-action (CRITICAL: Do NOT write property details/prices/links here).
 *   **action**: The action you are taking in this response.
-*   **recommended_property_ids**: If you are introducing or describing specific properties, put their database key numbers (from the list above) in this array. If not recommending any properties in this turn, return an empty array [].
+*   **recommended_property_ids**: If you are recommending specific properties, put their database key numbers (from the list above) in this array. If not recommending any properties in this turn, return an empty array [].
 *   **missing_fields**: Specify which of the core parameters (transaction_type, locality, budget, beds, property_type) are still missing for search qualification.
 *   **stage**: Suggest the next stage for the state machine based on the flow:
     *   **GREETING**: Just started or greeting exchange.
