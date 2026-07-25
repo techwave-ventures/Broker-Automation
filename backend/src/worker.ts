@@ -7,6 +7,7 @@ import {
   handleTokenExchangeFollowup,
   handleWebhookProcess,
   handleUpdateRollingSummary,
+  handleGeminiReply,
 } from './lib/queue.js';
 
 async function startWorker() {
@@ -70,13 +71,54 @@ async function startWorker() {
     console.error(`Job ${job?.id} (type: ${job?.name}) failed:`, err.message);
   });
 
-  console.log('BullMQ Queue Worker is active and waiting for jobs.');
+  const geminiWorker = new Worker(
+    'gemini-queue',
+    async (job: Job) => {
+      console.log(`Processing Gemini job ${job.id} (type: ${job.name})...`);
+      if (job.name === 'gemini_reply') {
+        return await handleGeminiReply(job.data);
+      } else {
+        throw new Error(`Unknown Gemini job type: ${job.name}`);
+      }
+    },
+    {
+      connection: redisConnection,
+      concurrency: 1, // Only 1 concurrent Gemini call to avoid parallel race condition/conflicts
+      limiter: {
+        max: 5,
+        duration: 60000, // 5 requests per 60 seconds (5 RPM limit)
+      },
+      settings: {
+        backoffStrategies: {
+          custom(attemptsMade: number, err: any) {
+            if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
+              const delay = err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
+              console.warn(`⚠️ [BULLMQ GEMINI BACKOFF] Rate limited (Attempt ${attemptsMade}). Retrying in ${delay}ms. Error: ${err.message}`);
+              return delay;
+            }
+            return Math.min(2 ** attemptsMade * 5000, 60000);
+          }
+        }
+      } as any
+    }
+  );
+
+  geminiWorker.on('completed', (job: Job) => {
+    console.log(`Gemini job ${job.id} completed successfully.`);
+  });
+
+  geminiWorker.on('failed', (job: Job | undefined, err: Error) => {
+    console.error(`Gemini job ${job?.id} failed:`, err.message);
+  });
+
+  console.log('BullMQ Queue Workers are active and waiting for jobs.');
 
   // Graceful shutdown
   const shutdown = async () => {
-    console.log('Shutting down worker gracefully...');
+    console.log('Shutting down workers gracefully...');
     await worker.close();
-    console.log('Worker shutdown complete.');
+    await geminiWorker.close();
+    console.log('Workers shutdown complete.');
     process.exit(0);
   };
 

@@ -55,6 +55,25 @@ export const whatsappQueue = new Queue('whatsapp-queue', {
   },
 });
 
+export const geminiQueue = new Queue('gemini-queue', {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: {
+      type: 'exponential',
+      delay: 10000,
+    },
+  },
+});
+
+export async function enqueueGeminiReplyJob(payload: any) {
+  await geminiQueue.add('gemini_reply', payload, {
+    removeOnComplete: true,
+    removeOnFail: false,
+  });
+}
+
+
 export async function enqueueJob(type: string, payload: any) {
   let priority = 4;
   if (type === 'whatsapp_send') {
@@ -443,238 +462,23 @@ export async function handleWebhookProcess(payload: any) {
             }
           }
 
-          // Get WABA token for auto-reply
-          const accessTokenResult = await pool.query(
-            'SELECT access_token FROM wabas WHERE waba_id = $1 LIMIT 1',
-            [entry.id]
-          );
-          const accessToken = accessTokenResult.rows[0]?.access_token;
-          if (!accessToken) continue;
-
           // 3. Process AI auto-reply if enabled
           if (conversation.status !== 'human_takeover') {
-            // Check if AI auto-reply is enabled in bot configs
             const botConfigResult = await pool.query(
-              'SELECT is_auto_reply_enabled, bot_instructions FROM bot_configs WHERE phone_id = $1 LIMIT 1',
+              'SELECT is_auto_reply_enabled FROM bot_configs WHERE phone_id = $1 LIMIT 1',
               [phoneNumberId]
             );
             const botConfig = botConfigResult.rows[0];
-            // If there's no config in table yet, it defaults to true
             const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
             if (isAutoReplyEnabled) {
-              const instructions = botConfig?.bot_instructions;
-
-              // A. Fetch recent message history (last 4 messages)
-              const messagesRes = await pool.query(
-                'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 4',
-                [conversation.id]
-              );
-              const history = messagesRes.rows.map((row: any) => ({
-                role: (row.sender_type === 'customer' ? 'user' : 'model') as 'user' | 'model',
-                text: row.body
-              }));
-
-              // B. Fetch active properties listings to recommend
-              let propertiesUser = userId;
-              const userRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
-              if (userRes.rows[0]?.email) {
-                propertiesUser = userRes.rows[0].email;
-              }
-
-              // Call the deterministic property matching and ranking logic
-              const { contextString: propertiesContext, properties } = await findMatchingProperties(propertiesUser, conversation.ai_state);
-
-              // C. Generate AI reply
-              let messagesToSend: OutboundMessage[] = [];
-              try {
-                const { generateAutoReply } = await import('../services/gemini.js');
-                const structuredRes = await generateAutoReply(
-                  instructions,
-                  history,
-                  conversation.ai_state,
-                  propertiesContext || 'No property listings are currently available.',
-                  conversation.id
-                );
-
-                // Resolve state machine transitions & recommendations
-                const prevStage = conversation.ai_state.stage;
-                const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
-                console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${prevStage} -> ${nextStateUpdates.stage}`);
-                conversation.ai_state = await updateConversationAIState(conversation.id, nextStateUpdates);
-
-                // ── Auto Lead Promotion ─────────────────────────────────────
-                // The first time a conversation enters SITE_VISIT stage, create
-                // a lead automatically from the AI-extracted slot data.
-                if (nextStateUpdates.stage === 'SITE_VISIT' && prevStage !== 'SITE_VISIT') {
-                  try {
-                    // Resolve the agent's email (used as user_id in leads table)
-                    let leadUserId = userId;
-                    const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
-                    if (emailRes.rows[0]?.email) leadUserId = emailRes.rows[0].email;
-
-                    // Idempotency: only create if no lead for this phone already exists
-                    const existing = await getLeadsByUser(leadUserId);
-                    const alreadyExists = existing.some(l => l.customerPhone === senderNumber);
-
-                    if (!alreadyExists) {
-                      const aiState = conversation.ai_state;
-                      const firstRecommendedId = Array.isArray(aiState.recommended_property_ids) && aiState.recommended_property_ids.length > 0
-                        ? String(aiState.recommended_property_ids[0])
-                        : undefined;
-
-                      const newLead = await createLead(
-                        {
-                          customerName:       conversation.customer_name || senderNumber,
-                          customerPhone:      senderNumber,
-                          requestedLocality:  aiState.locality || undefined,
-                          budget:             aiState.budget || undefined,
-                          otherReqs:          [
-                            aiState.property_type,
-                            aiState.beds ? `${aiState.beds} BHK` : null,
-                            aiState.furnishing,
-                          ].filter(Boolean).join(', ') || undefined,
-                          interestedPropertyId: firstRecommendedId,
-                          appointmentDate:    structuredRes.appointmentDate || null,
-                          status:             'Upcoming Visit',
-                          leadScore:          'High',
-                        },
-                        leadUserId
-                      );
-
-                      // Notify connected dashboard clients in real-time
-                      await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => {});
-                      console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversation.id} → Lead ${newLead.key} for ${senderNumber}`);
-                    } else {
-                      console.log(`ℹ️ [LEAD SKIP] Lead for ${senderNumber} already exists — skipping auto-creation.`);
-                    }
-                  } catch (leadErr) {
-                    // Never crash the message pipeline over a lead creation failure
-                    console.error('❌ [LEAD AUTO-PROMOTE] Failed to create lead from conversation:', leadErr);
-                  }
-                }
-                // ────────────────────────────────────────────────────────────
-
-                // Format messages sequentially using the WhatsApp formatter
-                messagesToSend = formatOutboundMessages(structuredRes, properties);
-                console.log(`🤖 [GEMINI RESPONSE] Action: ${structuredRes.action}. Generated ${messagesToSend.length} sequential messages.`);
-              } catch (aiErr: any) {
-                if (aiErr.name === 'AbortError' || aiErr.message?.includes('Aborted')) {
-                  console.log(`[ABORT] Skipping reply processing for conversation ${conversation.id} due to abortion.`);
-                  continue;
-                }
-                console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
-                messagesToSend = [{ text: 'Thank you for reaching out! One of our agents will contact you shortly.' }];
-              }
-
-              // D & E. Save and Send bot messages sequentially
-              for (let i = 0; i < messagesToSend.length; i++) {
-                const msg: OutboundMessage = messagesToSend[i];
-                const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
-
-                await saveMessage({
-                  conversationId: conversation.id,
-                  wabaId,
-                  phoneNumberId,
-                  messageId: botMessageId,
-                  senderNumber: phoneNumberId,
-                  recipientNumber: senderNumber,
-                  senderType: 'bot',
-                  messageType: msg.imageUrl ? 'image' : 'text',
-                  body: msg.text,
-                  direction: 'outbound',
-                  status: 'sent',
-                });
-
-                if (msg.imageUrl) {
-                  // Send as a single image card with the property text as caption
-                  try {
-                    await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
-                    console.log(`🖼️ [IMAGE+CAPTION SENT] Sent property card with image to ${senderNumber}`);
-                  } catch (imgErr) {
-                    console.warn('⚠️ Failed to send image card, falling back to text:', imgErr);
-                    // Fallback to plain text if image send fails
-                    try {
-                      await enqueueJob('whatsapp_send', {
-                        phoneNumberId,
-                        accessToken,
-                        destPhone: senderNumber,
-                        messageContent: msg.text,
-                        wabaId: entry.id,
-                      });
-                    } catch {
-                      await handleWhatsappSend({
-                        phoneNumberId,
-                        accessToken,
-                        destPhone: senderNumber,
-                        messageContent: msg.text,
-                        wabaId: entry.id,
-                      });
-                    }
-                  }
-                } else {
-                  // Plain text message
-                  try {
-                    await enqueueJob('whatsapp_send', {
-                      phoneNumberId,
-                      accessToken,
-                      destPhone: senderNumber,
-                      messageContent: msg.text,
-                      wabaId: entry.id,
-                    });
-                  } catch (queueErr: any) {
-                    console.warn('⚠️ [REDIS OFFLINE FALLBACK] Enqueuing failed, sending directly via WhatsApp API...');
-                    await handleWhatsappSend({
-                      phoneNumberId,
-                      accessToken,
-                      destPhone: senderNumber,
-                      messageContent: msg.text,
-                      wabaId: entry.id,
-                    });
-                  }
-                }
-              }
-
-              // Update rolling summary in background
-              if (messagesToSend.length > 0) {
-                const combinedReply = messagesToSend.map(m => m.text).join('\n');
-                await enqueueJob('update_rolling_summary', {
-                  conversationId: conversation.id,
-                  currentSummary: conversation.ai_state.rolling_summary || '',
-                  lastTurns: [
-                    { role: 'user', text: body },
-                    { role: 'model', text: combinedReply }
-                  ]
-                }).catch(sumErr => {
-                  console.error('❌ Failed to enqueue rolling summary update job:', sumErr);
-                });
-              }
-
-              // F. Publish update to Ably
-              await publishToChannel('get-started', 'first', {
-                object: 'whatsapp_business_account',
-                entry: [
-                  {
-                    id: entry.id,
-                    changes: [
-                      {
-                        field: 'messages',
-                        value: {
-                          messaging_product: 'whatsapp',
-                          metadata: { phone_number_id: phoneNumberId },
-                          messages: [
-                            {
-                              from: '_bot_',
-                              type: 'text',
-                              text: { body: messagesToSend.map(m => m.text).join('\n\n') },
-                              timestamp: Math.floor(Date.now() / 1000),
-                              _ackbot_recipient: senderNumber,
-                            },
-                          ],
-                        },
-                      },
-                    ],
-                  },
-                ],
+              await enqueueGeminiReplyJob({
+                conversationId: conversation.id,
+                phoneNumberId,
+                wabaId: entry.id,
+                senderNumber,
+                userId,
+                body,
+                intentResult,
               });
             }
           }
@@ -682,4 +486,237 @@ export async function handleWebhookProcess(payload: any) {
       }
     }
   }
+}
+
+export async function handleGeminiReply(payload: any) {
+  const { conversationId, phoneNumberId, wabaId, senderNumber, userId, body, intentResult } = payload;
+
+  // Retrieve latest conversation state
+  const convRes = await pool.query('SELECT * FROM conversations WHERE id = $1 LIMIT 1', [conversationId]);
+  const conversation = convRes.rows[0];
+  if (!conversation || conversation.status === 'human_takeover') return;
+
+  const botConfigResult = await pool.query(
+    'SELECT bot_instructions FROM bot_configs WHERE phone_id = $1 LIMIT 1',
+    [phoneNumberId]
+  );
+  const botConfig = botConfigResult.rows[0];
+  const instructions = botConfig?.bot_instructions || 'You are a helpful real estate assistant.';
+
+  // A. Fetch recent message history (last 4 messages)
+  const messagesRes = await pool.query(
+    'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 4',
+    [conversationId]
+  );
+  const history = messagesRes.rows.map((row: any) => ({
+    role: (row.sender_type === 'customer' ? 'user' : 'model') as 'user' | 'model',
+    text: row.body
+  }));
+
+  // B. Fetch active properties listings to recommend
+  let propertiesUser = userId;
+  const userRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+  if (userRes.rows[0]?.email) {
+    propertiesUser = userRes.rows[0].email;
+  }
+
+  // Call the deterministic property matching and ranking logic
+  const { contextString: propertiesContext, properties } = await findMatchingProperties(propertiesUser, conversation.ai_state);
+
+  // C. Generate AI reply
+  let messagesToSend: OutboundMessage[] = [];
+  try {
+    const { generateAutoReply } = await import('../services/gemini.js');
+    const structuredRes = await generateAutoReply(
+      instructions,
+      history,
+      conversation.ai_state,
+      propertiesContext || 'No property listings are currently available.',
+      conversationId
+    );
+
+    // Merge intent/slots from Gemini if not already deterministically resolved
+    if (intentResult.intent === 'UNKNOWN' && structuredRes.intent) {
+      intentResult.intent = structuredRes.intent as any;
+      console.log(`🔍 [INTENT EXTRACTED FROM GEMINI] ${intentResult.intent}`);
+    }
+
+    const slotsToMerge: Record<string, any> = {};
+    if (structuredRes.slots) {
+      for (const [key, value] of Object.entries(structuredRes.slots)) {
+        if (value !== null && value !== undefined) {
+          if (key === 'beds') {
+            slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
+          } else {
+            slotsToMerge[key] = value;
+          }
+        }
+      }
+    }
+
+    // Resolve state machine transitions & recommendations
+    const prevStage = conversation.ai_state.stage;
+    const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
+    
+    // Add rolling summary and any newly extracted slots to database updates
+    if (structuredRes.updated_rolling_summary) {
+      nextStateUpdates.rolling_summary = structuredRes.updated_rolling_summary;
+    }
+    const mergedUpdates = { ...slotsToMerge, ...nextStateUpdates };
+
+    console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${prevStage} -> ${mergedUpdates.stage}`);
+    conversation.ai_state = await updateConversationAIState(conversationId, mergedUpdates);
+
+    // ── Auto Lead Promotion ─────────────────────────────────────
+    if (mergedUpdates.stage === 'SITE_VISIT' && prevStage !== 'SITE_VISIT') {
+      try {
+        let leadUserId = userId;
+        const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+        if (emailRes.rows[0]?.email) leadUserId = emailRes.rows[0].email;
+
+        const existing = await getLeadsByUser(leadUserId);
+        const alreadyExists = existing.some(l => l.customerPhone === senderNumber);
+
+        if (!alreadyExists) {
+          const aiState = conversation.ai_state;
+          const firstRecommendedId = Array.isArray(aiState.recommended_property_ids) && aiState.recommended_property_ids.length > 0
+            ? String(aiState.recommended_property_ids[0])
+            : undefined;
+
+          const newLead = await createLead(
+            {
+              customerName:       conversation.customer_name || senderNumber,
+              customerPhone:      senderNumber,
+              requestedLocality:  aiState.locality || undefined,
+              budget:             aiState.budget || undefined,
+              otherReqs:          [
+                aiState.property_type,
+                aiState.beds ? `${aiState.beds} BHK` : null,
+                aiState.furnishing,
+              ].filter(Boolean).join(', ') || undefined,
+              interestedPropertyId: firstRecommendedId,
+              appointmentDate:    structuredRes.appointmentDate || null,
+              status:             'Upcoming Visit',
+              leadScore:          'High',
+            },
+            leadUserId
+          );
+
+          await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => {});
+          console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${newLead.key} for ${senderNumber}`);
+        }
+      } catch (leadErr) {
+        console.error('❌ [LEAD AUTO-PROMOTE] Failed to create lead from conversation:', leadErr);
+      }
+    }
+
+    messagesToSend = formatOutboundMessages(structuredRes, properties);
+    console.log(`🤖 [GEMINI RESPONSE] Action: ${structuredRes.action}. Generated ${messagesToSend.length} sequential messages.`);
+  } catch (aiErr: any) {
+    if (aiErr.name === 'AbortError' || aiErr.message?.includes('Aborted')) {
+      console.log(`[ABORT] Skipping reply processing for conversation ${conversationId} due to abortion.`);
+      return;
+    }
+    console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
+    messagesToSend = [{ text: 'Thank you for reaching out! One of our agents will contact you shortly.' }];
+  }
+
+  // Get WABA token for auto-reply
+  const accessTokenResult = await pool.query(
+    'SELECT access_token FROM wabas WHERE waba_id = $1 LIMIT 1',
+    [wabaId]
+  );
+  const accessToken = accessTokenResult.rows[0]?.access_token;
+  if (!accessToken) return;
+
+  // D & E. Save and Send bot messages sequentially
+  for (let i = 0; i < messagesToSend.length; i++) {
+    const msg: OutboundMessage = messagesToSend[i];
+    const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+
+    await saveMessage({
+      conversationId,
+      wabaId,
+      phoneNumberId,
+      messageId: botMessageId,
+      senderNumber: phoneNumberId,
+      recipientNumber: senderNumber,
+      senderType: 'bot',
+      messageType: msg.imageUrl ? 'image' : 'text',
+      body: msg.text,
+      direction: 'outbound',
+      status: 'sent',
+    });
+
+    if (msg.imageUrl) {
+      try {
+        await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
+      } catch (imgErr) {
+        console.warn('⚠️ Failed to send image card, falling back to text:', imgErr);
+        try {
+          await enqueueJob('whatsapp_send', {
+            phoneNumberId,
+            accessToken,
+            destPhone: senderNumber,
+            messageContent: msg.text,
+            wabaId,
+          });
+        } catch {
+          await handleWhatsappSend({
+            phoneNumberId,
+            accessToken,
+            destPhone: senderNumber,
+            messageContent: msg.text,
+            wabaId,
+          });
+        }
+      }
+    } else {
+      try {
+        await enqueueJob('whatsapp_send', {
+          phoneNumberId,
+          accessToken,
+          destPhone: senderNumber,
+          messageContent: msg.text,
+          wabaId,
+        });
+      } catch (queueErr: any) {
+        await handleWhatsappSend({
+          phoneNumberId,
+          accessToken,
+          destPhone: senderNumber,
+          messageContent: msg.text,
+          wabaId,
+        });
+      }
+    }
+  }
+
+  // F. Publish update to Ably
+  await publishToChannel('get-started', 'first', {
+    object: 'whatsapp_business_account',
+    entry: [
+      {
+        id: wabaId,
+        changes: [
+          {
+            field: 'messages',
+            value: {
+              messaging_product: 'whatsapp',
+              metadata: { phone_number_id: phoneNumberId },
+              messages: [
+                {
+                  from: '_bot_',
+                  type: 'text',
+                  text: { body: messagesToSend.map(m => m.text).join('\n\n') },
+                  timestamp: Math.floor(Date.now() / 1000),
+                  _ackbot_recipient: senderNumber,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  }).catch(() => {});
 }

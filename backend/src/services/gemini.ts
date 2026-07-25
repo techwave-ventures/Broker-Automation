@@ -64,6 +64,20 @@ export interface GeminiStructuredResponse {
   stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
   /** ISO 8601 datetime string for the agreed site-visit appointment, or null if not yet scheduled. */
   appointmentDate: string | null;
+  intent?: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';
+  slots?: {
+    transaction_type?: 'Sell' | 'Rent' | null;
+    locality?: string | null;
+    city?: string | null;
+    budget?: string | null;
+    beds?: number | null;
+    property_type?: string | null;
+    furnishing?: string | null;
+    parking?: string | null;
+    move_in_date?: string | null;
+    purpose?: string | null;
+  };
+  updated_rolling_summary?: string;
 }
 
 export async function generateAutoReply(
@@ -81,6 +95,9 @@ export async function generateAutoReply(
     missing_fields: [],
     stage: aiState.stage || 'GREETING',
     appointmentDate: null,
+    intent: 'UNKNOWN',
+    slots: {},
+    updated_rolling_summary: aiState.rolling_summary || '',
   };
 
   if (!ai) {
@@ -193,6 +210,9 @@ export async function generateAutoReply(
             missing_fields: parsed.missing_fields || [],
             stage: parsed.stage || aiState.stage || 'GREETING',
             appointmentDate: parsed.appointmentDate || null,
+            intent: parsed.intent || 'UNKNOWN',
+            slots: parsed.slots || {},
+            updated_rolling_summary: parsed.updated_rolling_summary || aiState.rolling_summary || '',
           };
         } catch (jsonErr) {
           console.error('❌ Failed to parse Gemini JSON output:', jsonErr, 'Raw text:', responseText);
@@ -203,6 +223,9 @@ export async function generateAutoReply(
             missing_fields: [],
             stage: aiState.stage || 'GREETING',
             appointmentDate: null,
+            intent: 'UNKNOWN',
+            slots: {},
+            updated_rolling_summary: aiState.rolling_summary || '',
           };
         }
       } catch (err: any) {

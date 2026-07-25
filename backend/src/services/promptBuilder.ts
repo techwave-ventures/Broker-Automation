@@ -49,7 +49,21 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
   "recommended_property_ids": [number], // Array of database key IDs of properties you recommended in this specific response.
   "missing_fields": [string], // List of critical fields that are still needed (choose from: 'transaction_type', 'locality', 'budget', 'beds', 'property_type')
   "stage": "GREETING" | "COLLECT_INFO" | "SEARCHING" | "RECOMMENDING" | "SITE_VISIT" | "FOLLOW_UP" | "COMPLETED", // Propose the next stage of the conversation
-  "appointmentDate": string | null // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${new Date().toDateString()}.
+  "appointmentDate": string | null, // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${new Date().toDateString()}.
+  "intent": "GREETING" | "BUY_OR_RENT" | "PROPERTY_DETAILS" | "SITE_VISIT" | "NEGOTIATION" | "LOAN_QUERY" | "CHANGE_PREFERENCES" | "HUMAN_TAKEOVER" | "UNKNOWN", // Intent of the user's last message
+  "slots": { // Preferences/requirements extracted strictly from the user's last message (not historical ones unless they re-confirm them)
+    "transaction_type": "Sell" | "Rent" | null,
+    "locality": string | null,
+    "city": string | null,
+    "budget": string | null,
+    "beds": number | null,
+    "property_type": string | null,
+    "furnishing": string | null,
+    "parking": string | null,
+    "move_in_date": string | null,
+    "purpose": string | null
+  },
+  "updated_rolling_summary": string // Create/update the rolling summary of the conversation incorporating this new exchange. Keep it under 2 sentences.
 }
 
 ### Field Explanations for Output:
@@ -68,6 +82,10 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
     *   **FOLLOW_UP**: Following up on viewings or offers.
     *   **COMPLETED**: Lead closed or transaction finished.
 *   **appointmentDate**: The confirmed or proposed date/time for a site viewing. Keep it null until the client proposes or confirms a date/time. Parse expressions like "tomorrow at 4pm" relative to current time: ${new Date().toISOString()}.
+*   **intent**: Set to the intent of the last message sent by the user.
+*   **slots**: Extract any newly mentioned preferences (locality, budget, beds, transaction_type, etc.) from the user's last message. Set to null if not mentioned or not clear.
+*   **updated_rolling_summary**: Update the existing rolling_summary (from context above) by adding the context of this new exchange.
+
 
 `;
 }
