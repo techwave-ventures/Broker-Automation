@@ -118,8 +118,10 @@ export default function AddPropertyPage() {
                 city: form.city || "N/A",
                 locality: form.locality || "N/A",
                 fullAddress: form.fullAddress || "",
-                monthlyRent: Number(form.monthlyRent),
-                expectedPrice: Number(form.expectedPrice),
+                monthlyRent: Number(form.monthlyRent) || undefined,
+                expectedPrice: Number(form.expectedPrice) || undefined,
+                securityDeposit: Number(form.securityDeposit) || undefined,
+                availableFrom: form.availableFrom || undefined,
                 image: coverImage,
                 images: galleryImages,
                 status: status === "Published" ? "Available" : "Hidden",
@@ -416,9 +418,16 @@ export default function AddPropertyPage() {
                             <input required type="number" name="expectedPrice" value={form.expectedPrice} onChange={handleChange} className="w-full pl-9 pr-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50 text-sm" placeholder="e.g. 8500000" />
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <input type="checkbox" id="negotiable" name="negotiable" checked={form.negotiable} onChange={handleChange} className="h-5 w-5 rounded text-primary mt-6" />
-                        <label htmlFor="negotiable" className="text-sm font-medium mt-6 cursor-pointer">Price is Negotiable</label>
+                    <div>
+                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">Security / Token Deposit (₹)</label>
+                        <div className="relative">
+                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+                            <input type="number" name="securityDeposit" value={form.securityDeposit} onChange={handleChange} className="w-full pl-9 pr-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50 text-sm" placeholder="e.g. 500000" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 sm:col-span-2">
+                        <input type="checkbox" id="negotiable" name="negotiable" checked={form.negotiable} onChange={handleChange} className="h-5 w-5 rounded text-primary border-border focus:ring-primary cursor-pointer" />
+                        <label htmlFor="negotiable" className="text-sm font-medium cursor-pointer">Price is Negotiable</label>
                     </div>
                 </div>
             ) : (
@@ -437,7 +446,7 @@ export default function AddPropertyPage() {
                             <input type="number" name="securityDeposit" value={form.securityDeposit} onChange={handleChange} className="w-full pl-9 pr-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50 text-sm" placeholder="e.g. 100000" />
                         </div>
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                         <label className="text-sm font-medium text-foreground/70 block mb-1.5">Available From</label>
                         <input type="date" name="availableFrom" value={form.availableFrom} onChange={handleChange} className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50 text-sm text-foreground" />
                     </div>

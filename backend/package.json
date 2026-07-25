@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "concurrently -k \"node dist/server.js\" \"node dist/worker.js\"",
     "worker:start": "node dist/worker.js",
-    "type-check": "tsc -p tsconfig.json --noEmit"
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "clear:chats-leads": "node scripts/clear_chats_leads.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1094.0",

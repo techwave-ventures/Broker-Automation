@@ -479,16 +479,18 @@ export default function PublicPropertyPage() {
                                         if (property.garden) items.push({ label: "Private Garden", value: "Yes", icon: CheckCircle2 });
                                     }
 
+                                    if (property.securityDeposit) {
+                                        items.push({
+                                            label: property.transactionType === "Sell" ? "Security / Token Deposit" : "Security Deposit",
+                                            value: `₹${property.securityDeposit.toLocaleString()}`,
+                                            icon: IndianRupee
+                                        });
+                                    }
                                     if (property.transactionType === "Sell" && property.negotiable !== undefined) {
                                         items.push({ label: "Price Negotiable", value: property.negotiable ? "Yes" : "Fixed Price", icon: IndianRupee });
                                     }
-                                    if (property.transactionType === "Rent") {
-                                        if (property.securityDeposit) {
-                                            items.push({ label: "Security Deposit", value: `₹${property.securityDeposit.toLocaleString()}`, icon: IndianRupee });
-                                        }
-                                        if (property.availableFrom) {
-                                            items.push({ label: "Available From", value: property.availableFrom, icon: Calendar });
-                                        }
+                                    if (property.transactionType === "Rent" && property.availableFrom) {
+                                        items.push({ label: "Available From", value: property.availableFrom, icon: Calendar });
                                     }
 
                                     return items.map((stat, i) => (
