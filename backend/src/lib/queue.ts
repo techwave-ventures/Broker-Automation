@@ -490,6 +490,7 @@ export async function handleWebhookProcess(payload: any) {
 
 export async function handleGeminiReply(payload: any) {
   const { conversationId, phoneNumberId, wabaId, senderNumber, userId, body, intentResult } = payload;
+  console.log(`📥 [GEMINI PROCESS] Starting reply generation for Conversation ID: ${conversationId}, Customer: ${senderNumber}, Input Message: "${body}"`);
 
   // Retrieve latest conversation state
   const convRes = await pool.query('SELECT * FROM conversations WHERE id = $1 LIMIT 1', [conversationId]);
@@ -632,55 +633,34 @@ export async function handleGeminiReply(payload: any) {
   // D & E. Save and Send bot messages sequentially
   for (let i = 0; i < messagesToSend.length; i++) {
     const msg: OutboundMessage = messagesToSend[i];
-    const botMessageId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
-
-    await saveMessage({
-      conversationId,
-      wabaId,
-      phoneNumberId,
-      messageId: botMessageId,
-      senderNumber: phoneNumberId,
-      recipientNumber: senderNumber,
-      senderType: 'bot',
-      messageType: msg.imageUrl ? 'image' : 'text',
-      body: msg.text,
-      direction: 'outbound',
-      status: 'sent',
-    });
+    console.log(`[GEMINI PROCESS] Sending outbound message ${i + 1}/${messagesToSend.length} to ${senderNumber} sequentially...`);
 
     if (msg.imageUrl) {
       try {
-        await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
-      } catch (imgErr) {
-        console.warn('⚠️ Failed to send image card, falling back to text:', imgErr);
-        try {
-          await enqueueJob('whatsapp_send', {
-            phoneNumberId,
-            accessToken,
-            destPhone: senderNumber,
-            messageContent: msg.text,
-            wabaId,
-          });
-        } catch {
-          await handleWhatsappSend({
-            phoneNumberId,
-            accessToken,
-            destPhone: senderNumber,
-            messageContent: msg.text,
-            wabaId,
-          });
+        console.log(`[GEMINI PROCESS] Transmitting image message with caption to Meta Graph API...`);
+        const result = await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
+        
+        if (result?.error) {
+          throw new Error(`Meta API Image Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
         }
-      }
-    } else {
-      try {
-        await enqueueJob('whatsapp_send', {
-          phoneNumberId,
-          accessToken,
-          destPhone: senderNumber,
-          messageContent: msg.text,
+
+        const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
+        await saveMessage({
+          conversationId,
           wabaId,
+          phoneNumberId,
+          messageId,
+          senderNumber: phoneNumberId,
+          recipientNumber: senderNumber,
+          senderType: 'bot',
+          messageType: 'image',
+          body: msg.text,
+          direction: 'outbound',
+          status: 'sent',
         });
-      } catch (queueErr: any) {
+        console.log(`[GEMINI PROCESS] Successfully saved and sent image message ${i + 1}`);
+      } catch (imgErr: any) {
+        console.warn(`[GEMINI PROCESS] Failed to send image, falling back to text. Error: ${imgErr.message}`);
         await handleWhatsappSend({
           phoneNumberId,
           accessToken,
@@ -689,6 +669,21 @@ export async function handleGeminiReply(payload: any) {
           wabaId,
         });
       }
+    } else {
+      console.log(`[GEMINI PROCESS] Transmitting text message to Meta Graph API...`);
+      await handleWhatsappSend({
+        phoneNumberId,
+        accessToken,
+        destPhone: senderNumber,
+        messageContent: msg.text,
+        wabaId,
+      });
+      console.log(`[GEMINI PROCESS] Successfully sent text message ${i + 1}`);
+    }
+
+    // Add a tiny sleep of 1 second between consecutive messages to ensure strict delivery order
+    if (i < messagesToSend.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 

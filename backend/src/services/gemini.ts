@@ -187,12 +187,14 @@ export async function generateAutoReply(
           },
         });
 
+        console.log(`📡 [GEMINI API] Attempting call to model gemini-2.5-flash (Attempt ${attempt}/${maxRetries}) for conversation ${conversationId}...`);
         const response = await model.generateContent({
           contents,
         }, {
           signal: abortController?.signal
         });
 
+        console.log(`📡 [GEMINI API] Received response from model for conversation ${conversationId}.`);
         const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!responseText) {
           console.warn('⚠️ [VERTEX AI] Empty response object received:', JSON.stringify(response));
