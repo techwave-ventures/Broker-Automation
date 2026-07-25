@@ -19,10 +19,12 @@ export function resolveNextState(
   );
 
   // 2. Enforce Slot-Filling Lock:
-  // If critical fields are missing, force stage to COLLECT_INFO (unless we are still in GREETING)
+  // If critical fields are missing, force stage to COLLECT_INFO (unless we are still in GREETING or transitioning to viewing/visit stages)
   if (missing.length > 0) {
-    if (currentState.stage !== 'GREETING' || nextStage !== 'GREETING') {
-      nextStage = 'COLLECT_INFO';
+    if (nextStage !== 'SITE_VISIT' && nextStage !== 'RECOMMENDING' && nextStage !== 'FOLLOW_UP') {
+      if (currentState.stage !== 'GREETING' || nextStage !== 'GREETING') {
+        nextStage = 'COLLECT_INFO';
+      }
     }
   } else {
     // If all slots are collected and we were collecting, transition to SEARCHING or RECOMMEND
