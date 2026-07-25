@@ -6,6 +6,7 @@ import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSqu
 interface Message {
   id: string;
   text: string;
+  imageUrl?: string;
   sender: "user" | "bot" | "agent";
   time: string;
 }
@@ -177,11 +178,10 @@ export default function ConversationsPage() {
                       prev.map((c) => (c.id === chat.id ? { ...c, unread: 0 } : c))
                     );
                   }}
-                  className={`p-4 border-b border-border/50 cursor-pointer transition-colors flex items-center gap-3 ${
-                    activeChatId === chat.id
-                      ? "bg-primary/5 border-l-4 border-l-primary"
-                      : "hover:bg-background"
-                  }`}
+                  className={`p-4 border-b border-border/50 cursor-pointer transition-colors flex items-center gap-3 ${activeChatId === chat.id
+                    ? "bg-primary/5 border-l-4 border-l-primary"
+                    : "hover:bg-background"
+                    }`}
                 >
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0 relative">
                     {chat.user.name[0]?.toUpperCase() || "C"}
@@ -195,20 +195,18 @@ export default function ConversationsPage() {
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-sm truncate">{chat.user.name}</h3>
                       <span
-                        className={`text-xs ${
-                          chat.unread > 0 ? "text-primary font-bold" : "text-foreground/40"
-                        }`}
+                        className={`text-xs ${chat.unread > 0 ? "text-primary font-bold" : "text-foreground/40"
+                          }`}
                       >
                         {chat.lastMessageTime}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-xs">
                       <span
-                        className={`flex items-center gap-1 px-1.5 py-[1px] rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${
-                          chat.status === "bot_active"
-                            ? "bg-blue-500/10 text-blue-600"
-                            : "bg-orange-500/10 text-orange-600"
-                        }`}
+                        className={`flex items-center gap-1 px-1.5 py-[1px] rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${chat.status === "bot_active"
+                          ? "bg-blue-500/10 text-blue-600"
+                          : "bg-orange-500/10 text-orange-600"
+                          }`}
                       >
                         {chat.status === "bot_active" ? (
                           <Bot className="h-2.5 w-2.5" />
@@ -243,11 +241,10 @@ export default function ConversationsPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={toggleAI}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${
-                    activeChat.status === "bot_active"
-                      ? "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
-                      : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${activeChat.status === "bot_active"
+                    ? "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
+                    : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
+                    }`}
                 >
                   {activeChat.status === "bot_active" ? (
                     <>
@@ -268,20 +265,31 @@ export default function ConversationsPage() {
                 activeChat.messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex flex-col ${
-                      msg.sender === "user" ? "items-start" : "items-end"
-                    }`}
+                    className={`flex flex-col ${msg.sender === "user" ? "items-start" : "items-end"
+                      }`}
                   >
                     <div
-                      className={`max-w-[75%] p-4 rounded-2xl text-sm whitespace-pre-wrap ${
-                        msg.sender === "user"
-                          ? "bg-muted border border-border text-foreground rounded-tl-sm"
-                          : msg.sender === "agent"
+                      className={`max-w-[75%] overflow-hidden rounded-2xl text-sm ${msg.sender === "user"
+                        ? "bg-muted border border-border text-foreground rounded-tl-sm"
+                        : msg.sender === "agent"
                           ? "bg-primary text-white rounded-tr-sm shadow-md"
                           : "bg-blue-600 text-white rounded-tr-sm shadow-md"
-                      }`}
+                        }`}
                     >
-                      {msg.text}
+                      {msg.imageUrl && (
+                        <div className="w-full bg-black/10 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={msg.imageUrl}
+                            alt="Property"
+                            className="w-full max-h-60 object-cover rounded-t-2xl hover:scale-105 transition-transform duration-300"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="p-4 whitespace-pre-wrap">{msg.text}</div>
                     </div>
                     <div className="flex items-center gap-1 mt-1 text-[11px] text-foreground/40 px-1">
                       <span>{msg.time}</span>

@@ -43,6 +43,7 @@ export interface Message {
   sender_type: 'customer' | 'bot' | 'agent';
   message_type: string;
   body: string;
+  image_url?: string;
   direction: 'inbound' | 'outbound';
   status: 'sent' | 'delivered' | 'read' | 'failed';
   error_message?: string;
@@ -91,6 +92,7 @@ export async function saveMessage(params: {
   senderType: 'customer' | 'bot' | 'agent';
   messageType?: string;
   body: string;
+  imageUrl?: string;
   direction: 'inbound' | 'outbound';
   status?: 'sent' | 'delivered' | 'read' | 'failed';
 }): Promise<Message> {
@@ -104,14 +106,15 @@ export async function saveMessage(params: {
     senderType,
     messageType = 'text',
     body,
+    imageUrl,
     direction,
     status = 'sent',
   } = params;
 
   const res = await pool.query(
     `INSERT INTO messages 
-      (conversation_id, waba_id, phone_number_id, message_id, sender_number, recipient_number, sender_type, message_type, body, direction, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      (conversation_id, waba_id, phone_number_id, message_id, sender_number, recipient_number, sender_type, message_type, body, image_url, direction, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
      ON CONFLICT (message_id) DO UPDATE 
      SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
      RETURNING *`,
@@ -125,6 +128,7 @@ export async function saveMessage(params: {
       senderType,
       messageType,
       body,
+      imageUrl || null,
       direction,
       status,
     ]

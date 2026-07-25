@@ -33,6 +33,47 @@ export async function getChats(req: AuthenticatedRequest, res: Response) {
 
     const conversations = conversationsRes.rows;
 
+    // Fetch all user properties to resolve images for existing recommendation messages containing property links
+    const propRes = await pool.query(`SELECT key, slug, image, images FROM properties`);
+    const propertyMapBySlug = new Map<string, string>();
+    const propertyMapByKey = new Map<string, string>();
+
+    for (const p of propRes.rows) {
+      let img = p.image || undefined;
+      if (!img && p.images) {
+        try {
+          const parsed = Array.isArray(p.images) ? p.images : JSON.parse(p.images || '[]');
+          if (parsed.length > 0 && parsed[0]) img = parsed[0];
+        } catch {
+          // ignore json parse error
+        }
+      }
+      if (img) {
+        if (p.slug) propertyMapBySlug.set(p.slug.toLowerCase(), img);
+        if (p.key) propertyMapByKey.set(String(p.key), img);
+      }
+    }
+
+    const extractImageUrl = (m: any): string | undefined => {
+      if (m.image_url) return m.image_url;
+      if (m.body && m.body.includes('/p/')) {
+        const match = m.body.match(/\/p\/([a-zA-Z0-9-]+)/);
+        if (match && match[1]) {
+          const slug = match[1].toLowerCase();
+          const imgFromSlug = propertyMapBySlug.get(slug);
+          if (imgFromSlug) return imgFromSlug;
+
+          // Try extracting the ID suffix from slug (e.g., property-name-locality-city-xxxx-8 => 8)
+          const keyMatch = slug.match(/-(\d+)$/);
+          if (keyMatch && keyMatch[1]) {
+            const imgFromKey = propertyMapByKey.get(keyMatch[1]);
+            if (imgFromKey) return imgFromKey;
+          }
+        }
+      }
+      return undefined;
+    };
+
     const chatsWithMessages = await Promise.all(
       conversations.map(async (conv) => {
         const msgRes = await pool.query(
@@ -43,6 +84,7 @@ export async function getChats(req: AuthenticatedRequest, res: Response) {
         const messages = msgRes.rows.map((m) => ({
           id: String(m.id || m.message_id),
           text: m.body || '',
+          imageUrl: extractImageUrl(m),
           sender: m.sender_type === 'customer' ? 'user' : m.sender_type === 'agent' ? 'agent' : 'bot',
           time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }));
@@ -100,9 +142,49 @@ export async function getChat(req: AuthenticatedRequest, res: Response) {
       [conv.id]
     );
 
+    const propRes = await pool.query(`SELECT key, slug, image, images FROM properties`);
+    const propertyMapBySlug = new Map<string, string>();
+    const propertyMapByKey = new Map<string, string>();
+
+    for (const p of propRes.rows) {
+      let img = p.image || undefined;
+      if (!img && p.images) {
+        try {
+          const parsed = Array.isArray(p.images) ? p.images : JSON.parse(p.images || '[]');
+          if (parsed.length > 0 && parsed[0]) img = parsed[0];
+        } catch {
+          // ignore json parse error
+        }
+      }
+      if (img) {
+        if (p.slug) propertyMapBySlug.set(p.slug.toLowerCase(), img);
+        if (p.key) propertyMapByKey.set(String(p.key), img);
+      }
+    }
+
+    const extractImageUrl = (m: any): string | undefined => {
+      if (m.image_url) return m.image_url;
+      if (m.body && m.body.includes('/p/')) {
+        const match = m.body.match(/\/p\/([a-zA-Z0-9-]+)/);
+        if (match && match[1]) {
+          const slug = match[1].toLowerCase();
+          const imgFromSlug = propertyMapBySlug.get(slug);
+          if (imgFromSlug) return imgFromSlug;
+
+          const keyMatch = slug.match(/-(\d+)$/);
+          if (keyMatch && keyMatch[1]) {
+            const imgFromKey = propertyMapByKey.get(keyMatch[1]);
+            if (imgFromKey) return imgFromKey;
+          }
+        }
+      }
+      return undefined;
+    };
+
     const messages = msgRes.rows.map((m) => ({
       id: String(m.id || m.message_id),
       text: m.body || '',
+      imageUrl: extractImageUrl(m),
       sender: m.sender_type === 'customer' ? 'user' : m.sender_type === 'agent' ? 'agent' : 'bot',
       time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }));

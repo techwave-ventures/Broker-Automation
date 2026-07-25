@@ -61,6 +61,7 @@ export async function initDatabase() {
       sender_type VARCHAR(20) DEFAULT 'customer',
       message_type VARCHAR(20) DEFAULT 'text',
       body TEXT,
+      image_url TEXT,
       direction VARCHAR(10),
       status VARCHAR(20) DEFAULT 'sent',
       error_message TEXT,
@@ -69,6 +70,7 @@ export async function initDatabase() {
     );
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS conversation_id BIGINT REFERENCES conversations(id) ON DELETE CASCADE;
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_type VARCHAR(20) DEFAULT 'customer';
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS image_url TEXT;
     `,
     `
     CREATE TABLE IF NOT EXISTS messaging_events (
@@ -212,7 +214,7 @@ export async function initDatabase() {
       const citySlug = clean(row.city || 'city');
       const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
       const slug = `${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${row.key}`;
-      
+
       await pool.query('UPDATE properties SET slug = $1 WHERE key = $2', [slug, row.key]);
     }
   } catch (err) {

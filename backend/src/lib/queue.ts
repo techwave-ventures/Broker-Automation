@@ -433,7 +433,7 @@ export async function handleWebhookProcess(payload: any) {
               "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
               [conversation.id]
             );
-            
+
             // Publish status update to Ably so dashboard UI refreshes
             await publishToChannel('get-started', 'webhook', {
               type: 'status_change',
@@ -558,7 +558,7 @@ export async function handleGeminiReply(payload: any) {
     // Resolve state machine transitions & recommendations
     const prevStage = conversation.ai_state.stage;
     const nextStateUpdates = resolveNextState(conversation.ai_state, intentResult, structuredRes);
-    
+
     // Add rolling summary and any newly extracted slots to database updates
     if (structuredRes.updated_rolling_summary) {
       nextStateUpdates.rolling_summary = structuredRes.updated_rolling_summary;
@@ -586,24 +586,24 @@ export async function handleGeminiReply(payload: any) {
 
           const newLead = await createLead(
             {
-              customerName:       conversation.customer_name || senderNumber,
-              customerPhone:      senderNumber,
-              requestedLocality:  aiState.locality || undefined,
-              budget:             aiState.budget || undefined,
-              otherReqs:          [
+              customerName: conversation.customer_name || senderNumber,
+              customerPhone: senderNumber,
+              requestedLocality: aiState.locality || undefined,
+              budget: aiState.budget || undefined,
+              otherReqs: [
                 aiState.property_type,
                 aiState.beds ? `${aiState.beds} BHK` : null,
                 aiState.furnishing,
               ].filter(Boolean).join(', ') || undefined,
               interestedPropertyId: firstRecommendedId,
-              appointmentDate:    structuredRes.appointmentDate || null,
-              status:             'Upcoming Visit',
-              leadScore:          'High',
+              appointmentDate: structuredRes.appointmentDate || null,
+              status: 'Upcoming Visit',
+              leadScore: 'High',
             },
             leadUserId
           );
 
-          await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => {});
+          await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => { });
           console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${newLead.key} for ${senderNumber}`);
         }
       } catch (leadErr) {
@@ -639,7 +639,7 @@ export async function handleGeminiReply(payload: any) {
       try {
         console.log(`[GEMINI PROCESS] Transmitting image message with caption to Meta Graph API...`);
         const result = await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);
-        
+
         if (result?.error) {
           throw new Error(`Meta API Image Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
         }
@@ -655,6 +655,7 @@ export async function handleGeminiReply(payload: any) {
           senderType: 'bot',
           messageType: 'image',
           body: msg.text,
+          imageUrl: msg.imageUrl,
           direction: 'outbound',
           status: 'sent',
         });
@@ -713,5 +714,5 @@ export async function handleGeminiReply(payload: any) {
         ],
       },
     ],
-  }).catch(() => {});
+  }).catch(() => { });
 }
