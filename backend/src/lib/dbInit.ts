@@ -190,6 +190,29 @@ export async function initDatabase() {
       "stage": "GREETING",
       "rolling_summary": ""
     }'::jsonb;
+    `,
+    `
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_type VARCHAR(50) DEFAULT 'free';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS credits_balance INTEGER DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_recharge_enabled BOOLEAN DEFAULT TRUE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_recharge_amount INTEGER DEFAULT 5000;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS cashfree_customer_id VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS cashfree_subscription_id VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'inactive';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMP;
+    `,
+    `
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS credits_charged INTEGER DEFAULT 0;
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS credit_transactions (
+      id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+      amount INTEGER NOT NULL,
+      transaction_type VARCHAR(50) NOT NULL,
+      description TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     `
   ];
 

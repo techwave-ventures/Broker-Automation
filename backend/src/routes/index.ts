@@ -17,6 +17,7 @@ import { leadsRouter } from './leads.js';
 import { chatsRouter } from './chats.js';
 import { botConfigsRouter } from './bot-configs.js';
 import { uploadRouter } from './upload.js';
+import { billingRouter } from './billing.js';
 
 export const apiRouter = Router();
 
@@ -38,3 +39,5 @@ apiRouter.use('/leads', leadsRouter);
 apiRouter.use('/chats', chatsRouter);
 apiRouter.use('/bot-configs', botConfigsRouter);
 apiRouter.use('/upload', uploadRouter);
+apiRouter.use('/billing', billingRouter);
+

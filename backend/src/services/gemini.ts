@@ -80,6 +80,8 @@ export interface GeminiStructuredResponse {
   updated_rolling_summary?: string;
 }
 
+import { pool } from '../lib/db.js';
+
 export async function generateAutoReply(
   instructions: string,
   history: { role: 'user' | 'model'; text: string }[],
@@ -99,6 +101,23 @@ export async function generateAutoReply(
     slots: {},
     updated_rolling_summary: aiState.rolling_summary || '',
   };
+
+  if (conversationId) {
+    const userRes = await pool.query(
+      `SELECT u.credits_balance 
+       FROM users u 
+       JOIN conversations c ON c.user_id = u.user_id 
+       WHERE c.id = $1 LIMIT 1`,
+      [conversationId]
+    );
+    if (userRes.rows.length > 0) {
+      const credits = userRes.rows[0].credits_balance ?? 0;
+      if (credits <= 0) {
+        console.warn(`⚠️ [CREDIT CHECK] Conversation ID ${conversationId} blocked due to insufficient credits (Balance: ${credits})`);
+        throw new Error('Insufficient credits to generate responses with Gemini.');
+      }
+    }
+  }
 
   if (!ai) {
     fallbackResponse.reply += ' (GCP Vertex AI is not configured. Please set GCP_PROJECT_ID in your env).';

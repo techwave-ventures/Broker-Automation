@@ -110,9 +110,79 @@ export async function handleUpdateRollingSummary(payload: any) {
   });
 }
 
+async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number, description: string) {
+  try {
+    // 1. Deduct credits
+    const updateRes = await pool.query(
+      `UPDATE users 
+       SET credits_balance = credits_balance - $1 
+       WHERE user_id = $2 
+       RETURNING credits_balance, auto_recharge_enabled, auto_recharge_amount, plan_type`,
+      [amount, userId]
+    );
+
+    if (updateRes.rows.length === 0) return;
+
+    const user = updateRes.rows[0];
+    const newBalance = user.credits_balance ?? 0;
+
+    // Log transaction
+    await pool.query(
+      `INSERT INTO credit_transactions (user_id, amount, transaction_type, description)
+       VALUES ($1, $2, 'message_charge', $3)`,
+      [userId, -amount, description]
+    );
+
+    // 2. Trigger Auto-Recharge if balance is below 200 and auto-recharge is enabled
+    if (newBalance < 200 && user.auto_recharge_enabled) {
+      const refillCredits = user.auto_recharge_amount || 5000;
+      console.log(`⚡ [AUTO-RECHARGE] Credit balance (${newBalance}) fell below 200 for user ${userId}. Initiating refill of ${refillCredits} credits.`);
+      
+      let rate = 1.00;
+      if (user.plan_type === 'custom') {
+        if (refillCredits >= 10000) rate = 0.80;
+        else rate = 0.90;
+      }
+      const chargeAmountINR = refillCredits * rate;
+
+      // Refill credits
+      await pool.query(
+        `UPDATE users SET credits_balance = credits_balance + $1 WHERE user_id = $2`,
+        [refillCredits, userId]
+      );
+
+      // Record transaction
+      await pool.query(
+        `INSERT INTO credit_transactions (user_id, amount, transaction_type, description)
+         VALUES ($1, $2, 'top_up', $3)`,
+        [userId, refillCredits, `Auto-recharge top-up: ${refillCredits} credits (Charged ₹${chargeAmountINR.toFixed(2)})`]
+      );
+      console.log(`⚡ [AUTO-RECHARGE SUCCESS] Refilled ${refillCredits} credits for user ${userId}.`);
+    }
+  } catch (err) {
+    console.error('❌ Error executing deductCreditsAndCheckAutoRecharge:', err);
+  }
+}
+
 // Handler functions for BullMQ Worker
 export async function handleWhatsappSend(payload: any) {
   const { phoneNumberId, accessToken, destPhone, messageContent, wabaId } = payload;
+
+  // Find owner user_id
+  let userId = 'local-dev';
+  if (wabaId) {
+    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+    if (wabaRes.rows[0]?.user_id) {
+      userId = wabaRes.rows[0].user_id;
+    }
+  }
+
+  // Verify credit balance
+  const userCheck = await pool.query('SELECT credits_balance FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+  if (userCheck.rows.length > 0 && (userCheck.rows[0].credits_balance ?? 0) <= 0) {
+    console.warn(`❌ [SEND BLOCKED] Outbound message to ${destPhone} blocked for user ${userId} due to insufficient credits.`);
+    throw new Error('Insufficient credits to send WhatsApp messages.');
+  }
 
   let result = await send(phoneNumberId, accessToken, destPhone, messageContent);
 
@@ -135,15 +205,6 @@ export async function handleWhatsappSend(payload: any) {
 
   const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
 
-  // Find owner user_id
-  let userId = 'local-dev';
-  if (wabaId) {
-    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
-    if (wabaRes.rows[0]?.user_id) {
-      userId = wabaRes.rows[0].user_id;
-    }
-  }
-
   const conversation = await findOrCreateConversation(userId, destPhone, undefined, phoneNumberId);
   await saveMessage({
     conversationId: conversation.id,
@@ -159,6 +220,11 @@ export async function handleWhatsappSend(payload: any) {
     status: 'sent',
   });
 
+  // Deduct 1 credit for outbound service message
+  const cost = 1;
+  await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound service window message');
+  await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
+
   console.log(`🤖 [ACKBOT AUTO-REPLY SENT] Sent to ${destPhone}: "${messageContent}"`);
   return result;
 }
@@ -173,7 +239,31 @@ export async function handleWhatsappTemplateSend(payload: any) {
     componentParams,
     bizOpaqueCallbackData,
     wabaId,
+    category,
   } = payload;
+
+  // Find owner user_id
+  let userId = 'local-dev';
+  if (wabaId) {
+    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+    if (wabaRes.rows[0]?.user_id) {
+      userId = wabaRes.rows[0].user_id;
+    }
+  }
+
+  // Determine cost
+  const isMarketing = String(category || '').toLowerCase() === 'marketing' || 
+                      String(templateName || '').toLowerCase().includes('marketing') ||
+                      String(templateName || '').toLowerCase().includes('promo') ||
+                      String(templateName || '').toLowerCase().includes('offer');
+  const cost = isMarketing ? 3 : 1;
+
+  // Verify credit balance
+  const userCheck = await pool.query('SELECT credits_balance FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+  if (userCheck.rows.length > 0 && (userCheck.rows[0].credits_balance ?? 0) < cost) {
+    console.warn(`❌ [TEMPLATE SEND BLOCKED] Outbound template to ${to} blocked for user ${userId} due to insufficient credits (Need ${cost}).`);
+    throw new Error(`Insufficient credits to send template message. Need ${cost} credits.`);
+  }
 
   let result = await sendTemplateMessage(
     phoneNumberId,
@@ -212,14 +302,6 @@ export async function handleWhatsappTemplateSend(payload: any) {
 
   const messageId = result?.messages?.[0]?.id || `out-temp-${Date.now()}`;
 
-  let userId = 'local-dev';
-  if (wabaId) {
-    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
-    if (wabaRes.rows[0]?.user_id) {
-      userId = wabaRes.rows[0].user_id;
-    }
-  }
-
   const conversation = await findOrCreateConversation(userId, to, undefined, phoneNumberId);
   await saveMessage({
     conversationId: conversation.id,
@@ -234,6 +316,14 @@ export async function handleWhatsappTemplateSend(payload: any) {
     direction: 'outbound',
     status: 'sent',
   });
+
+  // Deduct credits based on message type
+  await deductCreditsAndCheckAutoRecharge(
+    userId, 
+    cost, 
+    `Outbound template message (${isMarketing ? 'marketing' : 'utility'})`
+  );
+  await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
 
   return result;
 }
