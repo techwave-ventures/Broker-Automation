@@ -506,10 +506,10 @@ export async function handleGeminiReply(payload: any) {
 
   // A. Fetch recent message history (last 4 messages)
   const messagesRes = await pool.query(
-    'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT 4',
+    'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 16',
     [conversationId]
   );
-  const history = messagesRes.rows.map((row: any) => ({
+  const history = messagesRes.rows.reverse().map((row: any) => ({
     role: (row.sender_type === 'customer' ? 'user' : 'model') as 'user' | 'model',
     text: row.body
   }));
