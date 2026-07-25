@@ -50,10 +50,7 @@ export async function postWebhook(req: Request, res: Response) {
 
     const data = JSON.parse(rawBody) as WebhookPayloadModel;
 
-    console.log(`\n================================================================`);
-    console.log(`📥 [WEBHOOK EVENT RECEIVED] ${new Date().toISOString()}`);
-    console.log(JSON.stringify(data, null, 2));
-    console.log(`================================================================\n`);
+
 
     // Check if the payload contains any actual incoming user messages
     let hasMessages = false;
