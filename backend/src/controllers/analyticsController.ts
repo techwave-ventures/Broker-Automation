@@ -5,7 +5,11 @@ import { jsonError } from './http.js';
 
 export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
     try {
-        const userId = req.auth?.email;
+        const email = req.auth?.email;
+        // conversations.user_id may be stored as sub/user_id OR email depending on how the user was set up
+        const subId = req.auth?.user_id || req.auth?.sub || email;
+        const userId = email; // leads and properties always use email as user_id
+
         if (!userId) {
             return jsonError(res, 401, 'Unauthorized');
         }
@@ -21,7 +25,7 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
 
         // ─── KPI queries (this period + previous period) ─────────────────────────
 
-        // Total Leads
+        // Total Leads (leads always stored by email)
         const [totalLeadsThis, totalLeadsPrev] = await Promise.all([
             pool.query(
                 `SELECT COUNT(*) AS count FROM leads WHERE user_id = $1 AND created_at >= $2`,
@@ -49,15 +53,17 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
             ),
         ]);
 
-        // Total Conversations
+        // Total Conversations — match on BOTH sub/user_id AND email (conversations.user_id can be stored either way)
         const [totalConvsThis, totalConvsPrev] = await Promise.all([
             pool.query(
-                `SELECT COUNT(*) AS count FROM conversations WHERE user_id = $1 AND created_at >= $2`,
-                [userId, thisPeriodStart]
+                `SELECT COUNT(*) AS count FROM conversations
+         WHERE (user_id = $1 OR user_id = $2) AND last_message_at >= $3`,
+                [subId, email, thisPeriodStart]
             ),
             pool.query(
-                `SELECT COUNT(*) AS count FROM conversations WHERE user_id = $1 AND created_at >= $2 AND created_at < $3`,
-                [userId, prevPeriodStart, prevPeriodEnd]
+                `SELECT COUNT(*) AS count FROM conversations
+         WHERE (user_id = $1 OR user_id = $2) AND last_message_at >= $3 AND last_message_at < $4`,
+                [subId, email, prevPeriodStart, prevPeriodEnd]
             ),
         ]);
 
@@ -88,12 +94,12 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
         );
 
         const weeklyConvsRes = await pool.query(
-            `SELECT DATE(created_at) AS day, COUNT(*) AS count
+            `SELECT DATE(last_message_at) AS day, COUNT(*) AS count
        FROM conversations
-       WHERE user_id = $1 AND created_at >= NOW() - INTERVAL '7 days'
-       GROUP BY DATE(created_at)
+       WHERE (user_id = $1 OR user_id = $2) AND last_message_at >= NOW() - INTERVAL '7 days'
+       GROUP BY DATE(last_message_at)
        ORDER BY day ASC`,
-            [userId]
+            [subId, email]
         );
 
         // Build a day-keyed map for last 7 days
@@ -123,12 +129,12 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
         COUNT(DISTINCT c.id) AS conv_count
        FROM properties p
        LEFT JOIN leads l ON l.interested_property_id = p.key AND l.created_at >= $2
-       LEFT JOIN conversations c ON c.user_id = p.user_id AND c.created_at >= $2
+       LEFT JOIN conversations c ON (c.user_id = p.user_id OR c.user_id = $3) AND c.last_message_at >= $2
        WHERE p.user_id = $1
        GROUP BY p.key, p.title, p.locality, p.city
        ORDER BY lead_count DESC, conv_count DESC
        LIMIT 5`,
-            [userId, thisPeriodStart]
+            [userId, thisPeriodStart, subId]
         );
 
         // Helper to compute percentage change
