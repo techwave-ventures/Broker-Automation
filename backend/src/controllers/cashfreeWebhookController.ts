@@ -14,7 +14,12 @@ export async function postCashfreeWebhook(req: Request, res: Response) {
 
   const isVerified = verifyCashfreeSignature(rawBody, signature, timestamp);
   if (!isVerified) {
-    console.warn('⚠️ [CASHFREE WEBHOOK] Invalid signature verification failed');
+    console.warn('⚠️ [CASHFREE WEBHOOK] Invalid signature verification failed', {
+      signature,
+      timestamp,
+      rawBodyLength: rawBody.length,
+      rawBodyPreview: rawBody.substring(0, 100)
+    });
     return res.status(400).json({ error: 'Signature verification failed' });
   }
 
