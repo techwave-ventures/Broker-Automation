@@ -44,9 +44,9 @@ export function verifyCashfreeSignature(
     return false;
   }
 
-  const secret = env.CASHFREE_WEBHOOK_SECRET || env.CASHFREE_SECRET_KEY;
+  const secret = env.CASHFREE_SECRET_KEY;
   if (!secret) {
-    console.error('Cashfree secret key/webhook secret is not configured');
+    console.error('Cashfree secret key is not configured');
     return false;
   }
 

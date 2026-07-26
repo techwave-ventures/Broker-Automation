@@ -32,7 +32,6 @@ const envSchema = z.object({
   // Cashfree Subscriptions & Billing
   CASHFREE_APP_ID: z.string().optional(),
   CASHFREE_SECRET_KEY: z.string().optional(),
-  CASHFREE_WEBHOOK_SECRET: z.string().optional(),
   CASHFREE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
 });
 
