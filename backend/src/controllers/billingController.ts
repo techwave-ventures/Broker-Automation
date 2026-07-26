@@ -29,7 +29,7 @@ export async function getBillingStatus(req: AuthenticatedRequest, res: Response)
     if (user.subscription_status !== 'active' && user.cashfree_subscription_id) {
       try {
         const cfSub = await cashfreeFetch(`/subscriptions/${user.cashfree_subscription_id}`);
-        const cfStatus = String(cfSub.status || '').toUpperCase();
+        const cfStatus = String(cfSub.subscription_status || cfSub.status || '').toUpperCase();
         if (cfStatus === 'ACTIVE') {
           const planType = user.plan_type || 'standard';
           const newQuota = planType === 'custom' ? (user.auto_recharge_amount || 5000) : 3000;
