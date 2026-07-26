@@ -189,7 +189,7 @@ export default function PropertiesPage() {
                 {filtered.map((property) => (
                     <div
                         key={property.id}
-                        className="bg-card border border-border rounded-2xl border-b-4 border-b-transparent hover:border-b-primary/50 hover:shadow-xl hover:-translate-y-1 transition-all group block relative"
+                        className={`bg-card border border-border rounded-2xl border-b-4 border-b-transparent hover:border-b-primary/50 hover:shadow-xl hover:-translate-y-1 transition-all group block relative ${menuOpenId === property.id ? "z-30" : "z-0"}`}
                     >
                         {/* Image linked */}
                         <Link href={`/dashboard/properties/${property.id}`}>
@@ -218,11 +218,11 @@ export default function PropertiesPage() {
                         <div className="absolute top-[13.5rem] right-4 z-20">
                             {/* Backdrop for closing popover easily */}
                             {menuOpenId === property.id && (
-                                <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
+                                <div className="fixed inset-0 z-10" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(null); }} />
                             )}
                             <button
-                                onClick={(e) => { e.preventDefault(); setMenuOpenId(menuOpenId === property.id ? null : property.id) }}
-                                className="h-8 w-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted shadow-sm transition-all focus:outline-none"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpenId(menuOpenId === property.id ? null : property.id); }}
+                                className="h-8 w-8 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted shadow-sm transition-all focus:outline-none relative z-20"
                             >
                                 <MoreVertical className="h-4 w-4 text-foreground/70" />
                             </button>
@@ -230,35 +230,35 @@ export default function PropertiesPage() {
                             {/* Dropdown Menu */}
                             {menuOpenId === property.id && (
                                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-30 py-1.5 animate-in slide-in-from-top-2 fade-in">
-                                    <Link href={`/dashboard/properties/add`} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
+                                    <Link href={`/dashboard/properties/add`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
                                         <Edit2 className="h-4 w-4 text-foreground/50" /> Edit Property
                                     </Link>
 
                                     {property.status !== "Sold" && property.transactionType === "Sell" && (
-                                        <button onClick={() => setDialog({ type: 'Sold', propertyId: property.id })} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-red-600">
+                                        <button onClick={(e) => { e.stopPropagation(); setDialog({ type: 'Sold', propertyId: property.id }); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-red-600">
                                             <CheckCircle2 className="h-4 w-4" /> Mark as Sold
                                         </button>
                                     )}
 
                                     {property.status !== "Rented" && property.transactionType === "Rent" && (
-                                        <button onClick={() => setDialog({ type: 'Rented', propertyId: property.id })} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-blue-600">
+                                        <button onClick={(e) => { e.stopPropagation(); setDialog({ type: 'Rented', propertyId: property.id }); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-blue-600">
                                             <CheckCircle2 className="h-4 w-4" /> Mark as Rented
                                         </button>
                                     )}
 
                                     {property.status !== "Hidden" ? (
-                                        <button onClick={() => setDialog({ type: 'Hide', propertyId: property.id })} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
+                                        <button onClick={(e) => { e.stopPropagation(); setDialog({ type: 'Hide', propertyId: property.id }); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
                                             <EyeOff className="h-4 w-4 text-foreground/50" /> Hide Listing
                                         </button>
                                     ) : (
-                                        <button onClick={() => setDialog({ type: 'Republish', propertyId: property.id })} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-emerald-600">
+                                        <button onClick={(e) => { e.stopPropagation(); setDialog({ type: 'Republish', propertyId: property.id }); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left text-emerald-600">
                                             <Eye className="h-4 w-4" /> Publish Again
                                         </button>
                                     )}
 
                                     <div className="h-px w-full bg-border my-1.5" />
 
-                                    <button onClick={() => setDialog({ type: 'Delete', propertyId: property.id })} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-red-500/10 hover:text-red-600 font-medium w-full text-left text-red-500 transition-colors">
+                                    <button onClick={(e) => { e.stopPropagation(); setDialog({ type: 'Delete', propertyId: property.id }); }} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-red-500/10 hover:text-red-600 font-medium w-full text-left text-red-500 transition-colors">
                                         <Trash2 className="h-4 w-4" /> Delete Property
                                     </button>
                                 </div>
