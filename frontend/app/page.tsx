@@ -509,7 +509,7 @@ export default async function HomePage() {
             <p className="text-foreground/50 mt-4 text-lg">Start free. No hidden charges. Cancel anytime.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {PLANS.map((plan) => (
               <div
                 key={plan.name}
