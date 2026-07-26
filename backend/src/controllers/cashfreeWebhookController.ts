@@ -85,9 +85,9 @@ export async function postCashfreeWebhook(req: Request, res: Response) {
       }
 
       case 'SUBSCRIPTION_PAYMENT_SUCCESS': {
-        const subId = payload.cf_subscriptionId;
+        const subId = payload.cf_subscriptionId || payload.data?.subscription?.subscription_id || payload.data?.subscription?.cf_subscription_id;
         if (!subId) {
-          console.warn('\u26a0\ufe0f [CASHFREE WEBHOOK] No subscription ID in payment success event');
+          console.warn('⚠️ [CASHFREE WEBHOOK] No subscription ID in payment success event');
           break;
         }
 
@@ -131,16 +131,16 @@ export async function postCashfreeWebhook(req: Request, res: Response) {
             [newQuota, currentEnd, userId]
           );
 
-          console.log(`\u2705 [CASHFREE WEBHOOK] Subscription ${subId} charged. User: ${userId} credited with ${newQuota} credits.`);
+          console.log(`✅ [CASHFREE WEBHOOK] Subscription ${subId} charged. User: ${userId} credited with ${newQuota} credits.`);
         } else {
-          console.warn(`\u26a0\ufe0f [CASHFREE WEBHOOK] Subscription ID ${subId} not found in database.`);
+          console.warn(`⚠️ [CASHFREE WEBHOOK] Subscription ID ${subId} not found in database.`);
         }
         break;
       }
 
       case 'SUBSCRIPTION_STATUS_CHANGE': {
-        const subId = payload.cf_subscriptionId;
-        const status = payload.cf_status;
+        const subId = payload.cf_subscriptionId || payload.data?.subscription?.subscription_id || payload.data?.subscription?.cf_subscription_id;
+        const status = String(payload.cf_status || payload.data?.subscription?.status || '').toUpperCase();
         if (!subId) {
           break;
         }
@@ -153,7 +153,7 @@ export async function postCashfreeWebhook(req: Request, res: Response) {
              WHERE cashfree_subscription_id = $1`,
             [subId]
           );
-          console.log(`\u274c [CASHFREE WEBHOOK] Subscription ${subId} updated to inactive due to status: ${status}.`);
+          console.log(`❌ [CASHFREE WEBHOOK] Subscription ${subId} updated to inactive due to status: ${status}.`);
         }
         break;
       }

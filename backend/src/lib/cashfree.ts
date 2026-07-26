@@ -17,7 +17,7 @@ export async function cashfreeFetch(path: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {
     'x-client-id': appId,
     'x-client-secret': secretKey,
-    'x-api-version': '2023-08-01',
+    'x-api-version': '2025-01-01',
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> || {}),
   };
@@ -41,13 +41,13 @@ export function verifyCashfreeSignature(
   timestamp: string | undefined
 ): boolean {
   if (!signature || !timestamp) {
-    return env.CASHFREE_ENV === 'sandbox';
+    return false;
   }
 
   const secret = env.CASHFREE_WEBHOOK_SECRET || env.CASHFREE_SECRET_KEY;
   if (!secret) {
     console.error('Cashfree secret key/webhook secret is not configured');
-    return env.CASHFREE_ENV === 'sandbox';
+    return false;
   }
 
   try {
@@ -56,14 +56,9 @@ export function verifyCashfreeSignature(
       .createHmac('sha256', secret)
       .update(signStr)
       .digest('base64');
-    const isValid = generated === signature;
-    if (!isValid && env.CASHFREE_ENV === 'sandbox') {
-      console.warn('⚠️ [CASHFREE WEBHOOK] Signature mismatch. Bypassing verification in sandbox environment.');
-      return true;
-    }
-    return isValid;
+    return generated === signature;
   } catch (err) {
     console.error('Error verifying Cashfree signature:', err);
-    return env.CASHFREE_ENV === 'sandbox';
+    return false;
   }
 }

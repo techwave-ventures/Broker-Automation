@@ -14,13 +14,61 @@ export async function getBillingStatus(req: AuthenticatedRequest, res: Response)
   try {
     const userRes = await pool.query(
       `SELECT plan_type, credits_balance, auto_recharge_enabled, auto_recharge_amount, 
-              subscription_status, current_period_end 
+              subscription_status, current_period_end, cashfree_subscription_id 
        FROM users WHERE user_id = $1 LIMIT 1`,
       [userId]
     );
 
     if (userRes.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    let user = userRes.rows[0];
+
+    // If subscription is not active in DB, check and sync from Cashfree directly as a fallback
+    if (user.subscription_status !== 'active' && user.cashfree_subscription_id) {
+      try {
+        const cfSub = await cashfreeFetch(`/subscriptions/${user.cashfree_subscription_id}`);
+        const cfStatus = String(cfSub.status || '').toUpperCase();
+        if (cfStatus === 'ACTIVE') {
+          const planType = user.plan_type || 'standard';
+          const newQuota = planType === 'custom' ? (user.auto_recharge_amount || 5000) : 3000;
+          const oldBalance = user.credits_balance || 0;
+
+          // Clear remaining old credits
+          if (oldBalance > 0) {
+            await pool.query(
+              `INSERT INTO credit_transactions (user_id, amount, transaction_type, description)
+               VALUES ($1, $2, 'monthly_expire', $3)`,
+              [userId, -oldBalance, `Expired ${oldBalance} unused credits from previous cycle`]
+            );
+          }
+
+          // Grant fresh credits
+          await pool.query(
+            `INSERT INTO credit_transactions (user_id, amount, transaction_type, description)
+             VALUES ($1, $2, 'subscription_grant', $3)`,
+            [userId, newQuota, `Monthly subscription credit grant for ${planType} plan`]
+          );
+
+          // Update user status and retrieve updated record
+          const currentEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          const updateRes = await pool.query(
+            `UPDATE users 
+             SET credits_balance = $1, subscription_status = 'active', current_period_end = $2, updated_at = CURRENT_TIMESTAMP 
+             WHERE user_id = $3
+             RETURNING plan_type, credits_balance, auto_recharge_enabled, auto_recharge_amount, subscription_status, current_period_end, cashfree_subscription_id`,
+            [newQuota, currentEnd, userId]
+          );
+
+          if (updateRes.rows.length > 0) {
+            user = updateRes.rows[0];
+          }
+          console.log(`✅ [BILLING] Sync-activated subscription ${user.cashfree_subscription_id} for User ${userId}.`);
+        }
+      } catch (cfErr: any) {
+        console.warn(`⚠️ [BILLING] Failed to sync subscription status from Cashfree:`, cfErr.message);
+      }
     }
 
     const txRes = await pool.query(
@@ -32,7 +80,7 @@ export async function getBillingStatus(req: AuthenticatedRequest, res: Response)
     );
 
     return res.json({
-      status: userRes.rows[0],
+      status: user,
       transactions: txRes.rows,
       cashfreeAppId: env.CASHFREE_APP_ID,
       cashfreeEnv: env.CASHFREE_ENV,
