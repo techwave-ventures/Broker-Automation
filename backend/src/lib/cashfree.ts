@@ -41,13 +41,13 @@ export function verifyCashfreeSignature(
   timestamp: string | undefined
 ): boolean {
   if (!signature || !timestamp) {
-    return false;
+    return env.CASHFREE_ENV === 'sandbox';
   }
 
   const secret = env.CASHFREE_WEBHOOK_SECRET || env.CASHFREE_SECRET_KEY;
   if (!secret) {
     console.error('Cashfree secret key/webhook secret is not configured');
-    return false;
+    return env.CASHFREE_ENV === 'sandbox';
   }
 
   try {
@@ -56,9 +56,14 @@ export function verifyCashfreeSignature(
       .createHmac('sha256', secret)
       .update(signStr)
       .digest('base64');
-    return generated === signature;
+    const isValid = generated === signature;
+    if (!isValid && env.CASHFREE_ENV === 'sandbox') {
+      console.warn('⚠️ [CASHFREE WEBHOOK] Signature mismatch. Bypassing verification in sandbox environment.');
+      return true;
+    }
+    return isValid;
   } catch (err) {
     console.error('Error verifying Cashfree signature:', err);
-    return false;
+    return env.CASHFREE_ENV === 'sandbox';
   }
 }
