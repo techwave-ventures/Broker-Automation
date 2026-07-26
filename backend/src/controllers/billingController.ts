@@ -85,6 +85,10 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ error: 'Subscription is already active' });
     }
 
+    const { autoRechargeAmount, autoRechargeThreshold } = req.body as any;
+    const refillAmount = typeof autoRechargeAmount === 'number' ? autoRechargeAmount : 5000;
+    const refillThreshold = typeof autoRechargeThreshold === 'number' ? autoRechargeThreshold : 200;
+
     const subscriptionId = `sub_${userId.substring(0, 8)}_${Date.now()}`;
     const payload = {
       subscription_id: subscriptionId,
@@ -112,12 +116,17 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
       body: JSON.stringify(payload),
     });
 
-    // Save subscription ID to DB
+    // Save subscription ID & auto recharge configurations to DB
     await pool.query(
       `UPDATE users 
-       SET cashfree_subscription_id = $1, plan_type = 'standard', updated_at = CURRENT_TIMESTAMP 
-       WHERE user_id = $2`,
-      [subscriptionId, userId]
+       SET cashfree_subscription_id = $1, 
+           plan_type = 'standard', 
+           auto_recharge_enabled = true, 
+           auto_recharge_amount = $2, 
+           auto_recharge_threshold = $3, 
+           updated_at = CURRENT_TIMESTAMP 
+       WHERE user_id = $4`,
+      [subscriptionId, refillAmount, refillThreshold, userId]
     );
 
     return res.json({

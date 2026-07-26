@@ -200,6 +200,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS cashfree_subscription_id VARCHAR(100);
     ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'inactive';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMP;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_recharge_threshold INTEGER DEFAULT 200;
     `,
     `
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS credits_charged INTEGER DEFAULT 0;

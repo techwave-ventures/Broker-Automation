@@ -38,6 +38,10 @@ export default function SubscriptionPage() {
   const [autoRechargeEnabled, setAutoRechargeEnabled] = useState(true);
   const [autoRechargeAmount, setAutoRechargeAmount] = useState(5000);
 
+  // Upgrade form auto recharge states
+  const [upgradeAutoRechargeAmount, setUpgradeAutoRechargeAmount] = useState(5000);
+  const [upgradeAutoRechargeThreshold, setUpgradeAutoRechargeThreshold] = useState(200);
+
   // Load Cashfree Script
   const loadCashfreeScript = () => {
     return new Promise((resolve) => {
@@ -130,6 +134,10 @@ export default function SubscriptionPage() {
           "Authorization": "Bearer local-dev",
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          autoRechargeAmount: upgradeAutoRechargeAmount,
+          autoRechargeThreshold: upgradeAutoRechargeThreshold,
+        }),
       });
 
       const data = await response.json();
@@ -321,11 +329,42 @@ export default function SubscriptionPage() {
               </div>
               <div className="text-2xl font-extrabold text-foreground">₹2,999<span className="text-xs font-normal text-foreground/60"> / month</span></div>
               
-              <ul className="space-y-2 text-sm text-foreground/80 pt-2">
+              <ul className="space-y-2 text-sm text-foreground/80 pt-2 pb-2">
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> 3,000 credits included monthly (expire monthly)</li>
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Standard extra top-ups at ₹1.00 / credit</li>
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Full access to bot configs & templates</li>
               </ul>
+              
+              <div className="pt-4 border-t border-border/80 space-y-3">
+                <p className="text-xs font-bold text-foreground/75 uppercase tracking-wider">Configure Auto-Refill (Autopay)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-semibold text-foreground/50 block mb-1">Refill Credit Amount</label>
+                    <select
+                      value={upgradeAutoRechargeAmount}
+                      onChange={(e) => setUpgradeAutoRechargeAmount(parseInt(e.target.value, 10))}
+                      className="w-full bg-background border border-border rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary"
+                    >
+                      <option value={1000}>1,000 Credits (₹1,000)</option>
+                      <option value={3000}>3,000 Credits (₹3,000)</option>
+                      <option value={5000}>5,000 Credits (₹4,500)</option>
+                      <option value={10000}>10,000 Credits (₹8,000)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-semibold text-foreground/50 block mb-1">Trigger Threshold</label>
+                    <select
+                      value={upgradeAutoRechargeThreshold}
+                      onChange={(e) => setUpgradeAutoRechargeThreshold(parseInt(e.target.value, 10))}
+                      className="w-full bg-background border border-border rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary"
+                    >
+                      <option value={100}>Below 100 cr.</option>
+                      <option value={200}>Below 200 cr.</option>
+                      <option value={500}>Below 500 cr.</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

@@ -2,6 +2,7 @@ import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import { env } from '../config/env.js';
 import { pool } from './db.js';
+import { cashfreeFetch } from './cashfree.js';
 import {
   send,
   sendTemplateMessage,
@@ -117,7 +118,7 @@ async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number,
       `UPDATE users 
        SET credits_balance = credits_balance - $1 
        WHERE user_id = $2 
-       RETURNING credits_balance, auto_recharge_enabled, auto_recharge_amount, plan_type`,
+       RETURNING credits_balance, auto_recharge_enabled, auto_recharge_amount, auto_recharge_threshold, cashfree_subscription_id, plan_type`,
       [amount, userId]
     );
 
@@ -133,10 +134,12 @@ async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number,
       [userId, -amount, description]
     );
 
-    // 2. Trigger Auto-Recharge if balance is below 200 and auto-recharge is enabled
-    if (newBalance < 200 && user.auto_recharge_enabled) {
+    const threshold = typeof user.auto_recharge_threshold === 'number' ? user.auto_recharge_threshold : 200;
+
+    // 2. Trigger Auto-Recharge if balance is below threshold and auto-recharge is enabled
+    if (newBalance < threshold && user.auto_recharge_enabled) {
       const refillCredits = user.auto_recharge_amount || 5000;
-      console.log(`⚡ [AUTO-RECHARGE] Credit balance (${newBalance}) fell below 200 for user ${userId}. Initiating refill of ${refillCredits} credits.`);
+      console.log(`⚡ [AUTO-RECHARGE] Credit balance (${newBalance}) fell below threshold (${threshold}) for user ${userId}. Initiating refill of ${refillCredits} credits.`);
       
       let rate = 1.00;
       if (user.plan_type === 'custom') {
@@ -144,6 +147,24 @@ async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number,
         else rate = 0.90;
       }
       const chargeAmountINR = refillCredits * rate;
+
+      // Charge Cashfree Subscription if ID is present
+      if (user.cashfree_subscription_id) {
+        try {
+          const chargePayload = {
+            amount: chargeAmountINR,
+            charge_id: `auto_${userId.substring(0, 8)}_${Date.now()}`,
+            scheduled_date: new Date().toISOString().split('T')[0],
+          };
+          await cashfreeFetch(`/subscriptions/${user.cashfree_subscription_id}/charge`, {
+            method: 'POST',
+            body: JSON.stringify(chargePayload),
+          });
+          console.log(`⚡ [AUTO-RECHARGE CASHFREE SUCCESS] Charged ₹${chargeAmountINR} for subscription ${user.cashfree_subscription_id}`);
+        } catch (cfErr: any) {
+          console.error(`❌ [AUTO-RECHARGE CASHFREE FAILED] Failed to charge saved payment method:`, cfErr.message);
+        }
+      }
 
       // Refill credits
       await pool.query(
