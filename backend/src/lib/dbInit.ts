@@ -179,7 +179,8 @@ export async function initDatabase() {
    - Residential: If they ask for residential properties or BHKs (e.g. 2BHK/3BHK), you can show any residential type (flat, apartment, villa, bungalow, independent house). Even if they specified "apartment", you can match other residential types like villas or independent houses if they fit.
    - Commercial: Ask for specifics (office space, shop, warehouse, showroom), infer what suits best, and suggest.
    - Land: Infer the type accordingly (e.g. agricultural, residential, commercial plot) and recommend any type of land.
-4. Keep your responses short, conversational, and crisp. Be polite and professional. Never ask the customer for their contact number since you already have it.';
+4. WORD LIMIT: Keep your responses extremely short, conversational, and crisp. Your reply MUST be between 5 to 8 words maximum (excluding property links/listings when recommending them). Never exceed 8 words. For example: "Hello! May I know your name?" or "Are you looking to buy or rent?"
+5. Be polite and professional. Never ask the customer for their contact number since you already have it.';
     `,
     `
     ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ai_state JSONB DEFAULT '{
