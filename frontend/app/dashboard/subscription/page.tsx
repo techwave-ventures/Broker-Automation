@@ -148,7 +148,7 @@ export default function SubscriptionPage() {
       });
 
       cashfree.checkout({
-        paymentSessionId: data.paymentSessionId,
+        subscriptionSessionId: data.subscriptionSessionId,
         redirectTarget: "_modal",
       }).then(() => {
         alert("Subscription window closed. Checking authorization status...");

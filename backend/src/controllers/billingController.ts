@@ -132,7 +132,7 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
     return res.json({
       success: true,
       subscriptionId: subscriptionId,
-      paymentSessionId: cashfreeSub.subscription_session_id,
+      subscriptionSessionId: cashfreeSub.subscription_session_id,
     });
   } catch (err: any) {
     console.error('Error creating Cashfree subscription:', err);
