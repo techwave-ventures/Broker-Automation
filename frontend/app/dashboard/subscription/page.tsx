@@ -147,8 +147,8 @@ export default function SubscriptionPage() {
         mode: cashfreeEnv === "production" ? "production" : "sandbox",
       });
 
-      cashfree.checkout({
-        subscriptionSessionId: data.subscriptionSessionId,
+      cashfree.subscriptionsCheckout({
+        subsSessionId: data.subscriptionSessionId,
         redirectTarget: "_modal",
       }).then(() => {
         alert("Subscription window closed. Checking authorization status...");
