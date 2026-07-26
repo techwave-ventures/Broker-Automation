@@ -24,7 +24,8 @@ import {
     Camera,
     Save,
     ChevronDown,
-    Loader2
+    Loader2,
+    Edit2
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -172,10 +173,13 @@ export default function PropertyDetailPage() {
                     </Link>
 
                     <div className="flex items-center gap-2">
-                        <button onClick={handleShare} className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-foreground/10 transition-colors">
+                        <Link href={`/dashboard/properties/edit/${property.id}`} className="h-9 px-3.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1.5 text-xs font-semibold transition-colors">
+                            <Edit2 className="h-3.5 w-3.5" /> Edit Property
+                        </Link>
+                        <button onClick={handleShare} className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-foreground/10 transition-colors" title="Share property">
                             <Share2 className="h-4 w-4 text-foreground/70" />
                         </button>
-                        <button className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-red-500/10 hover:text-red-500 transition-colors group">
+                        <button className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-red-500/10 hover:text-red-500 transition-colors group" title="Favorite">
                             <Heart className="h-4 w-4 text-foreground/70 group-hover:text-red-500 transition-colors" />
                         </button>
                     </div>

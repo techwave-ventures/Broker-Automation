@@ -223,6 +223,59 @@ export const addProperty = async (prop: Omit<Property, "id">): Promise<void> => 
     }
 };
 
+export const updateProperty = async (id: string, prop: Partial<Property>): Promise<void> => {
+    try {
+        const backendPayload = {
+            ...(prop.title !== undefined && { title: prop.title }),
+            ...(prop.description !== undefined && { description: prop.description }),
+            ...(prop.transactionType !== undefined && { transaction_type: prop.transactionType }),
+            ...(prop.expectedPrice !== undefined && { expected_price: prop.expectedPrice }),
+            ...(prop.negotiable !== undefined && { negotiable: prop.negotiable }),
+            ...(prop.monthlyRent !== undefined && { monthly_rent: prop.monthlyRent }),
+            ...(prop.securityDeposit !== undefined && { security_deposit: prop.securityDeposit }),
+            ...(prop.availableFrom !== undefined && { available_from: prop.availableFrom }),
+            ...(prop.category !== undefined && { category: prop.category }),
+            ...(prop.type !== undefined && { type: prop.type }),
+            ...(prop.city !== undefined && { city: prop.city }),
+            ...(prop.locality !== undefined && { locality: prop.locality }),
+            ...(prop.fullAddress !== undefined && { full_address: prop.fullAddress }),
+            ...(prop.image !== undefined && { image: prop.image }),
+            ...(prop.images !== undefined && { images: prop.images }),
+            ...(prop.builtUpArea !== undefined && { built_up_area: prop.builtUpArea }),
+            ...(prop.plotArea !== undefined && { plot_area: prop.plotArea }),
+            ...(prop.furnishing !== undefined && { furnishing: prop.furnishing }),
+            ...(prop.parking !== undefined && { parking: prop.parking }),
+            ...(prop.status !== undefined && { status: prop.status }),
+            ...(prop.beds !== undefined && { beds: prop.beds }),
+            ...(prop.baths !== undefined && { baths: prop.baths }),
+            ...(prop.propertyAge !== undefined && { property_age: prop.propertyAge }),
+            ...(prop.readyToMove !== undefined && { ready_to_move: prop.readyToMove }),
+            ...(prop.floorNumber !== undefined && { floor_number: prop.floorNumber }),
+            ...(prop.totalFloors !== undefined && { total_floors: prop.totalFloors }),
+            ...(prop.garden !== undefined && { garden: prop.garden }),
+            ...(prop.washrooms !== undefined && { washrooms: prop.washrooms }),
+            ...(prop.plotWidth !== undefined && { plot_width: prop.plotWidth }),
+            ...(prop.plotLength !== undefined && { plot_length: prop.plotLength }),
+            ...(prop.cornerPlot !== undefined && { corner_plot: prop.cornerPlot }),
+            ...(prop.amenities !== undefined && { amenities: prop.amenities }),
+            ...(prop.otherAmenities !== undefined && { other_amenities: prop.otherAmenities }),
+        };
+
+        const res = await fetch(`/api/properties/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(backendPayload),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.message || "Failed to update property");
+        }
+    } catch (e) {
+        console.error("Failed to update property:", e);
+        throw e;
+    }
+};
+
 export const updatePropertyStatus = async (id: string, status: string): Promise<void> => {
     try {
         const res = await fetch(`/api/properties/${id}`, {

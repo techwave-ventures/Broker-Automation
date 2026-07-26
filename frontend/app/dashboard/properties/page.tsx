@@ -230,7 +230,7 @@ export default function PropertiesPage() {
                             {/* Dropdown Menu */}
                             {menuOpenId === property.id && (
                                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-30 py-1.5 animate-in slide-in-from-top-2 fade-in">
-                                    <Link href={`/dashboard/properties/add`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
+                                    <Link href={`/dashboard/properties/edit/${property.id}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted font-medium w-full text-left">
                                         <Edit2 className="h-4 w-4 text-foreground/50" /> Edit Property
                                     </Link>
 
