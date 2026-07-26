@@ -196,7 +196,7 @@ export default function PropertiesPage() {
                             <div className="relative h-48 overflow-hidden rounded-t-2xl">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                    src={property.image || null}
+                                    src={property.image || undefined}
                                     alt={property.title}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                                 />
