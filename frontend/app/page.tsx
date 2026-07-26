@@ -190,18 +190,13 @@ const TESTIMONIALS = [
 
 const PLANS = [
   {
-    name: "Starter", price: "₹999", description: "Perfect for individual agents",
-    features: ["5 property listings", "100 AI conversations/mo", "WhatsApp bot", "Basic analytics", "Email support"],
-    cta: "Get Started Free", highlighted: false,
+    name: "Standard Plan", price: "₹2,999", description: "For active agents & agencies", badge: "Most Popular",
+    features: ["50 property listings", "3,000 credits included monthly", "WhatsApp + Website bot", "Standard extra top-ups at ₹1.00", "Auto-schedule viewings", "Priority support"],
+    cta: "Upgrade to Standard", highlighted: true,
   },
   {
-    name: "Pro", price: "₹2,499", description: "For growing agencies", badge: "Most Popular",
-    features: ["50 property listings", "Unlimited conversations", "WhatsApp + Website bot", "Advanced analytics", "Lead scoring", "Auto-schedule viewings", "Priority support"],
-    cta: "Start Pro Trial", highlighted: true,
-  },
-  {
-    name: "Enterprise", price: "₹7,499", description: "For large real estate orgs",
-    features: ["Unlimited listings", "Unlimited conversations", "All channels", "Custom bot training", "CRM integrations", "5 team accounts", "Dedicated manager"],
+    name: "Enterprise", price: "Custom", description: "For large real estate networks",
+    features: ["Unlimited listings", "Custom volume credits", "All messaging channels", "Custom bot training", "CRM integrations", "Dedicated account manager"],
     cta: "Contact Sales", highlighted: false,
   },
 ];
