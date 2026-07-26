@@ -197,6 +197,27 @@ export interface PropertyOption {
   locality: string;
 }
 
+export interface AnalyticsData {
+  kpis: {
+    totalLeads: { value: number; change: string; up: boolean };
+    qualifiedLeads: { value: number; change: string; up: boolean };
+    totalConversations: { value: number; change: string; up: boolean };
+    viewingsScheduled: { value: number; change: string; up: boolean };
+  };
+  weeklyData: { day: string; leads: number; conversations: number }[];
+  topProperties: { name: string; leads: number; conv: number; rate: string }[];
+}
+
+export async function fetchAnalytics(): Promise<AnalyticsData | null> {
+  try {
+    const res = await fetch('/api/analytics');
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchPropertiesMinimal(): Promise<PropertyOption[]> {
   try {
     const res = await fetch("/api/properties");
@@ -204,10 +225,10 @@ export async function fetchPropertiesMinimal(): Promise<PropertyOption[]> {
     const data = await res.json();
     return Array.isArray(data)
       ? data.map((p: { key: string | number; title: string; locality: string }) => ({
-          id: String(p.key),
-          title: p.title,
-          locality: p.locality,
-        }))
+        id: String(p.key),
+        title: p.title,
+        locality: p.locality,
+      }))
       : [];
   } catch {
     return [];
