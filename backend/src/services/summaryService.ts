@@ -30,11 +30,24 @@ Instructions:
 `;
 
   try {
-    const model = ai.preview.getGenerativeModel({
+    console.log('📡 [SUMMARY DEBUG] Checking Vertex AI Instance:', {
+      hasAi: !!ai,
+      aiKeys: ai ? Object.keys(ai) : [],
+      hasPreview: !!(ai as any).preview,
+      previewKeys: (ai as any).preview ? Object.keys((ai as any).preview) : []
+    });
+
+    const model = (ai as any).preview.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.3,
       },
+    });
+
+    console.log('📡 [SUMMARY DEBUG] Generative Model resolved:', {
+      hasModel: !!model,
+      modelType: typeof model,
+      modelKeys: model ? Object.keys(model) : []
     });
 
     const response = await model.generateContent({
