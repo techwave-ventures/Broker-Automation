@@ -1,6 +1,6 @@
 import type { Property } from "./properties";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3001";
+const BACKEND_URL = process.env.BACKEND_URL;
 
 async function safeJsonParse(res: Response) {
   try {

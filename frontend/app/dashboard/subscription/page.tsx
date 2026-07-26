@@ -59,8 +59,7 @@ export default function SubscriptionPage() {
 
   const fetchBillingData = async () => {
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const response = await fetch(`${backendUrl}/api/billing/status`, {
+      const response = await fetch('/api/billing/status', {
         headers: {
           // In local dev, requireAuth is bypassed or uses local-dev session
           "Authorization": "Bearer local-dev",
@@ -127,8 +126,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const response = await fetch(`${backendUrl}/api/billing/subscribe`, {
+      const response = await fetch('/api/billing/subscribe', {
         method: "POST",
         headers: {
           "Authorization": "Bearer local-dev",
@@ -179,8 +177,7 @@ export default function SubscriptionPage() {
         return;
       }
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const response = await fetch(`${backendUrl}/api/billing/topup`, {
+      const response = await fetch('/api/billing/topup', {
         method: "POST",
         headers: {
           "Authorization": "Bearer local-dev",
@@ -217,8 +214,7 @@ export default function SubscriptionPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      const response = await fetch(`${backendUrl}/api/billing/auto-recharge/settings`, {
+      const response = await fetch('/api/billing/auto-recharge/settings', {
         method: "POST",
         headers: {
           "Authorization": "Bearer local-dev",
