@@ -770,6 +770,12 @@ export async function handleGeminiReply(payload: any) {
           direction: 'outbound',
           status: 'sent',
         });
+        
+        // Deduct 1 credit for outbound image message
+        const cost = 1;
+        await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound image message');
+        await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
+
         console.log(`[GEMINI PROCESS] Successfully saved and sent image message ${i + 1}`);
       } catch (imgErr: any) {
         console.warn(`[GEMINI PROCESS] Failed to send image, falling back to text. Error: ${imgErr.message}`);
