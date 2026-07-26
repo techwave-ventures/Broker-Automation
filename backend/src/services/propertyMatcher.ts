@@ -3,26 +3,7 @@ import { ConversationAIState } from '../models/conversationModel.js';
 
 export function parseBudgetString(budgetStr: string): number | null {
   if (!budgetStr) return null;
-  const clean = budgetStr.toLowerCase().replace(/[^0-9.kcrlah\s]/g, '').trim();
-  
-  // check for Cr
-  if (clean.includes('cr')) {
-    const val = parseFloat(clean.replace('cr', '').trim());
-    return isNaN(val) ? null : val * 10000000;
-  }
-  
-  // check for lakh / lac / l
-  if (clean.includes('lakh') || clean.includes('lac') || clean.endsWith('l')) {
-    const val = parseFloat(clean.replace(/(lakh|lac|l)/g, '').trim());
-    return isNaN(val) ? null : val * 100000;
-  }
-
-  // check for k
-  if (clean.endsWith('k')) {
-    const val = parseFloat(clean.slice(0, -1).trim());
-    return isNaN(val) ? null : val * 1000;
-  }
-
+  const clean = budgetStr.replace(/[^0-9.]/g, '').trim();
   const numeric = parseFloat(clean);
   return isNaN(numeric) ? null : numeric;
 }

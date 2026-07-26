@@ -32,12 +32,10 @@ Instructions:
   try {
     console.log('📡 [SUMMARY DEBUG] Checking Vertex AI Instance:', {
       hasAi: !!ai,
-      aiKeys: ai ? Object.keys(ai) : [],
-      hasPreview: !!(ai as any).preview,
-      previewKeys: (ai as any).preview ? Object.keys((ai as any).preview) : []
+      aiKeys: ai ? Object.keys(ai) : []
     });
 
-    const model = (ai as any).preview.getGenerativeModel({
+    const model = ai.getGenerativeModel({
       model: 'gemini-2.5-flash',
       generationConfig: {
         temperature: 0.3,
