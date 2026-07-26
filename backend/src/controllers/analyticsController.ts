@@ -102,22 +102,45 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
             [subId, email]
         );
 
-        // Build a day-keyed map for last 7 days
+        // Helper: format a Date as YYYY-MM-DD in local timezone
+        function localDateStr(d: Date): string {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        // Helper: pg DATE columns may come back as a JS Date object (midnight UTC)
+        // or as a string "YYYY-MM-DD". String(Date).slice(0,10) gives garbage like
+        // "Mon Jul 27" which never matches — so we need to handle both cases.
+        function pgDateToLocalStr(val: unknown): string {
+            if (val instanceof Date) {
+                // Midnight UTC → shift to local timezone
+                return localDateStr(new Date(val.getTime()));
+            }
+            const s = String(val);
+            // Already in YYYY-MM-DD format
+            if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+            // Fallback: parse and format
+            return localDateStr(new Date(s + 'T00:00:00'));
+        }
+
+        // Build a day-keyed map for last 7 days (in local timezone)
         const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const weeklyMap: Record<string, { leads: number; conversations: number; day: string }> = {};
         for (let i = 6; i >= 0; i--) {
             const d = new Date(now);
             d.setDate(d.getDate() - i);
-            const key = d.toISOString().slice(0, 10);
+            const key = localDateStr(d);
             weeklyMap[key] = { leads: 0, conversations: 0, day: dayLabels[d.getDay()] };
         }
 
         for (const row of weeklyLeadsRes.rows) {
-            const key = String(row.day).slice(0, 10);
+            const key = pgDateToLocalStr(row.day);
             if (weeklyMap[key]) weeklyMap[key].leads = Number(row.count);
         }
         for (const row of weeklyConvsRes.rows) {
-            const key = String(row.day).slice(0, 10);
+            const key = pgDateToLocalStr(row.day);
             if (weeklyMap[key]) weeklyMap[key].conversations = Number(row.count);
         }
         const weeklyData = Object.values(weeklyMap);
