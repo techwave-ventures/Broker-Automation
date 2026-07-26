@@ -10,6 +10,7 @@ export async function initDatabase() {
       password_hash TEXT NOT NULL,
       name VARCHAR(255),
       avatar TEXT,
+      phone VARCHAR(50),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -201,6 +202,7 @@ export async function initDatabase() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50) DEFAULT 'inactive';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMP;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_recharge_threshold INTEGER DEFAULT 200;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
     `,
     `
     ALTER TABLE messages ADD COLUMN IF NOT EXISTS credits_charged INTEGER DEFAULT 0;

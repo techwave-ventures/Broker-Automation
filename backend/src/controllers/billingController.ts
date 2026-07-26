@@ -128,7 +128,7 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
 
   try {
     // Check if subscription already active
-    const userRes = await pool.query('SELECT email, plan_type, subscription_status FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+    const userRes = await pool.query('SELECT email, phone, plan_type, subscription_status FROM users WHERE user_id = $1 LIMIT 1', [userId]);
     if (userRes.rows[0]?.subscription_status === 'active') {
       return res.status(400).json({ error: 'Subscription is already active' });
     }
@@ -149,7 +149,7 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
       customer_details: {
         customer_id: userId,
         customer_email: userRes.rows[0].email,
-        customer_phone: '9999999999',
+        customer_phone: userRes.rows[0].phone || '9999999999',
       },
       plan_details: {
         plan_id: planId,
@@ -202,7 +202,7 @@ export async function createTopUpOrder(req: AuthenticatedRequest, res: Response)
   }
 
   try {
-    const userRes = await pool.query('SELECT email, plan_type FROM users WHERE user_id = $1 LIMIT 1', [userId]);
+    const userRes = await pool.query('SELECT email, phone, plan_type FROM users WHERE user_id = $1 LIMIT 1', [userId]);
     const planType = userRes.rows[0]?.plan_type || 'free';
 
     // Calculate cost based on plan type and tiers
@@ -231,7 +231,7 @@ export async function createTopUpOrder(req: AuthenticatedRequest, res: Response)
       customer_details: {
         customer_id: userId,
         customer_email: userRes.rows[0].email,
-        customer_phone: '9999999999',
+        customer_phone: userRes.rows[0].phone || '9999999999',
       },
       order_meta: {
         return_url: `${env.FRONTEND_BASE_URL}/dashboard/subscription?order_id={order_id}`,

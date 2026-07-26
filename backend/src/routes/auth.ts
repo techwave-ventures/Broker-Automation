@@ -4,6 +4,7 @@ import * as AuthController from '../controllers/authController.js';
 export const authRouter = Router();
 
 authRouter.post('/signup', AuthController.signup);
+authRouter.post('/send-otp', AuthController.sendOtp);
 authRouter.post('/login', AuthController.login);
 authRouter.get('/login', AuthController.login);
 authRouter.all('/logout', AuthController.logout);

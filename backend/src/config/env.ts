@@ -33,6 +33,10 @@ const envSchema = z.object({
   CASHFREE_APP_ID: z.string().optional(),
   CASHFREE_SECRET_KEY: z.string().optional(),
   CASHFREE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  // Twilio Verify SMS Verification
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_VERIFY_SERVICE_SID: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

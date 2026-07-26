@@ -7,6 +7,7 @@ export interface User {
   password_hash: string;
   name?: string | null;
   avatar?: string | null;
+  phone?: string | null;
   created_at?: Date;
   updated_at?: Date;
 }
@@ -17,12 +18,20 @@ export async function createUser(data: {
   password_hash: string;
   name?: string;
   avatar?: string;
+  phone?: string;
 }): Promise<User> {
   const result = await pool.query<User>(
-    `INSERT INTO users (user_id, email, password_hash, name, avatar)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (user_id, email, password_hash, name, avatar, phone)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [data.user_id, data.email.toLowerCase().trim(), data.password_hash, data.name || null, data.avatar || null]
+    [
+      data.user_id,
+      data.email.toLowerCase().trim(),
+      data.password_hash,
+      data.name || null,
+      data.avatar || null,
+      data.phone || null,
+    ]
   );
   return result.rows[0];
 }
