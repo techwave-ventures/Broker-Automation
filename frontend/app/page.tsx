@@ -604,16 +604,41 @@ export default async function HomePage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm">
               {[
-                { heading: "Product", links: ["Features", "Pricing", "Demo", "Changelog"] },
-                { heading: "Company", links: ["About", "Blog", "Careers", "Contact"] },
-                { heading: "Legal", links: ["Privacy Policy", "Terms of Service", "Cookie Policy"] },
+                {
+                  heading: "Product",
+                  links: [
+                    { name: "Features", href: "#features" },
+                    { name: "Pricing", href: "#pricing" },
+                    { name: "Demo", href: "#" },
+                    { name: "Changelog", href: "#" }
+                  ]
+                },
+                {
+                  heading: "Company",
+                  links: [
+                    { name: "About", href: "#" },
+                    { name: "Blog", href: "#" },
+                    { name: "Careers", href: "#" },
+                    { name: "Contact", href: "#" }
+                  ]
+                },
+                {
+                  heading: "Legal",
+                  links: [
+                    { name: "Privacy Policy", href: "/privacy" },
+                    { name: "Terms of Service", href: "/terms" },
+                    { name: "Refund Policy", href: "/refund-policy" }
+                  ]
+                },
               ].map((col) => (
                 <div key={col.heading}>
                   <p className="font-semibold text-foreground/80 mb-3">{col.heading}</p>
                   <ul className="space-y-2">
                     {col.links.map((l) => (
-                      <li key={l}>
-                        <a href="#" className="text-foreground/40 hover:text-foreground/70 transition-colors">{l}</a>
+                      <li key={l.name}>
+                        <Link href={l.href} className="text-foreground/40 hover:text-foreground/70 transition-colors">
+                          {l.name}
+                        </Link>
                       </li>
                     ))}
                   </ul>
