@@ -89,6 +89,12 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
     const refillAmount = typeof autoRechargeAmount === 'number' ? autoRechargeAmount : 5000;
     const refillThreshold = typeof autoRechargeThreshold === 'number' ? autoRechargeThreshold : 200;
 
+    // Retrieve standard plan ID from database
+    const planRes = await pool.query(
+      "SELECT plan_id FROM subscription_plans WHERE plan_id = 'standard_monthly' OR plan_name = 'Standard Plan' LIMIT 1"
+    );
+    const planId = planRes.rows[0]?.plan_id || 'standard_monthly';
+
     const subscriptionId = `sub_${userId.substring(0, 8)}_${Date.now()}`;
     const payload = {
       subscription_id: subscriptionId,
@@ -98,13 +104,7 @@ export async function createSubscription(req: AuthenticatedRequest, res: Respons
         customer_phone: '9999999999',
       },
       plan_details: {
-        plan_name: 'Standard Plan',
-        plan_type: 'PERIODIC',
-        plan_amount: 2999.00,
-        plan_max_amount: 3500.00,
-        plan_interval_type: 'MONTH',
-        plan_intervals: 1,
-        plan_currency: 'INR',
+        plan_id: planId,
       },
       subscription_meta: {
         return_url: `${env.FRONTEND_BASE_URL}/dashboard/subscription?subscription_id=${subscriptionId}`,

@@ -214,6 +214,18 @@ export async function initDatabase() {
       description TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS subscription_plans (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      plan_id VARCHAR(100) UNIQUE NOT NULL,
+      plan_name VARCHAR(255) NOT NULL,
+      plan_type VARCHAR(50) NOT NULL,
+      plan_amount NUMERIC NOT NULL,
+      plan_currency VARCHAR(10) DEFAULT 'INR',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
     `
   ];
 

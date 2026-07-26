@@ -34,7 +34,6 @@ const envSchema = z.object({
   CASHFREE_SECRET_KEY: z.string().optional(),
   CASHFREE_WEBHOOK_SECRET: z.string().optional(),
   CASHFREE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
-  CASHFREE_PLAN_CODE: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
