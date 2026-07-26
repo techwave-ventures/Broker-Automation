@@ -3,13 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function proxy(request: NextRequest) {
-  // Bypass auth check for public property detail page (e.g. /p/[id])
-  if (request.nextUrl.pathname.startsWith('/p/')) {
-    return NextResponse.next();
-  }
-
-  // Bypass auth pages and API routes to avoid redirect loop or breaking API calls
-  if (request.nextUrl.pathname.startsWith('/auth/') || request.nextUrl.pathname.startsWith('/api/')) {
+  // Only protect dashboard routes
+  if (!request.nextUrl.pathname.startsWith('/dashboard')) {
     return NextResponse.next();
   }
 
