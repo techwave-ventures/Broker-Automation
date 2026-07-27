@@ -47,9 +47,22 @@ export default function ConversationsPage() {
       if (res.ok) {
         const data: Chat[] = await res.json();
         setChats(data);
-        if (data.length > 0 && !activeChatId) {
-          setActiveChatId(data[0].id);
-        }
+        setActiveChatId((prev) => {
+          if (!prev && data.length > 0) {
+            const params = new URLSearchParams(window.location.search);
+            const phoneSearch = params.get("phone");
+            if (phoneSearch) {
+              // Exact match or numeric match
+              const target = data.find((c) =>
+                c.user.phone === phoneSearch ||
+                c.user.phone.replace(/[^0-9]/g, '') === phoneSearch.replace(/[^0-9]/g, '')
+              );
+              if (target) return target.id;
+            }
+            return data[0].id;
+          }
+          return prev;
+        });
       }
     } catch (err) {
       console.error("Failed to fetch chats from database:", err);
