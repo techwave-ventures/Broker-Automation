@@ -57,27 +57,6 @@ export async function findMatchingProperties(
       const price = p.transaction_type === 'Sell' ? parseFloat(p.expected_price) : parseFloat(p.monthly_rent);
       return !isNaN(price) && price <= parsedBudget * 1.30;
     });
-
-    if (filteredRows.length === 0) {
-      // Fallback: Find nearest upside properties of the same category/type
-      const sameTypeRows = matchedRows.filter(p => {
-        if (state.beds && p.beds && p.beds !== state.beds) return false;
-        if (state.property_type && p.type && p.type.toLowerCase() !== state.property_type.toLowerCase()) return false;
-        return true;
-      });
-
-      const rowsWithPrice = (sameTypeRows.length > 0 ? sameTypeRows : matchedRows).map(p => {
-        const price = p.transaction_type === 'Sell' ? parseFloat(p.expected_price) : parseFloat(p.monthly_rent);
-        return { property: p, price };
-      }).filter(item => !isNaN(item.price) && item.price > parsedBudget);
-
-      // Sort by price ascending to get the closest upside property
-      rowsWithPrice.sort((a, b) => a.price - b.price);
-
-      if (rowsWithPrice.length > 0) {
-        filteredRows = [rowsWithPrice[0].property];
-      }
-    }
   }
 
   // 6. Ranking and scoring (by Locality proximity & Budget alignment)
