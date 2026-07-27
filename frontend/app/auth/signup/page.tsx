@@ -8,41 +8,11 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [sendingOtp, setSendingOtp] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-
-  const handleSendOtp = async () => {
-    setError(null);
-    setInfoMessage(null);
-    if (!phone) {
-      setError('Please enter your phone number first');
-      return;
-    }
-    setSendingOtp(true);
-    try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to send verification code');
-      }
-      setOtpSent(true);
-      setInfoMessage('Verification code sent successfully via SMS!');
-    } catch (err: any) {
-      setError(err.message || 'Error sending OTP');
-    } finally {
-      setSendingOtp(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,23 +29,13 @@ export default function SignupPage() {
       return;
     }
 
-    if (!otpSent) {
-      setError('Please request and enter the verification code');
-      return;
-    }
-
-    if (!otp) {
-      setError('Please enter the verification code sent to your phone');
-      return;
-    }
-
     setLoading(true);
 
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, phone, otp }),
+        body: JSON.stringify({ name, email, password, phone }),
       });
 
       const text = await res.text();
@@ -167,41 +127,15 @@ export default function SignupPage() {
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Phone Number
             </label>
-            <div className="flex gap-2">
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+919999999999"
-                className="flex-1 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
-              />
-              <button
-                type="button"
-                disabled={sendingOtp || !phone}
-                onClick={handleSendOtp}
-                className="px-4 bg-teal-600 hover:bg-teal-500 text-white font-medium text-sm rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendingOtp ? 'Sending...' : 'Send OTP'}
-              </button>
-            </div>
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+919999999999"
+              className="w-full px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+            />
           </div>
-
-          {otpSent && (
-            <div className="animate-fade-in-up">
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Verification Code (SMS OTP)
-              </label>
-              <input
-                type="text"
-                required
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                placeholder="Enter 6-digit code"
-                className="w-full px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
-              />
-            </div>
-          )}
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">

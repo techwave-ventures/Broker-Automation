@@ -29,10 +29,6 @@ const envSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().optional(),
   AWS_S3_BUCKET: z.string().optional(),
   AWS_S3_PUBLIC_URL: z.string().optional(),
-  // AWS SNS DLT Parameters (for India)
-  AWS_SNS_SENDER_ID: z.string().optional(),
-  AWS_SNS_ENTITY_ID: z.string().optional(),
-  AWS_SNS_TEMPLATE_ID: z.string().optional(),
   // Cashfree Subscriptions & Billing
   CASHFREE_APP_ID: z.string().optional(),
   CASHFREE_SECRET_KEY: z.string().optional(),

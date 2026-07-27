@@ -4,7 +4,6 @@ import { env, isAuthBypassed } from '../config/env.js';
 import { signJWT, verifyJWT, type JWTPayload } from '../config/jwt.js';
 import { createUser, findUserByEmail, findUserById } from '../models/userModel.js';
 import { pool } from '../lib/db.js';
-import { sendVerificationCode, checkVerificationCode } from '../lib/sms.js';
 
 export function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -26,13 +25,8 @@ export async function sendOtp(req: Request, res: Response) {
     if (!phone) {
       return res.status(400).json({ error: 'Validation Error', message: 'Phone number is required' });
     }
-
-    const verification = await sendVerificationCode(phone);
-    if (!verification.success) {
-      return res.status(500).json({ error: 'SMS Service Error', message: verification.error || 'Failed to send OTP via SMS' });
-    }
-
-    return res.status(200).json({ success: true, message: 'OTP sent successfully' });
+    // SMS OTP verification is removed/disabled as requested. Always return success.
+    return res.status(200).json({ success: true, message: 'OTP verification is bypassed' });
   } catch (error: any) {
     console.error('Send OTP error:', error);
     return res.status(500).json({ error: 'Internal Error', message: error.message || 'Failed to send OTP code' });
@@ -43,18 +37,12 @@ export async function signup(req: Request, res: Response) {
   try {
     const { email, password, name, phone, otp } = req.body || {};
 
-    if (!email || !password || !phone || !otp) {
-      return res.status(400).json({ error: 'Validation Error', message: 'Email, password, phone number, and OTP are required' });
+    if (!email || !password || !phone) {
+      return res.status(400).json({ error: 'Validation Error', message: 'Email, password, and phone number are required' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Validation Error', message: 'Password must be at least 6 characters long' });
-    }
-
-    // 1. Verify SMS OTP
-    const verificationCheck = await checkVerificationCode(phone, otp);
-    if (!verificationCheck.success) {
-      return res.status(400).json({ error: 'Verification Error', message: verificationCheck.error || 'Incorrect OTP code provided' });
     }
 
     // 2. Check if user already exists
