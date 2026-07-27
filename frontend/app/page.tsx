@@ -643,7 +643,7 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-12 pt-6 border-t border-foreground/5 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-foreground/30">
-            <p>© {new Date().getFullYear()} Roofiyo AI. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} TECHWAVE VENTURES PRIVATE LIMITED. All rights reserved.</p>
             <p>Made with ❤️ for real estate professionals</p>
           </div>
         </div>
