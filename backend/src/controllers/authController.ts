@@ -4,7 +4,7 @@ import { env, isAuthBypassed } from '../config/env.js';
 import { signJWT, verifyJWT, type JWTPayload } from '../config/jwt.js';
 import { createUser, findUserByEmail, findUserById } from '../models/userModel.js';
 import { pool } from '../lib/db.js';
-import { sendVerificationCode, checkVerificationCode } from '../lib/twilio.js';
+import { sendVerificationCode, checkVerificationCode } from '../lib/sms.js';
 
 export function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -29,7 +29,7 @@ export async function sendOtp(req: Request, res: Response) {
 
     const verification = await sendVerificationCode(phone);
     if (!verification.success) {
-      return res.status(500).json({ error: 'Twilio Error', message: verification.error || 'Failed to send OTP via SMS' });
+      return res.status(500).json({ error: 'SMS Service Error', message: verification.error || 'Failed to send OTP via SMS' });
     }
 
     return res.status(200).json({ success: true, message: 'OTP sent successfully' });
@@ -51,7 +51,7 @@ export async function signup(req: Request, res: Response) {
       return res.status(400).json({ error: 'Validation Error', message: 'Password must be at least 6 characters long' });
     }
 
-    // 1. Verify Twilio SMS OTP
+    // 1. Verify SMS OTP
     const verificationCheck = await checkVerificationCode(phone, otp);
     if (!verificationCheck.success) {
       return res.status(400).json({ error: 'Verification Error', message: verificationCheck.error || 'Incorrect OTP code provided' });
