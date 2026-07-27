@@ -74,7 +74,7 @@ function PhoneMockup() {
               <BotMessageSquare style={{ height: "18px", width: "18px", color: "white" }} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold leading-none">PropBot Assistant</p>
+              <p className="text-white text-xs font-semibold leading-none">Roofiyo Assistant</p>
               <p className="text-[10px] text-white/70 mt-0.5">online</p>
             </div>
             <Phone className="h-3.5 w-3.5 text-white/80" />
@@ -94,8 +94,8 @@ function PhoneMockup() {
               <div key={i} className={`flex ${msg.from === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`relative px-2 py-1.5 rounded-lg max-w-[195px] text-[10px] leading-snug shadow-sm ${msg.from === "user"
-                      ? "bg-[#005C4B] text-white rounded-tr-none"
-                      : "bg-[#202C33] text-white/90 rounded-tl-none"
+                    ? "bg-[#005C4B] text-white rounded-tr-none"
+                    : "bg-[#202C33] text-white/90 rounded-tl-none"
                     }`}
                 >
                   {msg.text}
@@ -167,9 +167,9 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /* ─── Data ──────────────────────────────────────────────────────── */
 const FEATURES = [
-  { icon: BotMessageSquare, color: "text-blue-500", bg: "bg-blue-500/10", title: "24/7 AI Lead Engagement", description: "PropBot responds to every inquiry instantly — day or night — on WhatsApp and your website, so you never miss a hot lead." },
+  { icon: BotMessageSquare, color: "text-blue-500", bg: "bg-blue-500/10", title: "24/7 AI Lead Engagement", description: "Roofiyo responds to every inquiry instantly — day or night — on WhatsApp and your website, so you never miss a hot lead." },
   { icon: Building2, color: "text-emerald-500", bg: "bg-emerald-500/10", title: "Smart Property Matching", description: "The AI understands buyer preferences and automatically matches them to your best listings based on budget, location, and requirements." },
-  { icon: CalendarCheck, color: "text-purple-500", bg: "bg-purple-500/10", title: "Auto-Schedule Viewings", description: "Buyers can book site visits directly through the chat. PropBot syncs with your calendar and sends reminders automatically." },
+  { icon: CalendarCheck, color: "text-purple-500", bg: "bg-purple-500/10", title: "Auto-Schedule Viewings", description: "Buyers can book site visits directly through the chat. Roofiyo syncs with your calendar and sends reminders automatically." },
   { icon: LineChart, color: "text-orange-500", bg: "bg-orange-500/10", title: "Real-time Analytics", description: "Track lead quality, conversation rates, and top-performing listings on a beautiful dashboard — all in one place." },
   { icon: Globe, color: "text-cyan-500", bg: "bg-cyan-500/10", title: "Multi-Channel Presence", description: "Deploy your AI assistant on WhatsApp Business, your website chat widget, and more from a single dashboard." },
   { icon: Shield, color: "text-rose-500", bg: "bg-rose-500/10", title: "GDPR-Compliant & Secure", description: "All conversations and lead data are encrypted. Your clients' information stays private and fully protected." },
@@ -177,13 +177,13 @@ const FEATURES = [
 
 const HOW_IT_WORKS = [
   { icon: Building2, title: "List your properties", description: "Add your property listings with photos, details, and pricing. Takes less than 2 minutes per listing." },
-  { icon: BotMessageSquare, title: "AI bot goes live", description: "PropBot learns your listings instantly. Activate it on WhatsApp and your website with one click." },
+  { icon: BotMessageSquare, title: "AI bot goes live", description: "Roofiyo learns your listings instantly. Activate it on WhatsApp and your website with one click." },
   { icon: MessageSquare, title: "Leads get engaged 24/7", description: "Every inquiry gets an instant, intelligent response. The bot qualifies leads and books viewings." },
-  { icon: Users, title: "You close the deals", description: "Receive hot, pre-qualified leads in your dashboard. You focus on closing — PropBot handles the rest." },
+  { icon: Users, title: "You close the deals", description: "Receive hot, pre-qualified leads in your dashboard. You focus on closing — Roofiyo handles the rest." },
 ];
 
 const TESTIMONIALS = [
-  { name: "Rajesh Kumar", role: "Director, Unity Properties", avatar: "RK", stars: 5, text: "PropBot doubled our lead response rate within the first week. We're converting 3x more inquiries into viewings now. An absolute game-changer." },
+  { name: "Rajesh Kumar", role: "Director, Unity Properties", avatar: "RK", stars: 5, text: "Roofiyo doubled our lead response rate within the first week. We're converting 3x more inquiries into viewings now. An absolute game-changer." },
   { name: "Priya Sharma", role: "Senior Agent, Skyline Realty", avatar: "PS", stars: 5, text: "I used to miss leads when sleeping. Now my bot handles them at 2AM and I wake up to qualified viewings already booked. Incredible." },
   { name: "Anil Mehta", role: "Owner, AM Real Estate", avatar: "AM", stars: 5, text: "Setup took 15 minutes. Within 24 hours, the bot had already scheduled 4 site visits. The ROI is phenomenal for the price." },
 ];
@@ -215,7 +215,7 @@ export default async function HomePage() {
             <div className="h-8 w-8 rounded-xl bg-blue-500 flex items-center justify-center" style={{ boxShadow: "0 0 16px rgba(59,130,246,0.5)" }}>
               <BotMessageSquare className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg font-bold tracking-tight">PropBot AI</span>
+            <span className="text-lg font-bold tracking-tight">Roofiyo AI</span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-foreground/60">
@@ -289,7 +289,7 @@ export default async function HomePage() {
             </h1>
 
             <p className="text-lg text-foreground/60 leading-relaxed mb-10 max-w-xl">
-              PropBot AI engages property buyers 24/7 on WhatsApp & your website, qualifies leads instantly, and books site visits — so you close more deals without lifting a finger.
+              Roofiyo AI engages property buyers 24/7 on WhatsApp & your website, qualifies leads instantly, and books site visits — so you close more deals without lifting a finger.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -514,8 +514,8 @@ export default async function HomePage() {
               <div
                 key={plan.name}
                 className={`relative rounded-3xl p-7 flex flex-col transition-all ${plan.highlighted
-                    ? "bg-blue-500 text-white shadow-[0_0_60px_rgba(59,130,246,0.25)]"
-                    : "bg-card border border-border hover:border-blue-500/30 hover:shadow-lg"
+                  ? "bg-blue-500 text-white shadow-[0_0_60px_rgba(59,130,246,0.25)]"
+                  : "bg-card border border-border hover:border-blue-500/30 hover:shadow-lg"
                   }`}
               >
                 {plan.badge && (
@@ -546,8 +546,8 @@ export default async function HomePage() {
                 <Link
                   href="/auth/signup"
                   className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] ${plan.highlighted
-                      ? "bg-white text-blue-600 hover:bg-blue-50"
-                      : "bg-foreground/5 border border-border hover:bg-foreground/10 text-foreground"
+                    ? "bg-white text-blue-600 hover:bg-blue-50"
+                    : "bg-foreground/5 border border-border hover:bg-foreground/10 text-foreground"
                     }`}
                 >
                   {plan.cta} <ArrowRight className="h-4 w-4" />
@@ -570,7 +570,7 @@ export default async function HomePage() {
             </span>
           </h2>
           <p className="text-foreground/50 text-lg mb-10 max-w-xl mx-auto">
-            Join 2,000+ real estate agents who use PropBot AI to generate more leads and book more viewings — on autopilot.
+            Join 2,000+ real estate agents who use Roofiyo AI to generate more leads and book more viewings — on autopilot.
           </p>
           <Link
             href="/auth/signup"
@@ -590,7 +590,7 @@ export default async function HomePage() {
                 <div className="h-8 w-8 rounded-xl bg-blue-500 flex items-center justify-center">
                   <BotMessageSquare className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-lg font-bold">PropBot AI</span>
+                <span className="text-lg font-bold">Roofiyo AI</span>
               </div>
               <p className="text-sm text-foreground/40 leading-relaxed">
                 The AI-powered real estate sales assistant that never sleeps. Built for modern property professionals.
@@ -643,7 +643,7 @@ export default async function HomePage() {
           </div>
 
           <div className="mt-12 pt-6 border-t border-foreground/5 flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-foreground/30">
-            <p>© {new Date().getFullYear()} PropBot AI. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Roofiyo AI. All rights reserved.</p>
             <p>Made with ❤️ for real estate professionals</p>
           </div>
         </div>

@@ -457,7 +457,7 @@ export default function AddPropertyPage() {
                 <h3 className="font-semibold text-primary mb-2 flex items-center gap-2">
                     <Check className="h-4 w-4" /> Ready to go live!
                 </h3>
-                <p className="text-sm text-foreground/70">Please verify all details before publishing. PropBot AI will immediately begin matching this listing with your leads.</p>
+                <p className="text-sm text-foreground/70">Please verify all details before publishing. Roofiyo AI will immediately begin matching this listing with your leads.</p>
             </div>
         </div>
     );

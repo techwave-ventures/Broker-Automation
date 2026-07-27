@@ -57,7 +57,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Welcome Back</h1>
-          <p className="text-sm text-slate-400 mt-1">Sign in to your Broker Automation account</p>
+          <p className="text-sm text-slate-400 mt-1">Sign in to your Roofiyo Automation account</p>
         </div>
 
         {error && (

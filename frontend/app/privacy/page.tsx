@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
             <div className="h-7 w-7 rounded-lg bg-blue-500 flex items-center justify-center">
               <BotMessageSquare className="h-4.5 w-4.5 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-tight">PropBot AI</span>
+            <span className="text-sm font-bold tracking-tight">Roofiyo AI</span>
           </div>
         </div>
 
@@ -31,7 +31,7 @@ export default function PrivacyPolicyPage() {
         {/* Content */}
         <div className="space-y-6 text-slate-300 leading-relaxed text-sm">
           <p>
-            At PropBot AI, operated by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our"), your privacy is of paramount importance to us. This Privacy Policy describes how we collect, use, and share your personal information when you use our services, including our web applications, WhatsApp Business API integrations, and other platform features.
+            At Roofiyo, operated by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our"), your privacy is of paramount importance to us. This Privacy Policy describes how we collect, use, and share your personal information when you use our services, including our web applications, WhatsApp Business API integrations, and other platform features.
           </p>
 
           <h2 className="text-xl font-bold text-white mt-8 mb-4">1. Information We Collect</h2>

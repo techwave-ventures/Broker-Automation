@@ -69,7 +69,7 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
                     <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse-glow">
                         <BotMessageSquare className="h-5 w-5 text-white" />
                     </div>
-                    <span className="text-lg font-bold tracking-tight">PropBot AI</span>
+                    <span className="text-lg font-bold tracking-tight">Roofiyo AI</span>
                 </div>
 
                 {/* Navigation */}
@@ -144,8 +144,8 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
                                 {user?.name
                                     ? user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
                                     : user?.email
-                                    ? user.email.slice(0, 2).toUpperCase()
-                                    : "US"}
+                                        ? user.email.slice(0, 2).toUpperCase()
+                                        : "US"}
                             </div>
                         )}
                         <div className="overflow-hidden flex-1">

@@ -73,7 +73,7 @@ export default function SignupPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Create an Account</h1>
-          <p className="text-sm text-slate-400 mt-1">Get started with Broker Automation platform</p>
+          <p className="text-sm text-slate-400 mt-1">Get started with Roofiyo Automation platform</p>
         </div>
 
         {error && (

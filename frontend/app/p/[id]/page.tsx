@@ -206,7 +206,7 @@ export default function PublicPropertyPage() {
                         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse-glow">
                             <BotMessageSquare className="h-5 w-5 text-white" />
                         </div>
-                        <span className="text-lg font-black tracking-tighter hidden sm:block">PropBot Agency</span>
+                        <span className="text-lg font-black tracking-tighter hidden sm:block">Roofiyo</span>
                     </div>
 
                     <div className="flex items-center gap-3">

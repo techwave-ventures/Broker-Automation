@@ -113,7 +113,7 @@ export default function SettingsPage() {
             {/* Page Header */}
             <div>
                 <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-sm text-foreground/50 mt-1">Manage your PropBot AI workspace, WhatsApp integration, and preferences.</p>
+                <p className="text-sm text-foreground/50 mt-1">Manage your Roofiyo AI workspace, WhatsApp integration, and preferences.</p>
             </div>
 
             {/* ── 1. WhatsApp Bot Connection ── */}

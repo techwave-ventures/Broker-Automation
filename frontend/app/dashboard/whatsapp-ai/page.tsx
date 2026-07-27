@@ -124,7 +124,7 @@ export default function WhatsAppAIPage() {
                             <BotMessageSquare className="h-8 w-8 text-accent" />
                         </div>
                         <div>
-                            <h2 className="font-semibold text-lg">PropBot Assistant</h2>
+                            <h2 className="font-semibold text-lg">Roofiyo Assistant</h2>
                             <div className="flex items-center gap-2 mt-1">
                                 <Circle className={`h-2.5 w-2.5 fill-accent text-accent ${masterEnabled ? 'animate-pulse text-emerald-500 fill-emerald-500' : 'text-foreground/30 fill-foreground/30'}`} />
                                 <span className="text-sm text-foreground/75 font-medium">
@@ -143,8 +143,8 @@ export default function WhatsAppAIPage() {
                         <button
                             onClick={toggleMaster}
                             className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors duration-250 ${masterEnabled
-                                    ? "bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
-                                    : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white"
+                                ? "bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white"
+                                : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white"
                                 }`}
                         >
                             {masterEnabled ? "Pause Bot" : "Activate Bot"}

@@ -20,7 +20,7 @@ export default function RefundPolicyPage() {
             <div className="h-7 w-7 rounded-lg bg-blue-500 flex items-center justify-center">
               <BotMessageSquare className="h-4.5 w-4.5 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-tight">PropBot AI</span>
+            <span className="text-sm font-bold tracking-tight">Roofiyo AI</span>
           </div>
         </div>
 
@@ -31,15 +31,15 @@ export default function RefundPolicyPage() {
         {/* Content */}
         <div className="space-y-6 text-slate-300 leading-relaxed text-sm">
           <p>
-            Thank you for choosing PropBot AI, operated by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our").
+            Thank you for choosing Roofiyo, operated by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our").
           </p>
           <p>
-            Please read this policy carefully. This is the Return and Refund Policy of PropBot AI.
+            Please read this policy carefully. This is the Return and Refund Policy of Roofiyo.
           </p>
 
           <h2 className="text-xl font-bold text-white mt-8 mb-4">1. Digital Products and Services</h2>
           <p>
-            Because PropBot AI is a digital Software-as-a-Service (SaaS) platform, all transactions for monthly subscriptions and pre-paid credit refills are finalized upon successful charge.
+            Because Roofiyo is a digital Software-as-a-Service (SaaS) platform, all transactions for monthly subscriptions and pre-paid credit refills are finalized upon successful charge.
           </p>
           <ul className="list-disc pl-5 space-y-2">
             <li>We do not issue refunds for standard monthly subscriptions once the billing cycle has started or credits have been granted.</li>

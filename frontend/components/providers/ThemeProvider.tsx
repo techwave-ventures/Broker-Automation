@@ -14,7 +14,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         // Read from localStorage on mount
-        const stored = localStorage.getItem("propbot-theme") as Theme | null;
+        const stored = localStorage.getItem("roofiyo-theme") as Theme | null;
         const initial: Theme = stored ?? "dark";
         setTheme(initial);
         applyTheme(initial);
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const toggle = () => {
         const next: Theme = theme === "dark" ? "light" : "dark";
         setTheme(next);
-        localStorage.setItem("propbot-theme", next);
+        localStorage.setItem("roofiyo-theme", next);
         applyTheme(next);
     };
 

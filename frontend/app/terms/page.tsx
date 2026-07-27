@@ -20,7 +20,7 @@ export default function TermsOfServicePage() {
             <div className="h-7 w-7 rounded-lg bg-blue-500 flex items-center justify-center">
               <BotMessageSquare className="h-4.5 w-4.5 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-tight">PropBot AI</span>
+            <span className="text-sm font-bold tracking-tight">Roofiyo AI</span>
           </div>
         </div>
 
@@ -31,7 +31,7 @@ export default function TermsOfServicePage() {
         {/* Content */}
         <div className="space-y-6 text-slate-300 leading-relaxed text-sm">
           <p>
-            Welcome to PropBot AI. These Terms of Service ("Terms") govern your access to and use of the services, websites, and software applications provided by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our").
+            Welcome to Roofiyo AI. These Terms of Service ("Terms") govern your access to and use of the services, websites, and software applications provided by <strong>Techwave Ventures Private Limited</strong> ("we," "us," or "our").
           </p>
           <p>
             By accessing or using our services, you agree to be bound by these Terms. If you do not agree to these Terms, please do not use our services.
@@ -47,7 +47,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-xl font-bold text-white mt-8 mb-4">2. Subscription and Credits</h2>
           <p>
-            Our service offers a Standard monthly subscription and pre-paid credit refills processed securely through Cashfree. 
+            Our service offers a Standard monthly subscription and pre-paid credit refills processed securely through Cashfree.
           </p>
           <ul className="list-disc pl-5 space-y-2">
             <li>Standard plan credits are refreshed monthly and do not roll over to the next cycle.</li>
@@ -57,7 +57,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="text-xl font-bold text-white mt-8 mb-4">3. Intellectual Property Rights</h2>
           <p>
-            All code, UI designs, algorithms, logos, and materials present in the PropBot AI platform are the intellectual property of Techwave Ventures Private Limited. You are granted a limited, non-exclusive, non-transferable, and revocable license to access our platform solely for your business operations.
+            All code, UI designs, algorithms, logos, and materials present in the Roofiyo AI platform are the intellectual property of Techwave Ventures Private Limited. You are granted a limited, non-exclusive, non-transferable, and revocable license to access our platform solely for your business operations.
           </p>
 
           <h2 className="text-xl font-bold text-white mt-8 mb-4">4. Limitation of Liability</h2>

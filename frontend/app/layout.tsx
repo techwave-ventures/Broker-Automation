@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PropBot AI – Automate Real Estate lead generation",
-  description: "PropBot AI engages property leads 24/7 on WhatsApp & Web, answers questions, and books viewings automatically.",
+  title: "Roofiyo AI– Automate Real Estate lead generation",
+  description: "Roofiyo AI engages property leads 24/7 on WhatsApp & Web, answers questions, and books viewings automatically.",
 };
 
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var t = localStorage.getItem('propbot-theme') || 'dark';
+                var t = localStorage.getItem('roofiyo-theme') || 'dark';
                 if (t === 'dark') document.documentElement.classList.add('dark');
                 else document.documentElement.classList.remove('dark');
               } catch(e) {
