@@ -691,9 +691,17 @@ export async function handleGeminiReply(payload: any) {
 
         if (!alreadyExists) {
           const aiState = conversation.ai_state;
-          const firstRecommendedId = Array.isArray(aiState.recommended_property_ids) && aiState.recommended_property_ids.length > 0
-            ? String(aiState.recommended_property_ids[0])
+          const targetPropertyIds = Array.isArray(aiState.interested_property_ids) && aiState.interested_property_ids.length > 0
+            ? aiState.interested_property_ids
+            : (Array.isArray(aiState.recommended_property_ids) ? aiState.recommended_property_ids : []);
+
+          const primaryPropertyId = targetPropertyIds.length > 0
+            ? String(targetPropertyIds[0])
             : undefined;
+
+          const propertyListString = targetPropertyIds.length > 0
+            ? `Target Property IDs: ${targetPropertyIds.join(', ')}`
+            : '';
 
           const newLead = await createLead(
             {
@@ -705,8 +713,9 @@ export async function handleGeminiReply(payload: any) {
                 aiState.property_type,
                 aiState.beds ? `${aiState.beds} BHK` : null,
                 aiState.furnishing,
+                propertyListString,
               ].filter(Boolean).join(', ') || undefined,
-              interestedPropertyId: firstRecommendedId,
+              interestedPropertyId: primaryPropertyId,
               appointmentDate: structuredRes.appointmentDate || null,
               status: 'Upcoming Visit',
               leadScore: 'High',

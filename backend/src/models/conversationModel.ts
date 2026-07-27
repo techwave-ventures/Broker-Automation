@@ -13,6 +13,7 @@ export interface ConversationAIState {
   move_in_date: string | null;
   purpose: string | null;
   recommended_property_ids: number[];
+  interested_property_ids?: number[];
   stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
   rolling_summary: string;
 }

@@ -60,8 +60,24 @@ export function resolveNextState(
     }
   }
 
+  // 5. Interested Property IDs tracking:
+  // Ensure we accumulate interested IDs across history
+  const interestedIds = Array.isArray(currentState.interested_property_ids)
+    ? [...currentState.interested_property_ids]
+    : [];
+
+  if (geminiResponse.interested_property_ids && Array.isArray(geminiResponse.interested_property_ids)) {
+    for (const id of geminiResponse.interested_property_ids) {
+      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+      if (!isNaN(numericId) && !interestedIds.includes(numericId)) {
+        interestedIds.push(numericId);
+      }
+    }
+  }
+
   return {
     stage: nextStage,
-    recommended_property_ids: recommendedIds
+    recommended_property_ids: recommendedIds,
+    interested_property_ids: interestedIds
   };
 }

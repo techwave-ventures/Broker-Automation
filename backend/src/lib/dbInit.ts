@@ -41,6 +41,7 @@ export async function initDatabase() {
         "move_in_date": null,
         "purpose": null,
         "recommended_property_ids": [],
+        "interested_property_ids": [],
         "stage": "GREETING",
         "rolling_summary": ""
       }'::jsonb,
@@ -194,6 +195,7 @@ export async function initDatabase() {
       "move_in_date": null,
       "purpose": null,
       "recommended_property_ids": [],
+      "interested_property_ids": [],
       "stage": "GREETING",
       "rolling_summary": ""
     }'::jsonb;

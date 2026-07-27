@@ -47,6 +47,7 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
   "reply_outro": "Closing text sent after listing properties (e.g. 'Would you like to schedule a site visit?'). Leave empty if not recommending properties.",
   "action": "GREET" | "ASK_SLOTS" | "SEARCH" | "RECOMMEND" | "OFFER_SITE_VISIT" | "SCHEDULE_SITE_VISIT" | "LOAN_INFO" | "NEGOTIATE" | "HUMAN_TAKEOVER" | "CHITCHAT",
   "recommended_property_ids": [number], // Array of database key IDs of properties you recommended in this specific response.
+  "interested_property_ids": [number], // Array of database key IDs of properties the user explicitly wants to visit (e.g., if they say "I want to visit the second one", extract the corresponding key ID). Return empty array [] if not specified.
   "missing_fields": [string], // List of critical fields that are still needed (choose from: 'transaction_type', 'locality', 'budget', 'beds', 'property_type')
   "stage": "GREETING" | "COLLECT_INFO" | "SEARCHING" | "RECOMMENDING" | "SITE_VISIT" | "FOLLOW_UP" | "COMPLETED", // Propose the next stage of the conversation
   "appointmentDate": string | null, // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${new Date().toDateString()}.

@@ -60,6 +60,7 @@ export interface GeminiStructuredResponse {
   reply_outro?: string;
   action: 'GREET' | 'ASK_SLOTS' | 'SEARCH' | 'RECOMMEND' | 'OFFER_SITE_VISIT' | 'SCHEDULE_SITE_VISIT' | 'LOAN_INFO' | 'NEGOTIATE' | 'HUMAN_TAKEOVER' | 'CHITCHAT';
   recommended_property_ids: number[];
+  interested_property_ids?: number[];
   missing_fields: string[];
   stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
   /** ISO 8601 datetime string for the agreed site-visit appointment, or null if not yet scheduled. */
@@ -94,6 +95,7 @@ export async function generateAutoReply(
     reply: `Thank you for reaching out! One of our agents will get back to you shortly.`,
     action: 'CHITCHAT',
     recommended_property_ids: [],
+    interested_property_ids: [],
     missing_fields: [],
     stage: aiState.stage || 'GREETING',
     appointmentDate: null,
@@ -239,6 +241,7 @@ export async function generateAutoReply(
             reply_outro: parsed.reply_outro || '',
             action: parsed.action || 'CHITCHAT',
             recommended_property_ids: parsed.recommended_property_ids || [],
+            interested_property_ids: parsed.interested_property_ids || [],
             missing_fields: parsed.missing_fields || [],
             stage: parsed.stage || aiState.stage || 'GREETING',
             appointmentDate: parsed.appointmentDate || null,
@@ -252,6 +255,7 @@ export async function generateAutoReply(
             reply: responseText.trim(),
             action: 'CHITCHAT',
             recommended_property_ids: [],
+            interested_property_ids: [],
             missing_fields: [],
             stage: aiState.stage || 'GREETING',
             appointmentDate: null,
