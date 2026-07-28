@@ -236,6 +236,20 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS whatsapp_templates (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      waba_id VARCHAR(100) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      language VARCHAR(50) NOT NULL,
+      status VARCHAR(50) NOT NULL,
+      category VARCHAR(50) NOT NULL,
+      components JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS waba_template_lang_key ON whatsapp_templates (waba_id, name, language);
     `
   ];
 

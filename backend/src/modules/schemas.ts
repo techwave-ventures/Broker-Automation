@@ -131,6 +131,19 @@ export const webhookChallengeQuerySchema = z.object({
   'hub.challenge': z.string().optional(),
 });
 
+export const createTemplateSchema = z.object({
+  waba_id: z.string().min(1),
+  name: z.string().min(1),
+  category: z.string().min(1),
+  language: z.string().min(1),
+  components: z.array(z.unknown()),
+});
+
+export const deleteTemplateSchema = z.object({
+  waba_id: z.string().min(1),
+  name: z.string().min(1),
+});
+
 export type TokenExchangeInput = z.infer<typeof tokenExchangeSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type RequestCodeInput = z.infer<typeof requestCodeSchema>;
@@ -150,3 +163,6 @@ export type CallPermissionRequestInput = z.infer<typeof callPermissionRequestSch
 export type PaidMessagingTemplatesQueryInput = z.infer<typeof paidMessagingTemplatesQuerySchema>;
 export type PaidMessagingSendInput = z.infer<typeof paidMessagingSendSchema>;
 export type WebhookChallengeQueryInput = z.infer<typeof webhookChallengeQuerySchema>;
+export type CreateTemplateInput = z.infer<typeof createTemplateSchema>;
+export type DeleteTemplateInput = z.infer<typeof deleteTemplateSchema>;
+

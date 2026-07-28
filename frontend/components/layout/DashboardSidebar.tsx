@@ -14,6 +14,7 @@ import {
     LogOut,
     Menu,
     X,
+    FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
     { href: "/dashboard/properties", label: "Properties", icon: Building2 },
     { href: "/dashboard/leads", label: "Leads", icon: Users },
     { href: "/dashboard/conversations", label: "Conversations", icon: MessageSquare },
+    { href: "/dashboard/templates", label: "Templates", icon: FileText },
     { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/dashboard/whatsapp-ai", label: "WhatsApp AI", icon: BotMessageSquare },
     { href: "/dashboard/subscription", label: "Subscription", icon: Crown },

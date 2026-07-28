@@ -1,9 +1,9 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { env } from '../config/env.js';
-import { getTokenForWabaByUser, getMessageTemplates, getTemplateGatingData, checkWabaPaymentMethod } from '../services/business.js';
+import { getTokenForWabaByUser, getMessageTemplates, getTemplateGatingData, checkWabaPaymentMethod, getAllMessageTemplates, createMessageTemplate, deleteMessageTemplate } from '../services/business.js';
 import { jsonError, parseBody, validationMessage } from './http.js';
-import { paidMessagingSendSchema, paidMessagingTemplatesQuerySchema, type PaidMessagingSendInput, type PaidMessagingTemplatesQueryInput } from '../modules/schemas.js';
+import { paidMessagingSendSchema, paidMessagingTemplatesQuerySchema, createTemplateSchema, deleteTemplateSchema, type PaidMessagingSendInput, type PaidMessagingTemplatesQueryInput, type CreateTemplateInput, type DeleteTemplateInput } from '../modules/schemas.js';
 import { enqueueJob } from '../lib/queue.js';
 
 const E164_REGEX = /^\+\d{7,15}$/;
@@ -11,9 +11,9 @@ const E164_REGEX = /^\+\d{7,15}$/;
 export async function getPaidMessagingTemplates(req: AuthenticatedRequest, res: Response) {
   try {
     const body = paidMessagingTemplatesQuerySchema.parse(req.query) as PaidMessagingTemplatesQueryInput;
-    const userId = req.auth?.email;
+    const userId = req.auth?.user_id || req.auth?.email;
     if (!userId) {
-      return jsonError(res, 401, 'Missing user email in session');
+      return jsonError(res, 401, 'Missing user in session');
     }
 
     const accessToken = await getTokenForWabaByUser(body.waba_id, userId, env.FB_APP_ID);
@@ -40,9 +40,9 @@ export async function postPaidMessagingSend(req: AuthenticatedRequest, res: Resp
       return jsonError(res, 400, 'Phone number must be in E.164 format (e.g., +1234567890)');
     }
 
-    const userId = req.auth?.email;
+    const userId = req.auth?.user_id || req.auth?.email;
     if (!userId) {
-      return jsonError(res, 401, 'Missing user email in session');
+      return jsonError(res, 401, 'Missing user in session');
     }
 
     const accessToken = await getTokenForWabaByUser(body.waba_id, userId, env.FB_APP_ID);
@@ -93,3 +93,85 @@ export async function postPaidMessagingSend(req: AuthenticatedRequest, res: Resp
     });
   }
 }
+
+export async function getAllPaidMessagingTemplates(req: AuthenticatedRequest, res: Response) {
+  try {
+    const body = paidMessagingTemplatesQuerySchema.parse(req.query) as PaidMessagingTemplatesQueryInput;
+    const userId = req.auth?.user_id || req.auth?.email;
+    if (!userId) {
+      return jsonError(res, 401, 'Missing user in session');
+    }
+
+    const accessToken = await getTokenForWabaByUser(body.waba_id, userId, env.FB_APP_ID);
+    if (!accessToken) {
+      return jsonError(res, 403, 'You do not have access to this WABA');
+    }
+
+    const templates = await getAllMessageTemplates(body.waba_id, accessToken);
+    return res.json({ templates });
+  } catch (error) {
+    const validationError = validationMessage(error);
+    if (validationError) {
+      return jsonError(res, 400, validationError);
+    }
+    const message = error instanceof Error ? error.message : 'Failed to fetch templates';
+    return jsonError(res, 500, message);
+  }
+}
+
+export async function createPaidMessagingTemplate(req: AuthenticatedRequest, res: Response) {
+  try {
+    const body = parseBody<CreateTemplateInput>(createTemplateSchema, req.body);
+    const userId = req.auth?.user_id || req.auth?.email;
+    if (!userId) {
+      return jsonError(res, 401, 'Missing user in session');
+    }
+
+    const accessToken = await getTokenForWabaByUser(body.waba_id, userId, env.FB_APP_ID);
+    if (!accessToken) {
+      return jsonError(res, 403, 'You do not have access to this WABA');
+    }
+
+    const result = await createMessageTemplate(body.waba_id, accessToken, {
+      name: body.name,
+      category: body.category,
+      language: body.language,
+      components: body.components,
+    });
+
+    return res.json(result);
+  } catch (error) {
+    const validationError = validationMessage(error);
+    if (validationError) {
+      return jsonError(res, 400, validationError);
+    }
+    const message = error instanceof Error ? error.message : 'Failed to create template';
+    return jsonError(res, 500, message);
+  }
+}
+
+export async function deletePaidMessagingTemplate(req: AuthenticatedRequest, res: Response) {
+  try {
+    const body = parseBody<DeleteTemplateInput>(deleteTemplateSchema, req.body);
+    const userId = req.auth?.user_id || req.auth?.email;
+    if (!userId) {
+      return jsonError(res, 401, 'Missing user in session');
+    }
+
+    const accessToken = await getTokenForWabaByUser(body.waba_id, userId, env.FB_APP_ID);
+    if (!accessToken) {
+      return jsonError(res, 403, 'You do not have access to this WABA');
+    }
+
+    const result = await deleteMessageTemplate(body.waba_id, accessToken, body.name);
+    return res.json(result);
+  } catch (error) {
+    const validationError = validationMessage(error);
+    if (validationError) {
+      return jsonError(res, 400, validationError);
+    }
+    const message = error instanceof Error ? error.message : 'Failed to delete template';
+    return jsonError(res, 500, message);
+  }
+}
+

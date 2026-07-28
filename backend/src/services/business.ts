@@ -44,6 +44,22 @@ async function graphApiWrapperPost(path: string, accessToken: string, body: Grap
   });
 }
 
+async function graphApiWrapperDelete(path: string, accessToken: string) {
+  return metaRateLimiter.limit(async () => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    const response = await fetch(graphApiUrl(path), {
+      method: 'DELETE',
+      headers,
+      cache: 'no-store',
+    });
+    return response.json();
+  });
+}
+
 export async function getToken(code: string, appId: string, redirectUri: string = '') {
   const path = `/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
     redirectUri,
@@ -323,19 +339,15 @@ export async function getTokenForWabaByUser(wabaId: string, userId: string, appI
 }
 
 export async function getMessageTemplates(wabaId: string, accessToken: string) {
-  const cacheKey = `templates:${wabaId}`;
-  const cached = cache.get<any[]>(cacheKey);
-  if (cached) return cached;
+  await syncTemplatesIfExpired(wabaId, accessToken);
 
-  const data = await graphApiWrapperGet(`/${wabaId}/message_templates?fields=name,language,status,components,category&limit=1000`, accessToken);
-  if (data.error) {
-    throw new Error(data.error.message || 'Failed to fetch message templates');
-  }
-  const templates = data.data || [];
-  const sendableStatuses = ['APPROVED', 'QUALITY_PENDING'];
-  const filtered = templates.filter((template: { status?: string }) => sendableStatuses.includes(template.status ?? ''));
-  cache.set(cacheKey, filtered, 30000); // 30s TTL
-  return filtered;
+  const dbRes = await pool.query(
+    `SELECT name, language, status, category, components 
+     FROM whatsapp_templates 
+     WHERE waba_id = $1 AND status IN ('APPROVED', 'QUALITY_PENDING')`,
+    [wabaId]
+  );
+  return dbRes.rows;
 }
 
 export async function checkWabaPaymentMethod(wabaId: string, accessToken: string) {
@@ -427,3 +439,85 @@ export async function sendTemplateMessage(
 
   return data;
 }
+
+async function syncTemplatesIfExpired(wabaId: string, accessToken: string, force = false) {
+  try {
+    const ageRes = await pool.query(
+      'SELECT MAX(updated_at) as last_sync FROM whatsapp_templates WHERE waba_id = $1',
+      [wabaId],
+    );
+    const lastSync = ageRes.rows[0]?.last_sync;
+    const isCacheValid = lastSync && (Date.now() - new Date(lastSync).getTime() < 5 * 60 * 1000); // 5 minutes cache
+
+    if (!isCacheValid || force) {
+      const data = await graphApiWrapperGet(
+        `/${wabaId}/message_templates?fields=name,language,status,components,category&limit=1000`,
+        accessToken,
+      );
+      if (data && !data.error) {
+        const templates = data.data || [];
+        for (const tpl of templates) {
+          await pool.query(
+            `INSERT INTO whatsapp_templates (waba_id, name, language, status, category, components, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+             ON CONFLICT (waba_id, name, language)
+             DO UPDATE SET status = EXCLUDED.status, category = EXCLUDED.category, components = EXCLUDED.components, updated_at = CURRENT_TIMESTAMP`,
+            [wabaId, tpl.name, tpl.language, tpl.status, tpl.category, JSON.stringify(tpl.components)],
+          );
+        }
+
+        if (templates.length > 0) {
+          const names = templates.map((t: any) => t.name);
+          await pool.query(
+            'DELETE FROM whatsapp_templates WHERE waba_id = $1 AND name NOT IN (SELECT unnest($2::varchar[]))',
+            [wabaId, names],
+          );
+        } else {
+          await pool.query('DELETE FROM whatsapp_templates WHERE waba_id = $1', [wabaId]);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to sync templates with Meta:', error);
+  }
+}
+
+export async function getAllMessageTemplates(wabaId: string, accessToken: string) {
+  await syncTemplatesIfExpired(wabaId, accessToken);
+
+  const dbRes = await pool.query(
+    'SELECT name, language, status, category, components FROM whatsapp_templates WHERE waba_id = $1',
+    [wabaId],
+  );
+  return dbRes.rows;
+}
+
+export async function createMessageTemplate(
+  wabaId: string,
+  accessToken: string,
+  template: {
+    name: string;
+    category: string;
+    language: string;
+    components: unknown[];
+  },
+) {
+  const data = await graphApiWrapperPost(`/${wabaId}/message_templates`, accessToken, template);
+  if (data.error) {
+    throw new Error(data.error.message || 'Failed to create message template');
+  }
+  // Force sync from Meta to get the newly created template and its status immediately
+  await syncTemplatesIfExpired(wabaId, accessToken, true);
+  return data;
+}
+
+export async function deleteMessageTemplate(wabaId: string, accessToken: string, name: string) {
+  const data = await graphApiWrapperDelete(`/${wabaId}/message_templates?name=${encodeURIComponent(name)}`, accessToken);
+  if (data.error) {
+    throw new Error(data.error.message || 'Failed to delete message template');
+  }
+  // Force sync from Meta to remove the deleted template from our DB immediately
+  await syncTemplatesIfExpired(wabaId, accessToken, true);
+  return data;
+}
+
