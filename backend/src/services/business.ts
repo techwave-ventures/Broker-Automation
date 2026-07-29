@@ -486,7 +486,7 @@ export async function getAllMessageTemplates(wabaId: string, accessToken: string
   await syncTemplatesIfExpired(wabaId, accessToken, force);
 
   const dbRes = await pool.query(
-    'SELECT name, language, status, category, components FROM whatsapp_templates WHERE waba_id = $1',
+    'SELECT name, language, status, category, components, updated_at FROM whatsapp_templates WHERE waba_id = $1',
     [wabaId],
   );
   return dbRes.rows;

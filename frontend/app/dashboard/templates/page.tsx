@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
     Plus, Search, Trash2, Loader2, AlertCircle, MessageSquare, 
     Check, X, Globe, FileText, CheckCircle2, ChevronRight, Info,
-    RefreshCw
+    RefreshCw, ArrowUpDown
 } from "lucide-react";
 
 interface TemplateComponent {
@@ -20,6 +20,7 @@ interface WhatsAppTemplate {
     status: string;
     category: string;
     components: TemplateComponent[];
+    updated_at?: string;
 }
 
 export default function TemplatesPage() {
@@ -35,6 +36,8 @@ export default function TemplatesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [sortField, setSortField] = useState<"name" | "status" | "category" | "updated_at">("updated_at");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
     // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -312,6 +315,42 @@ export default function TemplatesPage() {
         return matchesSearch && matchesStatus && matchesCategory;
     });
 
+    // Sort templates logic
+    const sortedTemplates = [...filteredTemplates].sort((a, b) => {
+        let fieldA = (a[sortField] || "").toString().toLowerCase();
+        let fieldB = (b[sortField] || "").toString().toLowerCase();
+        
+        if (sortField === "updated_at") {
+            const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+            const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+            return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+        }
+
+        if (fieldA < fieldB) return sortOrder === "asc" ? -1 : 1;
+        if (fieldA > fieldB) return sortOrder === "asc" ? 1 : -1;
+        return 0;
+    });
+
+    const handleSort = (field: "name" | "status" | "category" | "updated_at") => {
+        if (sortField === field) {
+            setSortOrder(prev => prev === "asc" ? "desc" : "asc");
+        } else {
+            setSortField(field);
+            setSortOrder("asc");
+        }
+    };
+
+    const renderSortIcon = (field: "name" | "status" | "category" | "updated_at") => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-3 w-3 text-foreground/20 group-hover:text-foreground/45 transition-colors" />;
+        }
+        return (
+            <span className="text-primary font-bold">
+                {sortOrder === "asc" ? " ▲" : " ▼"}
+            </span>
+        );
+    };
+
     const getStatusColor = (status: string) => {
         switch (status.toUpperCase()) {
             case "APPROVED":
@@ -514,15 +553,48 @@ export default function TemplatesPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-foreground/45 bg-secondary/15">
-                                    <th className="px-6 py-4">Template Name</th>
-                                    <th className="px-6 py-4">Category</th>
-                                    <th className="px-6 py-4">Language</th>
-                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">
+                                        <button 
+                                            onClick={() => handleSort("name")}
+                                            className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
+                                        >
+                                            Template Name
+                                            {renderSortIcon("name")}
+                                        </button>
+                                    </th>
+                                    <th className="px-6 py-4">
+                                        <button 
+                                            onClick={() => handleSort("category")}
+                                            className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
+                                        >
+                                            Category
+                                            {renderSortIcon("category")}
+                                        </button>
+                                    </th>
+                                    <th className="px-6 py-4 font-bold">Language</th>
+                                    <th className="px-6 py-4">
+                                        <button 
+                                            onClick={() => handleSort("status")}
+                                            className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
+                                        >
+                                            Status
+                                            {renderSortIcon("status")}
+                                        </button>
+                                    </th>
+                                    <th className="px-6 py-4">
+                                        <button 
+                                            onClick={() => handleSort("updated_at")}
+                                            className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
+                                        >
+                                            Date Created
+                                            {renderSortIcon("updated_at")}
+                                        </button>
+                                    </th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/60 text-xs">
-                                {filteredTemplates.map((template) => (
+                                {sortedTemplates.map((template) => (
                                     <tr 
                                         key={template.name}
                                         onClick={() => setSelectedPreviewTemplate(template)}
@@ -556,6 +628,9 @@ export default function TemplatesPage() {
                                                     <RefreshCw className={`h-3 w-3 ${(syncingTemplateName === template.name) ? 'animate-spin' : ''}`} />
                                                 </button>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4.5 text-foreground/50">
+                                            {template.updated_at ? new Date(template.updated_at).toLocaleString() : "N/A"}
                                         </td>
                                         <td className="px-6 py-4.5 text-right" onClick={(e) => e.stopPropagation()}>
                                             <button
