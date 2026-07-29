@@ -124,10 +124,9 @@ export async function getProperty(req: AuthenticatedRequest, res: Response) {
             if (displayPhone) {
               agentPhone = displayPhone;
             }
-            // Save it to database so next time it is queried instantly!
             await pool.query(
-              `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, display_phone_number, last_updated)
-               VALUES ($1, $2, TRUE, $3, CURRENT_TIMESTAMP)
+              `INSERT INTO phones (phone_id, user_id, display_phone_number, last_updated)
+               VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
                ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, display_phone_number = EXCLUDED.display_phone_number, last_updated = CURRENT_TIMESTAMP`,
               [phoneId, dbUserId, displayPhone || null]
             );
@@ -215,8 +214,8 @@ export async function getPropertyBySlug(req: AuthenticatedRequest, res: Response
               agentPhone = displayPhone;
             }
             await pool.query(
-              `INSERT INTO phones (phone_id, user_id, is_ack_bot_enabled, display_phone_number, last_updated)
-               VALUES ($1, $2, TRUE, $3, CURRENT_TIMESTAMP)
+              `INSERT INTO phones (phone_id, user_id, display_phone_number, last_updated)
+               VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
                ON CONFLICT (phone_id) DO UPDATE SET user_id = EXCLUDED.user_id, display_phone_number = EXCLUDED.display_phone_number, last_updated = CURRENT_TIMESTAMP`,
               [phoneId, dbUserId, displayPhone || null]
             );

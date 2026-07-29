@@ -45,11 +45,6 @@ export const sendSchema = z.object({
   message_content: z.string().min(1),
 });
 
-export const phoneConfigSchema = z.object({
-  isAckBotEnabled: z.boolean(),
-  phoneId: z.string().min(1),
-  ackBotMessage: z.string().optional(),
-});
 
 export const callAcceptSchema = z.object({
   phoneNumberId: z.string().min(1),
@@ -150,7 +145,6 @@ export type RequestCodeInput = z.infer<typeof requestCodeSchema>;
 export type VerifyCodeInput = z.infer<typeof verifyCodeSchema>;
 export type DeregisterInput = z.infer<typeof deregisterSchema>;
 export type SendInput = z.infer<typeof sendSchema>;
-export type PhoneConfigInput = z.infer<typeof phoneConfigSchema>;
 export type CallAcceptInput = z.infer<typeof callAcceptSchema>;
 export type CallRejectInput = z.infer<typeof callRejectSchema>;
 export type CallConnectInput = z.infer<typeof callConnectSchema>;

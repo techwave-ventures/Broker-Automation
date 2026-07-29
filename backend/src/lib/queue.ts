@@ -220,13 +220,24 @@ export async function handleWhatsappSend(payload: any) {
   }
 
   if (result?.error) {
-    console.error(`❌ [ACKBOT SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
+    console.error(`❌ [OUTBOUND SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
     throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
   }
 
   const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
 
   const conversation = await findOrCreateConversation(userId, destPhone, undefined, phoneNumberId);
+  if (senderType === 'agent') {
+    await pool.query(
+      "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+      [conversation.id]
+    );
+    await publishToChannel('get-started', 'webhook', {
+      type: 'status_change',
+      conversationId: conversation.id,
+      status: 'human_takeover'
+    });
+  }
   await saveMessage({
     conversationId: conversation.id,
     wabaId: wabaId || undefined,
@@ -246,7 +257,7 @@ export async function handleWhatsappSend(payload: any) {
   await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound service window message');
   await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
 
-  console.log(`🤖 [ACKBOT AUTO-REPLY SENT] Sent to ${destPhone}: "${messageContent}"`);
+  console.log(`🤖 [OUTBOUND MESSAGE SENT] Sent to ${destPhone}: "${messageContent}"`);
   return result;
 }
 
@@ -616,11 +627,25 @@ export async function handleGeminiReply(payload: any) {
   const conversation = convRes.rows[0];
   if (!conversation || conversation.status === 'human_takeover') return;
 
+  // Fetch the latest message to see if we've already replied
+  const latestMsgRes = await pool.query(
+    'SELECT direction FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 1',
+    [conversationId]
+  );
+  if (latestMsgRes.rows.length > 0 && latestMsgRes.rows[0].direction === 'outbound') {
+    console.log(`ℹ️ [GEMINI PROCESS] Latest message in conversation ${conversationId} is already outbound. Skipping duplicate reply.`);
+    return;
+  }
+
   const botConfigResult = await pool.query(
-    'SELECT bot_instructions FROM bot_configs WHERE phone_id = $1 LIMIT 1',
+    'SELECT bot_instructions, is_auto_reply_enabled FROM bot_configs WHERE phone_id = $1 LIMIT 1',
     [phoneNumberId]
   );
   const botConfig = botConfigResult.rows[0];
+  if (botConfig && botConfig.is_auto_reply_enabled === false) {
+    console.log(`ℹ️ [GEMINI PROCESS] Auto-reply is disabled for phone ${phoneNumberId}. Skipping reply.`);
+    return;
+  }
   const instructions = botConfig?.bot_instructions || 'You are a helpful real estate assistant.';
 
   // A. Fetch recent message history (last 4 messages)
@@ -840,7 +865,6 @@ export async function handleGeminiReply(payload: any) {
                   type: 'text',
                   text: { body: messagesToSend.map(m => m.text).join('\n\n') },
                   timestamp: Math.floor(Date.now() / 1000),
-                  _ackbot_recipient: senderNumber,
                 },
               ],
             },

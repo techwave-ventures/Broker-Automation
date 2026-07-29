@@ -207,7 +207,7 @@ export async function getWabas(req: Request, res: Response) {
     );
 
     const phonesRes = await pool.query(
-      `SELECT phone_id, is_ack_bot_enabled, ack_bot_message FROM phones WHERE user_id = $1`,
+      `SELECT phone_id FROM phones WHERE user_id = $1`,
       [userId]
     );
 

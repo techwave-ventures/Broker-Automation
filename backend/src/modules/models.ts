@@ -47,7 +47,6 @@ export interface WebhookMessageModel {
     type?: string;
     call_permission_reply?: { response?: 'accept' | 'reject' };
   };
-  _ackbot_recipient?: string;
 }
 
 export interface WebhookChangeValueModel {

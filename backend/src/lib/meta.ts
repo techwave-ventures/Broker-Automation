@@ -88,25 +88,3 @@ export async function getWabaAccessToken(wabaId: string, userId: string) {
 
   return result.rows[0]?.access_token ?? null;
 }
-
-export async function getAckBotStatus(phoneId: string) {
-  const cacheKey = `ack_bot_status:${phoneId}`;
-  const cached = cache.get<boolean>(cacheKey);
-  if (cached !== null) return cached;
-
-  const result = await pool.query('select is_ack_bot_enabled from phones where phone_id = $1 limit 1', [phoneId]);
-  const status = result.rows[0]?.is_ack_bot_enabled === true;
-  cache.set(cacheKey, status, 10000); // 10s TTL
-  return status;
-}
-
-export async function getAckBotMessage(phoneId: string) {
-  const cacheKey = `ack_bot_message:${phoneId}`;
-  const cached = cache.get<string>(cacheKey);
-  if (cached !== null) return cached;
-
-  const result = await pool.query('select ack_bot_message from phones where phone_id = $1 limit 1', [phoneId]);
-  const message = result.rows[0]?.ack_bot_message ?? '';
-  cache.set(cacheKey, message, 10000); // 10s TTL
-  return message;
-}
