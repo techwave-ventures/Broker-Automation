@@ -187,7 +187,12 @@ async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number,
 
 // Handler functions for BullMQ Worker
 export async function handleWhatsappSend(payload: any) {
-  const { phoneNumberId, accessToken, destPhone, messageContent, wabaId, senderType = 'bot' } = payload;
+  const { phoneNumberId, accessToken, destPhone, messageContent, wabaId, senderType = 'bot', dbMessageId } = payload;
+
+  console.log(`\n----------------------------------------------------------------`);
+  console.log(`⚙️ [QUEUE WORKER] Processing 'whatsapp_send' job...`);
+  console.log(`Sender Type: ${senderType} | Phone ID: ${phoneNumberId} | WABA ID: ${wabaId}`);
+  console.log(`Destination: ${destPhone} | Message Content: "${messageContent}"`);
 
   // Find owner user_id
   let userId = 'local-dev';
@@ -195,6 +200,7 @@ export async function handleWhatsappSend(payload: any) {
     const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
     if (wabaRes.rows[0]?.user_id) {
       userId = wabaRes.rows[0].user_id;
+      console.log(`👤 [QUEUE WORKER] Resolved owner user_id to: ${userId}`);
     }
   }
 
@@ -204,7 +210,9 @@ export async function handleWhatsappSend(payload: any) {
     console.warn(`❌ [SEND BLOCKED] Outbound message to ${destPhone} blocked for user ${userId} due to insufficient credits.`);
     throw new Error('Insufficient credits to send WhatsApp messages.');
   }
+  console.log(`💰 [QUEUE WORKER] Credit check passed (balance: ${userCheck.rows[0]?.credits_balance ?? 0})`);
 
+  console.log(`🌐 [QUEUE WORKER] Transmitting text message via Meta Graph API...`);
   let result = await send(phoneNumberId, accessToken, destPhone, messageContent);
 
   // Auto-recovery for Error 133010 (Account not registered on Cloud API)
@@ -225,9 +233,13 @@ export async function handleWhatsappSend(payload: any) {
   }
 
   const messageId = result?.messages?.[0]?.id || `out-${Date.now()}`;
+  console.log(`📨 [QUEUE WORKER] Meta API successfully sent message. Assigned messageId: ${messageId}`);
 
   const conversation = await findOrCreateConversation(userId, destPhone, undefined, phoneNumberId);
+  console.log(`💬 [QUEUE WORKER] Found/Created conversation ID: ${conversation.id}`);
+
   if (senderType === 'agent') {
+    console.log(`🤝 [QUEUE WORKER] Sender type is agent. Switching conversation ID ${conversation.id} to human_takeover status.`);
     await pool.query(
       "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
       [conversation.id]
@@ -238,26 +250,45 @@ export async function handleWhatsappSend(payload: any) {
       status: 'human_takeover'
     });
   }
-  await saveMessage({
-    conversationId: conversation.id,
-    wabaId: wabaId || undefined,
-    phoneNumberId,
-    messageId,
-    senderNumber: phoneNumberId,
-    recipientNumber: destPhone,
-    senderType,
-    messageType: 'text',
-    body: messageContent,
-    direction: 'outbound',
-    status: 'sent',
-  });
+
+  if (dbMessageId) {
+    console.log(`💾 [QUEUE WORKER] Updating existing DB message ID ${dbMessageId} with Meta messageId: ${messageId}`);
+    await pool.query(
+      `UPDATE messages 
+       SET message_id = $1, waba_id = $2, phone_number_id = $3, status = $4, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $5`,
+      [messageId, wabaId || null, phoneNumberId || null, 'sent', dbMessageId]
+    );
+  } else {
+    console.log(`💾 [QUEUE WORKER] Saving new message record to PostgreSQL...`);
+    await saveMessage({
+      conversationId: conversation.id,
+      wabaId: wabaId || undefined,
+      phoneNumberId,
+      messageId,
+      senderNumber: phoneNumberId,
+      recipientNumber: destPhone,
+      senderType,
+      messageType: 'text',
+      body: messageContent,
+      direction: 'outbound',
+      status: 'sent',
+    });
+  }
 
   // Deduct 1 credit for outbound service message
   const cost = 1;
+  console.log(`💳 [QUEUE WORKER] Charging ${cost} credit for outbound message...`);
   await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound service window message');
-  await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
+  
+  if (dbMessageId) {
+    await pool.query('UPDATE messages SET credits_charged = $1 WHERE id = $2', [cost, dbMessageId]);
+  } else {
+    await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
+  }
 
   console.log(`🤖 [OUTBOUND MESSAGE SENT] Sent to ${destPhone}: "${messageContent}"`);
+  console.log(`----------------------------------------------------------------\n`);
   return result;
 }
 

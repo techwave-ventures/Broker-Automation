@@ -274,8 +274,16 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
 
     const parsed = messageSendSchema.safeParse(req.body);
     if (!parsed.success) {
+      console.warn(`⚠️ [CONVO CHAT MESSAGE WARNING] Invalid payload:`, parsed.error.issues[0]?.message);
       return jsonError(res, 400, parsed.error.issues[0]?.message || 'Invalid payload');
     }
+
+    console.log(`\n================================================================`);
+    console.log(`💬 [CONVO CHAT MESSAGE START] postChatMessage received`);
+    console.log(`Conversation ID: ${id}`);
+    console.log(`From Agent User ID: ${userId} (Email: ${email})`);
+    console.log(`Message Body: "${parsed.data.text}"`);
+    console.log(`================================================================\n`);
 
     const convRes = await pool.query(
       `SELECT * FROM conversations WHERE id = $1 AND (user_id = $2 OR user_id = $3)`,
@@ -284,6 +292,7 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
 
     const conv = convRes.rows[0];
     if (!conv) {
+      console.warn(`⚠️ [CONVO CHAT MESSAGE WARNING] Conversation ID ${id} not found for user ${userId}.`);
       return jsonError(res, 404, 'Conversation not found');
     }
 
@@ -295,6 +304,7 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
       body: parsed.data.text,
       status: 'sent',
     });
+    console.log(`💾 [CONVO CHAT MESSAGE] Saved agent message record to DB (ID: ${savedMsg.id})`);
 
     // Check if conversation already has an active phone_number_id and waba_id from recent messages
     const lastMsgRes = await pool.query(
@@ -336,29 +346,35 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
       phoneNumberId = phoneRes.rows[0]?.phone_id;
     }
 
+    console.log(`🔌 [CONVO CHAT MESSAGE] Configuration resolved: wabaId=${wabaId}, phoneNumberId=${phoneNumberId}`);
+
     if (wabaId && accessToken && phoneNumberId) {
       try {
+        console.log(`📦 [CONVO CHAT MESSAGE] Enqueuing 'whatsapp_send' job with senderType: agent and dbMessageId: ${savedMsg.id}...`);
         await enqueueJob('whatsapp_send', {
           phoneNumberId,
           accessToken,
           destPhone: conv.customer_phone,
           messageContent: parsed.data.text,
           wabaId,
+          senderType: 'agent',
+          dbMessageId: savedMsg.id,
         });
+        console.log(`✅ [CONVO CHAT MESSAGE] Successfully enqueued manual message send job.`);
       } catch (err) {
-        console.error('Failed to enqueue WhatsApp send job, attempting direct send:', err);
+        console.error('❌ [CONVO CHAT MESSAGE ERROR] Failed to enqueue WhatsApp send job, attempting direct send:', err);
         try {
           const { send } = await import('../services/business.js');
           const apiRes = await send(phoneNumberId, accessToken, conv.customer_phone, parsed.data.text);
           if (apiRes?.error) {
-            console.error('Meta Graph API direct send error:', apiRes.error);
+            console.error('❌ [CONVO CHAT MESSAGE ERROR] Meta Graph API direct send error:', apiRes.error);
           }
         } catch (directErr) {
-          console.error('Direct WhatsApp send failed:', directErr);
+          console.error('❌ [CONVO CHAT MESSAGE ERROR] Direct WhatsApp send failed:', directErr);
         }
       }
     } else {
-      console.warn(`[postChatMessage] Unable to send WhatsApp message: Missing WABA or Phone configuration (wabaId=${wabaId}, phoneId=${phoneNumberId})`);
+      console.warn(`⚠️ [CONVO CHAT MESSAGE WARNING] Unable to send WhatsApp message: Missing WABA or Phone configuration (wabaId=${wabaId}, phoneId=${phoneNumberId})`);
     }
 
     return res.status(201).json({
@@ -368,7 +384,7 @@ export async function postChatMessage(req: AuthenticatedRequest, res: Response) 
       time: new Date(savedMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     });
   } catch (error) {
-    console.error('Failed to send chat message:', error);
+    console.error('❌ [CONVO CHAT MESSAGE ERROR] Failed to send chat message:', error);
     return jsonError(res, 500, 'Failed to send chat message');
   }
 }
