@@ -102,6 +102,32 @@ export default function TemplatesPage() {
         setTimeout(() => setToast(null), 4000);
     };
 
+    // Dynamic Examples Form State
+    const [variablesList, setVariablesList] = useState<string[]>([]);
+    const [variableExamples, setVariableExamples] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const text = `${newHeaderText} ${newBodyText}`;
+        const regex = /\{+([a-zA-Z0-9_]+)\}+/g;
+        const foundVars: string[] = [];
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const varName = match[1].toLowerCase();
+            if (!foundVars.includes(varName)) {
+                foundVars.push(varName);
+            }
+        }
+        setVariablesList(foundVars);
+
+        setVariableExamples(prev => {
+            const updated: Record<string, string> = {};
+            foundVars.forEach(v => {
+                updated[v] = prev[v] || "";
+            });
+            return updated;
+        });
+    }, [newHeaderText, newBodyText]);
+
     const handleCreateTemplate = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -121,18 +147,69 @@ export default function TemplatesPage() {
 
         const components: TemplateComponent[] = [];
 
-        if (newHeaderText.trim()) {
-            components.push({
-                type: "HEADER",
-                format: "TEXT",
-                text: newHeaderText.trim()
-            });
+        const headerVars: string[] = [];
+        const headerRegex = /\{+([a-zA-Z0-9_]+)\}+/g;
+        let headerMatch;
+        while ((headerMatch = headerRegex.exec(newHeaderText)) !== null) {
+            headerVars.push(headerMatch[1].toLowerCase());
         }
 
-        components.push({
+        const bodyVars: string[] = [];
+        const bodyRegex = /\{+([a-zA-Z0-9_]+)\}+/g;
+        let bodyMatch;
+        while ((bodyMatch = bodyRegex.exec(newBodyText)) !== null) {
+            bodyVars.push(bodyMatch[1].toLowerCase());
+        }
+
+        const hasNamed = [...headerVars, ...bodyVars].some(v => !/^\d+$/.test(v));
+
+        if (newHeaderText.trim()) {
+            const cleanHeader = newHeaderText.trim().replace(/\{+([a-zA-Z0-9_]+)\}+/g, (match, p1) => '{{' + p1.toLowerCase() + '}}');
+            const comp: any = {
+                type: "HEADER",
+                format: "TEXT",
+                text: cleanHeader
+            };
+            if (headerVars.length > 0) {
+                const sampleVal = variableExamples[headerVars[0]] || "Sample";
+                if (hasNamed) {
+                    comp.example = {
+                        header_text_named_params: [
+                            {
+                                param_name: headerVars[0],
+                                example: sampleVal
+                            }
+                        ]
+                    };
+                } else {
+                    comp.example = {
+                        header_text: [sampleVal]
+                    };
+                }
+            }
+            components.push(comp);
+        }
+
+        const cleanBody = newBodyText.trim().replace(/\{+([a-zA-Z0-9_]+)\}+/g, (match, p1) => '{{' + p1.toLowerCase() + '}}');
+        const bodyComp: any = {
             type: "BODY",
-            text: newBodyText.trim()
-        });
+            text: cleanBody
+        };
+        if (bodyVars.length > 0) {
+            if (hasNamed) {
+                bodyComp.example = {
+                    body_text_named_params: bodyVars.map(v => ({
+                        param_name: v,
+                        example: variableExamples[v] || "Sample"
+                    }))
+                };
+            } else {
+                bodyComp.example = {
+                    body_text: [bodyVars.map(v => variableExamples[v] || "Sample")]
+                };
+            }
+        }
+        components.push(bodyComp);
 
         try {
             const res = await fetch("/api/paid_messaging/templates", {
@@ -160,6 +237,7 @@ export default function TemplatesPage() {
                 setNewLanguage("en_US");
                 setNewBodyText("");
                 setNewHeaderText("");
+                setVariableExamples({});
                 // Refresh list
                 fetchTemplates(selectedWabaId);
             } else {
@@ -225,9 +303,9 @@ export default function TemplatesPage() {
     // Helper to format body text variables in preview
     const highlightVariables = (text: string) => {
         if (!text) return "";
-        const parts = text.split(/(\{\{\d+\}\})/g);
+        const parts = text.split(/(\{\{[a-zA-Z0-9_]+\}\})/g);
         return parts.map((part, index) => {
-            if (part.match(/^\{\{\d+\}\}$/)) {
+            if (part.match(/^\{\{[a-zA-Z0-9_]+\}\}$/)) {
                 return (
                     <span key={index} className="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-xs font-semibold font-mono mx-0.5">
                         {part}
@@ -547,6 +625,34 @@ export default function TemplatesPage() {
                                         Use double curly brackets with numbers like <span className="font-mono bg-secondary px-1 py-0.5 rounded text-primary font-bold">{"{{1}}"}</span> for dynamic parameters.
                                     </span>
                                 </div>
+
+                                {variablesList.length > 0 && (
+                                    <div className="space-y-3 p-4 rounded-2xl bg-secondary/20 border border-border/50">
+                                        <label className="block text-xs font-bold uppercase tracking-wider text-foreground/60 mb-1">
+                                            Sample Variable Values (Required by Meta)
+                                        </label>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                            {variablesList.map(v => (
+                                                <div key={v}>
+                                                    <label className="block text-[10px] font-bold text-foreground/40 mb-1 font-mono">
+                                                        {"{{"}{v}{"}}"}
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        placeholder={`Sample value for ${v}`}
+                                                        value={variableExamples[v] || ""}
+                                                        onChange={(e) => setVariableExamples(prev => ({
+                                                            ...prev,
+                                                            [v]: e.target.value
+                                                        }))}
+                                                        className="w-full h-9 px-3 rounded-xl bg-background border border-border text-xs focus:ring-1 focus:ring-primary focus:outline-none"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Preview Panel */}

@@ -504,6 +504,7 @@ export async function createMessageTemplate(
 ) {
   const data = await graphApiWrapperPost(`/${wabaId}/message_templates`, accessToken, template);
   if (data.error) {
+    console.error('🔴 [Meta API Error] createMessageTemplate failed:', JSON.stringify(data.error, null, 2));
     throw new Error(data.error.message || 'Failed to create message template');
   }
   // Force sync from Meta to get the newly created template and its status immediately

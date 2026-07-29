@@ -132,12 +132,91 @@ export async function createPaidMessagingTemplate(req: AuthenticatedRequest, res
       return jsonError(res, 403, 'You do not have access to this WABA');
     }
 
-    const result = await createMessageTemplate(body.waba_id, accessToken, {
+    // Normalize variable brackets: Ensure single curly braces like {name} or {1} are converted to double curly braces {{name}} or {{1}}
+    let parameterFormat: 'POSITIONAL' | 'NAMED' = 'POSITIONAL';
+
+    const normalizedComponents = (body.components || []).map((comp: any) => {
+      if (comp && typeof comp === 'object' && typeof comp.text === 'string') {
+        const normalizedText = comp.text.replace(/\{+([a-zA-Z0-9_]+)\}+/g, (match, p1) => '{{' + p1.toLowerCase() + '}}');
+        
+        // Find all variables matching {{variable}}
+        const varMatches: string[] = [];
+        const regex = /\{\{([a-zA-Z0-9_]+)\}\}/g;
+        let match;
+        while ((match = regex.exec(normalizedText)) !== null) {
+          varMatches.push(match[1]);
+        }
+
+        const newComp = {
+          ...comp,
+          text: normalizedText,
+        };
+
+        if (varMatches.length > 0) {
+          // If any variable contains non-digits, it is a NAMED parameter format
+          const hasNamed = varMatches.some(v => !/^\d+$/.test(v));
+          if (hasNamed) {
+            parameterFormat = 'NAMED';
+          }
+
+          // Build example field if it doesn't exist
+          if (!newComp.example) {
+            if (newComp.type === 'BODY') {
+              if (hasNamed) {
+                const bodyTextExamples = varMatches.map(v => {
+                  let fallback = 'Sample';
+                  if (v.toLowerCase().includes('name')) fallback = 'John';
+                  else if (v.toLowerCase().includes('add') || v.toLowerCase().includes('loc')) fallback = '123 Main St';
+                  else if (v.toLowerCase().includes('phone') || v.toLowerCase().includes('num')) fallback = '+1234567890';
+                  else if (v.toLowerCase().includes('price') || v.toLowerCase().includes('rent') || v.toLowerCase().includes('budget')) fallback = '10,000';
+                  return {
+                    param_name: v,
+                    example: fallback,
+                  };
+                });
+                newComp.example = {
+                  body_text_named_params: bodyTextExamples,
+                };
+              } else {
+                newComp.example = {
+                  body_text: [varMatches.map(v => `Sample ${v}`)],
+                };
+              }
+            } else if (newComp.type === 'HEADER' && newComp.format === 'TEXT') {
+              const fallback = hasNamed && varMatches[0].toLowerCase().includes('name') ? 'John' : 'Sample';
+              if (hasNamed) {
+                newComp.example = {
+                  header_text_named_params: [
+                    {
+                      param_name: varMatches[0],
+                      example: fallback,
+                    },
+                  ],
+                };
+              } else {
+                newComp.example = {
+                  header_text: [fallback],
+                };
+              }
+            }
+          }
+        }
+        return newComp;
+      }
+      return comp;
+    });
+
+    const templatePayload = {
       name: body.name,
       category: body.category,
       language: body.language,
-      components: body.components,
-    });
+      components: normalizedComponents,
+      parameter_format: parameterFormat,
+    };
+
+    console.log('📦 Sending template payload to Meta:', JSON.stringify(templatePayload, null, 2));
+
+    const result = await createMessageTemplate(body.waba_id, accessToken, templatePayload as any);
 
     return res.json(result);
   } catch (error) {
