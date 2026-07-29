@@ -146,7 +146,7 @@ export async function createPaidMessagingTemplate(req: AuthenticatedRequest, res
 
     const normalizedComponents = (body.components || []).map((comp: any) => {
       if (comp && typeof comp === 'object' && typeof comp.text === 'string') {
-        const normalizedText = comp.text.replace(/\{+([a-zA-Z0-9_]+)\}+/g, (match, p1) => '{{' + p1.toLowerCase() + '}}');
+        const normalizedText = comp.text.replace(/\{+([a-zA-Z0-9_]+)\}+/g, (match: string, p1: string) => '{{' + p1.toLowerCase() + '}}');
         
         // Find all variables matching {{variable}}
         const varMatches: string[] = [];
