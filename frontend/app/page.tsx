@@ -212,8 +212,8 @@ export default async function HomePage() {
       <header className="fixed top-0 w-full z-50 border-b border-foreground/5 bg-background/80 backdrop-blur-xl transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-blue-500 flex items-center justify-center" style={{ boxShadow: "0 0 16px rgba(59,130,246,0.5)" }}>
-              <BotMessageSquare className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 relative flex-shrink-0">
+              <img src="/logo.png" alt="Roofiyo Logo" className="h-full w-full object-contain rounded-lg" />
             </div>
             <span className="text-lg font-bold tracking-tight">Roofiyo AI</span>
           </div>
@@ -587,8 +587,8 @@ export default async function HomePage() {
           <div className="flex flex-col md:flex-row justify-between items-start gap-10">
             <div className="max-w-xs">
               <div className="flex items-center gap-2.5 mb-4">
-                <div className="h-8 w-8 rounded-xl bg-blue-500 flex items-center justify-center">
-                  <BotMessageSquare className="h-5 w-5 text-white" />
+                <div className="h-10 w-10 relative flex-shrink-0">
+                  <img src="/logo.png" alt="Roofiyo Logo" className="h-full w-full object-contain rounded-lg" />
                 </div>
                 <span className="text-lg font-bold">Roofiyo AI</span>
               </div>

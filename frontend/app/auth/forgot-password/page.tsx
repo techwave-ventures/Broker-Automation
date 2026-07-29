@@ -31,8 +31,8 @@ export default function ForgotPasswordPage() {
             <div className="w-full max-w-md relative animate-fade-in-up">
                 <div className="bg-card border border-border rounded-3xl p-8 shadow-2xl">
                     <div className="flex flex-col items-center mb-8">
-                        <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center animate-pulse-glow mb-4">
-                            <BotMessageSquare className="h-7 w-7 text-white" />
+                        <div className="h-16 w-16 relative mb-4">
+                            <img src="/logo.png" alt="Roofiyo Logo" className="h-full w-full object-contain rounded-xl" />
                         </div>
                         <h1 className="text-2xl font-bold tracking-tight">
                             {sent ? "Check your inbox" : "Reset password"}

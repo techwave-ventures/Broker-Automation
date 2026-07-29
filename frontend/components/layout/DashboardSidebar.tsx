@@ -68,8 +68,8 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
             >
                 {/* Logo */}
                 <div className="h-16 flex items-center gap-3 px-6 border-b border-border flex-shrink-0">
-                    <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse-glow">
-                        <BotMessageSquare className="h-5 w-5 text-white" />
+                    <div className="h-10 w-10 relative flex-shrink-0">
+                        <img src="/logo.png" alt="Roofiyo Logo" className="h-full w-full object-contain rounded-lg" />
                     </div>
                     <span className="text-lg font-bold tracking-tight">Roofiyo AI</span>
                 </div>

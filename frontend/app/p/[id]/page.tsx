@@ -203,8 +203,8 @@ export default function PublicPropertyPage() {
             <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center animate-pulse-glow">
-                            <BotMessageSquare className="h-5 w-5 text-white" />
+                        <div className="h-10 w-10 relative flex-shrink-0">
+                            <img src="/logo.png" alt="Roofiyo Logo" className="h-full w-full object-contain rounded-lg" />
                         </div>
                         <span className="text-lg font-black tracking-tighter hidden sm:block">Roofiyo</span>
                     </div>
