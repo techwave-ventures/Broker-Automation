@@ -20,7 +20,7 @@ interface WhatsAppTemplate {
     status: string;
     category: string;
     components: TemplateComponent[];
-    updated_at?: string;
+    created_at?: string;
 }
 
 export default function TemplatesPage() {
@@ -36,8 +36,8 @@ export default function TemplatesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
-    const [sortField, setSortField] = useState<"name" | "status" | "category" | "updated_at">("updated_at");
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [sortField, setSortField] = useState<"name" | "status" | "category" | "created_at">("created_at");
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
     // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -320,9 +320,9 @@ export default function TemplatesPage() {
         let fieldA = (a[sortField] || "").toString().toLowerCase();
         let fieldB = (b[sortField] || "").toString().toLowerCase();
         
-        if (sortField === "updated_at") {
-            const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-            const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        if (sortField === "created_at") {
+            const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
             return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
         }
 
@@ -331,16 +331,16 @@ export default function TemplatesPage() {
         return 0;
     });
 
-    const handleSort = (field: "name" | "status" | "category" | "updated_at") => {
+    const handleSort = (field: "name" | "status" | "category" | "created_at") => {
         if (sortField === field) {
             setSortOrder(prev => prev === "asc" ? "desc" : "asc");
         } else {
             setSortField(field);
-            setSortOrder("asc");
+            setSortOrder(field === "created_at" ? "desc" : "asc");
         }
     };
 
-    const renderSortIcon = (field: "name" | "status" | "category" | "updated_at") => {
+    const renderSortIcon = (field: "name" | "status" | "category" | "created_at") => {
         if (sortField !== field) {
             return <ArrowUpDown className="h-3 w-3 text-foreground/20 group-hover:text-foreground/45 transition-colors" />;
         }
@@ -583,11 +583,11 @@ export default function TemplatesPage() {
                                     </th>
                                     <th className="px-6 py-4">
                                         <button 
-                                            onClick={() => handleSort("updated_at")}
+                                            onClick={() => handleSort("created_at")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
                                         >
                                             Date Created
-                                            {renderSortIcon("updated_at")}
+                                            {renderSortIcon("created_at")}
                                         </button>
                                     </th>
                                     <th className="px-6 py-4 text-right">Actions</th>
@@ -630,7 +630,7 @@ export default function TemplatesPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4.5 text-foreground/50">
-                                            {template.updated_at ? new Date(template.updated_at).toLocaleString() : "N/A"}
+                                            {template.created_at ? new Date(template.created_at).toLocaleString() : "N/A"}
                                         </td>
                                         <td className="px-6 py-4.5 text-right" onClick={(e) => e.stopPropagation()}>
                                             <button
