@@ -21,6 +21,7 @@ export async function postSendMessage(req: AuthenticatedRequest, res: Response) 
       destPhone: body.dest_phone,
       messageContent: body.message_content,
       wabaId: body.waba_id,
+      senderType: 'agent',
     });
 
     return res.json({ status: 'ok', data: { queued: true, jobId } });

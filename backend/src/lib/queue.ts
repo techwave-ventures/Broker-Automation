@@ -187,7 +187,7 @@ async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number,
 
 // Handler functions for BullMQ Worker
 export async function handleWhatsappSend(payload: any) {
-  const { phoneNumberId, accessToken, destPhone, messageContent, wabaId } = payload;
+  const { phoneNumberId, accessToken, destPhone, messageContent, wabaId, senderType = 'bot' } = payload;
 
   // Find owner user_id
   let userId = 'local-dev';
@@ -234,7 +234,7 @@ export async function handleWhatsappSend(payload: any) {
     messageId,
     senderNumber: phoneNumberId,
     recipientNumber: destPhone,
-    senderType: 'bot',
+    senderType,
     messageType: 'text',
     body: messageContent,
     direction: 'outbound',
@@ -470,6 +470,14 @@ export async function handleWebhookProcess(payload: any) {
           const senderNumber = message.from ?? '';
           const messageId = message.id;
           const body = message.text.body;
+
+          // If the message is from the business display number itself, ignore it (it's an echoed outbound message)
+          const displayPhone = metadata?.display_phone_number ? metadata.display_phone_number.replace(/\D/g, '') : '';
+          const senderClean = senderNumber.replace(/\D/g, '');
+          if (displayPhone && senderClean === displayPhone) {
+            console.log(`ℹ️ [WEBHOOK] Ignoring echoed outbound message from business number: ${senderNumber}`);
+            continue;
+          }
 
           if (messageId) {
             const dupCheck = await pool.query('SELECT id FROM messages WHERE message_id = $1 LIMIT 1', [messageId]);
