@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../middleware/auth.js';
 import { env } from '../config/env.js';
-import { getTokenForWabaByUser, getMessageTemplates, getTemplateGatingData, checkWabaPaymentMethod, getAllMessageTemplates, createMessageTemplate, deleteMessageTemplate } from '../services/business.js';
+import { getTokenForWabaByUser, getMessageTemplates, getTemplateGatingData, checkWabaPaymentMethod, getAllMessageTemplates, createMessageTemplate, deleteMessageTemplate, syncSingleTemplate } from '../services/business.js';
 import { jsonError, parseBody, validationMessage } from './http.js';
 import { paidMessagingSendSchema, paidMessagingTemplatesQuerySchema, createTemplateSchema, deleteTemplateSchema, type PaidMessagingSendInput, type PaidMessagingTemplatesQueryInput, type CreateTemplateInput, type DeleteTemplateInput } from '../modules/schemas.js';
 import { enqueueJob } from '../lib/queue.js';
@@ -107,7 +107,16 @@ export async function getAllPaidMessagingTemplates(req: AuthenticatedRequest, re
       return jsonError(res, 403, 'You do not have access to this WABA');
     }
 
-    const templates = await getAllMessageTemplates(body.waba_id, accessToken);
+    const templateName = req.query.name as string | undefined;
+    const forceSync = req.query.force === 'true';
+
+    if (templateName) {
+      await syncSingleTemplate(body.waba_id, accessToken, templateName);
+    }
+
+    // Pass false to force sync in getAllMessageTemplates because we either synced single above,
+    // or we run full sync if forceSync is true.
+    const templates = await getAllMessageTemplates(body.waba_id, accessToken, forceSync && !templateName);
     return res.json({ templates });
   } catch (error) {
     const validationError = validationMessage(error);

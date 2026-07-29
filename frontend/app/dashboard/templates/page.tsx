@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import {
     Plus, Search, Trash2, Loader2, AlertCircle, MessageSquare, 
-    Check, X, Globe, FileText, CheckCircle2, ChevronRight, Info
+    Check, X, Globe, FileText, CheckCircle2, ChevronRight, Info,
+    RefreshCw
 } from "lucide-react";
 
 interface TemplateComponent {
@@ -38,6 +39,9 @@ export default function TemplatesPage() {
     // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+    const [selectedPreviewTemplate, setSelectedPreviewTemplate] = useState<WhatsAppTemplate | null>(null);
+    const [syncingTemplates, setSyncingTemplates] = useState(false);
+    const [syncingTemplateName, setSyncingTemplateName] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
     // Create Form State
@@ -67,15 +71,17 @@ export default function TemplatesPage() {
     };
 
     // Fetch Templates for Selected WABA
-    const fetchTemplates = async (wabaId: string) => {
+    const fetchTemplates = async (wabaId: string, force = false) => {
         if (!wabaId) return;
-        setLoadingTemplates(true);
+        if (force) setSyncingTemplates(true);
+        else setLoadingTemplates(true);
         setError(null);
         try {
-            const res = await fetch(`/api/paid_messaging/templates/all?waba_id=${wabaId}`);
+            const res = await fetch(`/api/paid_messaging/templates/all?waba_id=${wabaId}${force ? '&force=true' : ''}`);
             if (res.ok) {
                 const data = await res.json();
                 setTemplates(data.templates || []);
+                if (force) triggerToast("Templates synced successfully!", "success");
             } else {
                 const data = await res.json();
                 setError(data.error || "Failed to load templates.");
@@ -84,6 +90,27 @@ export default function TemplatesPage() {
             setError("Could not establish connection to server.");
         } finally {
             setLoadingTemplates(false);
+            setSyncingTemplates(false);
+        }
+    };
+
+    const syncSingleTemplateStatus = async (templateName: string) => {
+        if (!selectedWabaId) return;
+        setSyncingTemplateName(templateName);
+        try {
+            const res = await fetch(`/api/paid_messaging/templates/all?waba_id=${selectedWabaId}&name=${encodeURIComponent(templateName)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTemplates(data.templates || []);
+                triggerToast(`Status for "${templateName}" updated!`, "success");
+            } else {
+                const data = await res.json();
+                triggerToast(data.error || "Failed to update status.", "error");
+            }
+        } catch (err) {
+            triggerToast("Network error. Could not sync template status.", "error");
+        } finally {
+            setSyncingTemplateName(null);
         }
     };
 
@@ -385,6 +412,15 @@ export default function TemplatesPage() {
                         ))}
                     </select>
                     <button
+                        onClick={() => fetchTemplates(selectedWabaId, true)}
+                        disabled={syncingTemplates}
+                        className="h-10 px-4 rounded-xl bg-secondary text-foreground font-semibold text-sm flex items-center gap-2 hover:opacity-90 border border-border/80 shadow-sm transition-all disabled:opacity-50"
+                        title="Bulk Sync all template statuses"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${syncingTemplates ? 'animate-spin' : ''}`} />
+                        Bulk Sync
+                    </button>
+                    <button
                         onClick={() => setShowCreateModal(true)}
                         className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-2 hover:opacity-95 shadow-sm transition-all"
                     >
@@ -473,63 +509,68 @@ export default function TemplatesPage() {
                     )}
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {filteredTemplates.map((template) => {
-                        const bodyComponent = template.components.find(c => c.type === "BODY");
-                        const headerComponent = template.components.find(c => c.type === "HEADER");
-                        return (
-                            <div
-                                key={template.name}
-                                className="group relative bg-card border border-border rounded-3xl overflow-hidden hover:border-primary/40 hover:shadow-lg transition-all duration-300 flex flex-col min-h-[250px]"
-                            >
-                                {/* Card Header */}
-                                <div className="p-5 border-b border-border/50 flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors" title={template.name}>
+                <div className="overflow-hidden bg-card border border-border rounded-3xl shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-foreground/45 bg-secondary/15">
+                                    <th className="px-6 py-4">Template Name</th>
+                                    <th className="px-6 py-4">Category</th>
+                                    <th className="px-6 py-4">Language</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60 text-xs">
+                                {filteredTemplates.map((template) => (
+                                    <tr 
+                                        key={template.name}
+                                        onClick={() => setSelectedPreviewTemplate(template)}
+                                        className="hover:bg-secondary/20 cursor-pointer transition-colors group"
+                                    >
+                                        <td className="px-6 py-4.5 font-bold text-foreground/80 group-hover:text-primary transition-colors">
                                             {template.name}
-                                        </h3>
-                                        <div className="flex items-center gap-2 mt-1.5">
-                                            <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] font-bold tracking-wide uppercase text-foreground/60 border border-border">
+                                        </td>
+                                        <td className="px-6 py-4.5">
+                                            <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] font-bold uppercase tracking-wide text-foreground/60 border border-border">
                                                 {template.category}
                                             </span>
-                                            <span className="flex items-center gap-1 text-[10px] text-foreground/40">
+                                        </td>
+                                        <td className="px-6 py-4.5 text-foreground/50">
+                                            <span className="flex items-center gap-1.5">
                                                 <Globe className="h-3 w-3" />
                                                 {template.language}
                                             </span>
-                                        </div>
-                                    </div>
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(template.status)}`}>
-                                        {template.status}
-                                    </span>
-                                </div>
-
-                                {/* Live Mock WhatsApp View */}
-                                <div className="p-5 flex-1 flex flex-col bg-muted/20">
-                                    <div className="bg-background border border-border/80 rounded-2xl p-3.5 shadow-sm text-xs leading-relaxed max-w-[90%] relative space-y-1">
-                                        {headerComponent?.text && (
-                                            <p className="font-bold border-b border-border/40 pb-1 mb-1 text-foreground/90">
-                                                {headerComponent.text}
-                                            </p>
-                                        )}
-                                        <p className="text-foreground/80 whitespace-pre-wrap">
-                                            {highlightVariables(bodyComponent?.text || "")}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Card Footer Actions */}
-                                <div className="px-5 py-3.5 border-t border-border/50 flex justify-end items-center bg-card">
-                                    <button
-                                        onClick={() => setShowDeleteConfirm(template.name)}
-                                        className="h-8 w-8 rounded-lg text-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-all"
-                                        title="Delete Template"
-                                    >
-                                        <Trash2 className="h-4.5 w-4.5" />
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                        </td>
+                                        <td className="px-6 py-4.5">
+                                            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(template.status)}`}>
+                                                    {template.status}
+                                                </span>
+                                                <button
+                                                    onClick={() => syncSingleTemplateStatus(template.name)}
+                                                    disabled={syncingTemplateName !== null || syncingTemplates}
+                                                    className="h-6 w-6 rounded hover:bg-secondary text-foreground/40 hover:text-foreground flex items-center justify-center transition-all disabled:opacity-40"
+                                                    title="Sync Status with Meta"
+                                                >
+                                                    <RefreshCw className={`h-3 w-3 ${(syncingTemplateName === template.name) ? 'animate-spin' : ''}`} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4.5 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <button
+                                                onClick={() => setShowDeleteConfirm(template.name)}
+                                                className="h-8 w-8 rounded-lg text-foreground/40 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-all border border-border/60 hover:border-rose-500/30 ml-auto"
+                                                title="Delete Template"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
@@ -690,6 +731,61 @@ export default function TemplatesPage() {
                                 </div>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Modal */}
+            {selectedPreviewTemplate && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedPreviewTemplate(null)}>
+                    <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                            <h3 className="font-bold text-base truncate pr-4">{selectedPreviewTemplate.name}</h3>
+                            <button
+                                onClick={() => setSelectedPreviewTemplate(null)}
+                                className="h-7 w-7 rounded-full border border-border/60 flex items-center justify-center hover:bg-secondary transition-all"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/45 mb-1.5">Template Info</label>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(selectedPreviewTemplate.status)}`}>
+                                        {selectedPreviewTemplate.status}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded bg-secondary text-[10px] font-bold uppercase text-foreground/60 border border-border">
+                                        {selectedPreviewTemplate.category}
+                                    </span>
+                                    <span className="flex items-center gap-1 text-[10px] text-foreground/50">
+                                        <Globe className="h-3.5 w-3.5" />
+                                        {selectedPreviewTemplate.language}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/45 mb-2">WhatsApp Mockup Preview</label>
+                                <div className="bg-muted/15 border border-border/80 rounded-2xl p-4 text-xs leading-relaxed space-y-1">
+                                    {selectedPreviewTemplate.components.find(c => c.type === "HEADER")?.text && (
+                                        <p className="font-bold border-b border-border/40 pb-1 mb-1 text-foreground/90">
+                                            {selectedPreviewTemplate.components.find(c => c.type === "HEADER")?.text}
+                                        </p>
+                                    )}
+                                    <p className="text-foreground/85 whitespace-pre-wrap">
+                                        {highlightVariables(selectedPreviewTemplate.components.find(c => c.type === "BODY")?.text || "")}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="pt-2">
+                            <button
+                                onClick={() => setSelectedPreviewTemplate(null)}
+                                className="w-full h-10 rounded-xl bg-secondary hover:bg-border/60 font-semibold text-sm transition-all"
+                            >
+                                Close Preview
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

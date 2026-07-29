@@ -482,8 +482,8 @@ async function syncTemplatesIfExpired(wabaId: string, accessToken: string, force
   }
 }
 
-export async function getAllMessageTemplates(wabaId: string, accessToken: string) {
-  await syncTemplatesIfExpired(wabaId, accessToken);
+export async function getAllMessageTemplates(wabaId: string, accessToken: string, force = false) {
+  await syncTemplatesIfExpired(wabaId, accessToken, force);
 
   const dbRes = await pool.query(
     'SELECT name, language, status, category, components FROM whatsapp_templates WHERE waba_id = $1',
@@ -520,5 +520,31 @@ export async function deleteMessageTemplate(wabaId: string, accessToken: string,
   // Force sync from Meta to remove the deleted template from our DB immediately
   await syncTemplatesIfExpired(wabaId, accessToken, true);
   return data;
+}
+
+export async function syncSingleTemplate(wabaId: string, accessToken: string, templateName: string) {
+  try {
+    const data = await graphApiWrapperGet(
+      `/${wabaId}/message_templates?name=${encodeURIComponent(templateName)}&fields=name,language,status,components,category`,
+      accessToken,
+    );
+    if (data && !data.error) {
+      const templates = data.data || [];
+      for (const tpl of templates) {
+        await pool.query(
+          `INSERT INTO whatsapp_templates (waba_id, name, language, status, category, components, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+           ON CONFLICT (waba_id, name, language)
+           DO UPDATE SET status = EXCLUDED.status, category = EXCLUDED.category, components = EXCLUDED.components, updated_at = CURRENT_TIMESTAMP`,
+          [wabaId, tpl.name, tpl.language, tpl.status, tpl.category, JSON.stringify(tpl.components)],
+        );
+      }
+      return templates;
+    }
+    return [];
+  } catch (error) {
+    console.error(`Failed to sync single template ${templateName} with Meta:`, error);
+    throw error;
+  }
 }
 
