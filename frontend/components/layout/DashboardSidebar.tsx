@@ -94,11 +94,7 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
                                 >
                                     <item.icon className="h-4 w-4 flex-shrink-0" />
                                     {item.label}
-                                    {item.label === "Leads" && (
-                                        <span className="ml-auto text-xs bg-accent text-accent-foreground px-1.5 py-0.5 rounded-full">
-                                            12
-                                        </span>
-                                    )}
+
                                 </Link>
                             );
                         })}
