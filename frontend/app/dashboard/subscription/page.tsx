@@ -255,7 +255,7 @@ export default function SubscriptionPage() {
   return (
     <div className="p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-14 lg:pl-0">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Subscription & Credits</h1>
           <p className="text-foreground/60 text-sm mt-1">Manage plans, credit top-ups, and auto-refill triggers</p>
@@ -317,20 +317,20 @@ export default function SubscriptionPage() {
           <div>
             <h3 className="font-bold text-xl mb-2">Upgrade Plan</h3>
             <p className="text-sm text-foreground/50 mb-4">Choose the plan that fits your business outreach scale</p>
-            
+
             <div className="border border-border rounded-xl p-4 bg-background/50 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="font-bold text-lg">Standard Plan</span>
                 <span className="bg-green-500/10 text-green-500 text-xs px-2.5 py-0.5 rounded-full font-semibold">Recommended</span>
               </div>
               <div className="text-2xl font-extrabold text-foreground">₹2,999<span className="text-xs font-normal text-foreground/60"> / month</span></div>
-              
+
               <ul className="space-y-2 text-sm text-foreground/80 pt-2 pb-2">
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> 3,000 credits included monthly (expire monthly)</li>
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Standard extra top-ups at ₹1.00 / credit</li>
                 <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Full access to bot configs & templates</li>
               </ul>
-              
+
               <div className="pt-4 border-t border-border/80 space-y-3">
                 <p className="text-xs font-bold text-foreground/75 uppercase tracking-wider">Configure Auto-Refill (Autopay)</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -386,7 +386,7 @@ export default function SubscriptionPage() {
           <div>
             <h3 className="font-bold text-xl mb-2">Refill Pre-paid Credits</h3>
             <p className="text-sm text-foreground/50 mb-4">Add credits to avoid service interruptions. Rate depends on plan & tiers.</p>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground/70 block mb-2">Number of Credits</label>
@@ -453,7 +453,7 @@ export default function SubscriptionPage() {
       <div className="bg-card border border-border rounded-2xl p-6">
         <h3 className="font-bold text-xl mb-2">Auto-Refill Settings</h3>
         <p className="text-sm text-foreground/50 mb-6">Automatically refill credits whenever balance drops below 200 to prevent bot downtime</p>
-        
+
         <form onSubmit={handleSaveAutoRecharge} className="space-y-4 max-w-lg">
           <div className="flex items-center gap-3">
             <input
@@ -523,11 +523,10 @@ export default function SubscriptionPage() {
                       {new Date(tx.created_at).toLocaleString()}
                     </td>
                     <td className="py-3.5 px-4 font-medium uppercase text-xs">
-                      <span className={`px-2 py-0.5 rounded-full ${
-                        tx.amount > 0 
-                          ? "bg-green-500/10 text-green-600" 
+                      <span className={`px-2 py-0.5 rounded-full ${tx.amount > 0
+                          ? "bg-green-500/10 text-green-600"
                           : "bg-red-500/10 text-red-600"
-                      }`}>
+                        }`}>
                         {tx.transaction_type}
                       </span>
                     </td>

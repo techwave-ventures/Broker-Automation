@@ -104,7 +104,7 @@ export default function WhatsAppAIPage() {
 
     return (
         <div className="p-6 lg:p-8 space-y-8">
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start pl-14 lg:pl-0">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Roofiyo AI Bot</h1>
                     <p className="text-foreground/60 text-sm mt-1">Configure your AI assistant behavior and integrations</p>

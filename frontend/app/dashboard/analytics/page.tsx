@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
 
     return (
         <div className="p-6 lg:p-8 space-y-8">
-            <div>
+            <div className="pl-14 lg:pl-0">
                 <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
                 <p className="text-foreground/60 text-sm mt-1">Performance overview for the last 30 days</p>
             </div>

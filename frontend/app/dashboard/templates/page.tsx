@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
-    Plus, Search, Trash2, Loader2, AlertCircle, MessageSquare, 
+    Plus, Search, Trash2, Loader2, AlertCircle, MessageSquare,
     Check, X, Globe, FileText, CheckCircle2, ChevronRight, Info,
     RefreshCw, ArrowUpDown
 } from "lucide-react";
@@ -160,7 +160,7 @@ export default function TemplatesPage() {
 
     const handleCreateTemplate = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         // Validation
         const cleanName = newName.trim().toLowerCase();
         if (!/^[a-z0-9_]+$/.test(cleanName)) {
@@ -308,7 +308,7 @@ export default function TemplatesPage() {
 
     // Filter templates logic
     const filteredTemplates = templates.filter(tpl => {
-        const matchesSearch = tpl.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        const matchesSearch = tpl.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (tpl.components.find(c => c.type === "BODY")?.text || "").toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = statusFilter === "all" || tpl.status.toLowerCase() === statusFilter.toLowerCase();
         const matchesCategory = categoryFilter === "all" || tpl.category.toLowerCase() === categoryFilter.toLowerCase();
@@ -319,7 +319,7 @@ export default function TemplatesPage() {
     const sortedTemplates = [...filteredTemplates].sort((a, b) => {
         let fieldA = (a[sortField] || "").toString().toLowerCase();
         let fieldB = (b[sortField] || "").toString().toLowerCase();
-        
+
         if (sortField === "created_at") {
             const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
             const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -431,7 +431,7 @@ export default function TemplatesPage() {
             )}
 
             {/* Header section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60 pl-14 lg:pl-0">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">WhatsApp Templates</h1>
                     <p className="text-sm text-foreground/50 mt-1">
@@ -529,8 +529,8 @@ export default function TemplatesPage() {
                     <div>
                         <h3 className="font-bold text-base">No Templates Found</h3>
                         <p className="text-sm text-foreground/50 mt-1 leading-relaxed">
-                            {searchTerm || statusFilter !== "all" || categoryFilter !== "all" 
-                                ? "No templates match your active filters." 
+                            {searchTerm || statusFilter !== "all" || categoryFilter !== "all"
+                                ? "No templates match your active filters."
                                 : "Create your first WhatsApp Business message template to start broadcast campaigns."}
                         </p>
                     </div>
@@ -554,7 +554,7 @@ export default function TemplatesPage() {
                             <thead>
                                 <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-foreground/45 bg-secondary/15">
                                     <th className="px-6 py-4">
-                                        <button 
+                                        <button
                                             onClick={() => handleSort("name")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
                                         >
@@ -563,7 +563,7 @@ export default function TemplatesPage() {
                                         </button>
                                     </th>
                                     <th className="px-6 py-4">
-                                        <button 
+                                        <button
                                             onClick={() => handleSort("category")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
                                         >
@@ -573,7 +573,7 @@ export default function TemplatesPage() {
                                     </th>
                                     <th className="px-6 py-4 font-bold">Language</th>
                                     <th className="px-6 py-4">
-                                        <button 
+                                        <button
                                             onClick={() => handleSort("status")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
                                         >
@@ -582,7 +582,7 @@ export default function TemplatesPage() {
                                         </button>
                                     </th>
                                     <th className="px-6 py-4">
-                                        <button 
+                                        <button
                                             onClick={() => handleSort("created_at")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
                                         >
@@ -595,7 +595,7 @@ export default function TemplatesPage() {
                             </thead>
                             <tbody className="divide-y divide-border/60 text-xs">
                                 {sortedTemplates.map((template) => (
-                                    <tr 
+                                    <tr
                                         key={template.name}
                                         onClick={() => setSelectedPreviewTemplate(template)}
                                         className="hover:bg-secondary/20 cursor-pointer transition-colors group"

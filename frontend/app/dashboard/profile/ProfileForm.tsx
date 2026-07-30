@@ -70,7 +70,7 @@ export default function ProfileForm({ user }: { user: UserProp | null }) {
             )}
 
             {/* Header */}
-            <div>
+            <div className="pl-14 lg:pl-0">
                 <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
                 <p className="text-foreground/60 text-sm mt-1">
                     Manage your personal information and preferences

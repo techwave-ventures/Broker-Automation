@@ -111,7 +111,7 @@ export default function SettingsPage() {
             )}
 
             {/* Page Header */}
-            <div>
+            <div className="pl-14 lg:pl-0">
                 <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
                 <p className="text-sm text-foreground/50 mt-1">Manage your Roofiyo AI workspace, WhatsApp integration, and preferences.</p>
             </div>
