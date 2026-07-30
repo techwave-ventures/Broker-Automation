@@ -12,7 +12,7 @@ export function generatePropertyCard(p: any): OutboundMessage {
     : `💰 *Rent*: ₹${p.monthly_rent}/mo`;
 
   const detailsText = `${p.beds ? p.beds + ' BHK, ' : ''}${p.baths ? p.baths + ' baths' : ''}`;
-  const slugLink = `${env.FRONTEND_BASE_URL}/p/${p.slug}`;
+  const slugLink = `${env.FRONTEND_BASE_URL}/p/${p.short_code || p.slug}`;
 
   const text = `🏠 *${p.title}* (${p.type} for ${p.transaction_type})
 📍 *Locality*: ${p.locality}, ${p.city}

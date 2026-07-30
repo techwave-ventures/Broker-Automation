@@ -37,6 +37,7 @@ export interface Property {
   amenities?: string[];
   other_amenities?: string[];
   slug?: string;
+  short_code?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -56,7 +57,7 @@ export async function getPropertyByKey(key: string | number): Promise<Property |
 }
 
 export async function getPropertyBySlug(slug: string): Promise<Property | null> {
-  const result = await pool.query('SELECT * FROM properties WHERE slug = $1', [slug]);
+  const result = await pool.query('SELECT * FROM properties WHERE slug = $1 OR short_code = $1', [slug]);
   if (result.rows.length === 0) return null;
   return mapRowToProperty(result.rows[0]);
 }
@@ -124,11 +125,27 @@ export async function createProperty(
   const titleSlug = clean(inserted.title || 'property');
   const localitySlug = clean(inserted.locality || 'locality');
   const citySlug = clean(inserted.city || 'city');
-  const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
-  const slug = `${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${inserted.key}`;
+  
+  // Base62 helper function
+  const generateBase62Id = (length = 8): string => {
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+    let res = '';
+    for (let i = 0; i < length; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return res;
+  };
 
-  await pool.query('UPDATE properties SET slug = $1 WHERE key = $2', [slug, inserted.key]);
+  const shortCode = generateBase62Id(8);
+  const slug = `${titleSlug}-${localitySlug}-${citySlug}-${shortCode}-${inserted.key}`;
+
+  await pool.query(
+    'UPDATE properties SET slug = $1, short_code = $2 WHERE key = $3',
+    [slug, shortCode, inserted.key]
+  );
+  
   inserted.slug = slug;
+  inserted.short_code = shortCode;
   return inserted;
 }
 
@@ -271,6 +288,7 @@ function mapRowToProperty(row: any): Property {
     amenities: Array.isArray(row.amenities) ? row.amenities : JSON.parse(row.amenities || '[]'),
     other_amenities: Array.isArray(row.other_amenities) ? row.other_amenities : JSON.parse(row.other_amenities || '[]'),
     slug: row.slug || undefined,
+    short_code: row.short_code || undefined,
     created_at: row.created_at,
     updated_at: row.updated_at
   };

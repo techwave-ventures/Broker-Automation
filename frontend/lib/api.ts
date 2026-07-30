@@ -99,6 +99,7 @@ export function mapBackendPropertyToFrontend(p: any): Property {
     agent_name: p.agent_name,
     agent_phone: p.agent_phone,
     slug: p.slug,
+    shortCode: p.short_code,
   };
 }
 

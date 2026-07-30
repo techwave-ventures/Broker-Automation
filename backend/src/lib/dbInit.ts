@@ -173,6 +173,9 @@ export async function initDatabase() {
     ALTER TABLE properties ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE;
     `,
     `
+    ALTER TABLE properties ADD COLUMN IF NOT EXISTS short_code VARCHAR(20) UNIQUE;
+    `,
+    `
     ALTER TABLE bot_configs ADD COLUMN IF NOT EXISTS bot_instructions TEXT DEFAULT 'You are a helpful real estate assistant. Help clients find the right property. CRITICAL RULES:
 1. STEP-BY-STEP QUALIFICATION: Qualify requirements step-by-step (Name -> Buy/Rent -> Locality/City -> BHK/Type -> Budget). Do NOT ask for multiple preferences in one message. For PG/Hostel: Ask for monthly rent & deposit requirements instead of purchase budget. For Land/Commercial: Ignore BHK specifications; ask for area and specific use.
 2. BUDGET NORMALIZATION: Normalize budget to a plain numeric string in INR in the "budget" slot (e.g., "1.2 Cr" -> "12000000"). No suffixes. You may recommend properties up to 30% above their budget. If nothing matches, state that no listings are available under their criteria.
@@ -261,10 +264,21 @@ export async function initDatabase() {
     }
   }
 
-  // Migrate existing properties with null slugs
+  // Migrate existing properties with null short_codes or null slugs
   try {
-    const nullSlugsRes = await pool.query('SELECT key, title, locality, city FROM properties WHERE slug IS NULL');
-    for (const row of nullSlugsRes.rows) {
+    const unresolved = await pool.query('SELECT key, title, locality, city, slug, short_code FROM properties WHERE short_code IS NULL OR slug IS NULL');
+    for (const row of unresolved.rows) {
+      // 1. Generate short code
+      const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+      let shortCode = row.short_code;
+      if (!shortCode) {
+        shortCode = '';
+        for (let i = 0; i < 8; i++) {
+          shortCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+      }
+
+      // 2. Generate slug matching the new pattern
       const clean = (str: string) => String(str || '')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -272,12 +286,14 @@ export async function initDatabase() {
       const titleSlug = clean(row.title || 'property');
       const localitySlug = clean(row.locality || 'locality');
       const citySlug = clean(row.city || 'city');
-      const randomSuffix = Math.floor(Math.random() * 0xffff).toString(16).padStart(4, '0');
-      const slug = `${titleSlug}-${localitySlug}-${citySlug}-${randomSuffix}-${row.key}`;
+      const slug = `${titleSlug}-${localitySlug}-${citySlug}-${shortCode}-${row.key}`;
 
-      await pool.query('UPDATE properties SET slug = $1 WHERE key = $2', [slug, row.key]);
+      await pool.query(
+        'UPDATE properties SET slug = $1, short_code = $2 WHERE key = $3',
+        [slug, shortCode, row.key]
+      );
     }
   } catch (err) {
-    console.error('Failed to migrate null slugs for properties:', err);
+    console.error('Failed to migrate properties short_codes and slugs:', err);
   }
 }

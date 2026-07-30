@@ -53,6 +53,7 @@ export interface Property {
     agent_name?: string;
     agent_phone?: string;
     slug?: string;
+    shortCode?: string;
 }
 
 const DEFAULT_PROPERTIES: Property[] = [
@@ -302,5 +303,5 @@ export const deleteProperty = async (id: string): Promise<void> => {
 
 export function getPropertyShareUrl(property: Property): string {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== "undefined" ? window.location.origin : "");
-    return `${baseUrl}/p/${property.slug || ''}`;
+    return `${baseUrl}/p/${property.shortCode || property.slug || ''}`;
 }
