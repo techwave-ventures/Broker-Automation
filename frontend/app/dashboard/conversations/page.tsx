@@ -190,7 +190,7 @@ export default function ConversationsPage() {
 
   return (
     // Mobile: full-bleed, no padding. Desktop: padded with card wrapper.
-    <div className="h-[100svh] lg:h-screen lg:p-6 overflow-hidden flex flex-col lg:block">
+    <div className="h-[calc(100dvh-4rem)] lg:h-[calc(100vh-4rem)] lg:p-6 overflow-hidden flex flex-col">
       <HeaderSetter
         title="Conversations"
         subtitle="Manage conversations and live chat"
