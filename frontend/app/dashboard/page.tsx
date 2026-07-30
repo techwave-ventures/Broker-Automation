@@ -7,9 +7,9 @@ import {
     ArrowUpRight,
     BotMessageSquare,
     Circle,
-    LayoutTemplate
+    FileText
 } from "lucide-react";
-import { fetchProperties, fetchLeads, fetchChats, getSessionUser } from "@/lib/api";
+import { fetchProperties, fetchLeads, fetchChats, getSessionUser, fetchWabas, fetchTemplates } from "@/lib/api";
 
 const statusColors: Record<string, string> = {
     new: "bg-primary text-primary-foreground",
@@ -23,11 +23,22 @@ export default async function DashboardPage() {
     const displayName = user?.name || (user?.email ? user.email.split('@')[0] : "Local Dev User");
 
     // Fetch dynamic database counts
-    const [properties, leads, chats] = await Promise.all([
+    const [properties, leads, chats, wabas] = await Promise.all([
         fetchProperties(),
         fetchLeads(),
-        fetchChats()
+        fetchChats(),
+        fetchWabas()
     ]);
+
+    let templateCount = 0;
+    if (wabas && wabas.length > 0) {
+        try {
+            const templates = await fetchTemplates(wabas[0].waba_id);
+            templateCount = templates.length;
+        } catch (e) {
+            console.error(e);
+        }
+    }
 
     const activeLeadsCount = leads.filter((l: any) => l.status !== 'Closed').length;
     const closedLeadsCount = leads.filter((l: any) => l.status === 'Closed').length;
@@ -65,9 +76,9 @@ export default async function DashboardPage() {
         },
         {
             label: "Templates",
-            value: "Manage",
+            value: String(templateCount),
             change: "Message templates",
-            icon: LayoutTemplate,
+            icon: FileText,
             color: "text-orange-500",
             bg: "bg-orange-500/10",
             href: "/dashboard/templates",

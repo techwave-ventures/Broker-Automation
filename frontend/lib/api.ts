@@ -142,6 +142,32 @@ export async function fetchChats() {
   }
 }
 
+export async function fetchWabas() {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/auth/waba`, { headers, next: { revalidate: 0 } });
+    if (!res.ok) return [];
+    const data = await safeJsonParse(res);
+    return data?.wabas || [];
+  } catch (error) {
+    console.error("Failed to fetch WABAs from backend:", error);
+    return [];
+  }
+}
+
+export async function fetchTemplates(wabaId: string) {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/paid_messaging/templates/all?waba_id=${wabaId}`, { headers, next: { revalidate: 0 } });
+    if (!res.ok) return [];
+    const data = await safeJsonParse(res);
+    return data?.templates || [];
+  } catch (error) {
+    console.error("Failed to fetch templates from backend:", error);
+    return [];
+  }
+}
+
 // ─── Client-side Leads CRUD (used from "use client" components) ──────────────
 
 export interface LeadPayload {
