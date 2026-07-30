@@ -1,6 +1,7 @@
-import { io } from '../server.js';
+import { getIo } from './socketio.js';
 
 export async function publishToChannel(channelName: string, eventName: string, payload: any) {
+  const io = getIo();
   if (!io) {
     console.warn('⚠️ Socket.io is not initialized yet.');
     return { skipped: true };

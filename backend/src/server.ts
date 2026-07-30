@@ -4,8 +4,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { initDatabase } from './lib/dbInit.js';
 import { initCashfreePlan } from './lib/cashfreeInit.js';
-
-export let io: Server;
+import { setIo } from './lib/socketio.js';
 
 async function startServer() {
   try {
@@ -18,7 +17,7 @@ async function startServer() {
     const app = createApp();
     const httpServer = createServer(app);
 
-    io = new Server(httpServer, {
+    const ioInstance = new Server(httpServer, {
       cors: {
         origin: [env.FRONTEND_BASE_URL, 'http://localhost:3000', 'https://localhost:3000'],
         methods: ['GET', 'POST'],
@@ -26,7 +25,9 @@ async function startServer() {
       }
     });
 
-    io.on('connection', (socket) => {
+    setIo(ioInstance);
+
+    ioInstance.on('connection', (socket) => {
       console.log(`🔌 Client connected: ${socket.id}`);
 
       socket.on('join_user_room', (userId: string) => {
