@@ -225,10 +225,10 @@ export function LeadsClient({ initialLeads }: Props) {
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
 
         {/* Header — pl-14 on mobile to clear the fixed hamburger button (left-4 + w-9 ≈ 52px) */}
-        <div className="flex flex-col xs:flex-row xs:items-start justify-between gap-3 pl-14 sm:pl-0">
+        <div className="flex flex-row items-center justify-between gap-3 pl-14 sm:pl-0">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leads</h1>
-            <p className="text-foreground/55 text-xs sm:text-sm mt-1">
+            <p className="text-foreground/55 text-xs sm:text-sm mt-0.5">
               Manage your leads.
             </p>
           </div>
