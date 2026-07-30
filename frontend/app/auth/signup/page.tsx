@@ -258,14 +258,37 @@ export default function SignupPage() {
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Confirm Password
             </label>
-            <input
-              type={showPassword ? 'text' : 'password'}
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Re-enter password"
-              className="w-full px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                className={`w-full px-4 py-3 rounded-xl bg-slate-800/60 border text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:border-transparent transition-all pr-10 ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-rose-500/80 focus:ring-rose-500'
+                    : confirmPassword && password === confirmPassword
+                    ? 'border-emerald-500/80 focus:ring-emerald-500'
+                    : 'border-slate-700/80 focus:ring-teal-500'
+                }`}
+              />
+              {confirmPassword && password === confirmPassword && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 flex items-center">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-xs text-rose-400 mt-1.5 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                Passwords do not match
+              </p>
+            )}
           </div>
 
           <button
