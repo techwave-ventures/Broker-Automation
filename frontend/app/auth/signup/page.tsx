@@ -3,11 +3,65 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
+const COUNTRY_CODES = [
+  { code: "+91", country: "India" },
+  { code: "+1", country: "United States/Canada" },
+  { code: "+44", country: "United Kingdom" },
+  { code: "+61", country: "Australia" },
+  { code: "+971", country: "United Arab Emirates" },
+  { code: "+65", country: "Singapore" },
+  { code: "+86", country: "China" },
+  { code: "+49", country: "Germany" },
+  { code: "+33", country: "France" },
+  { code: "+81", country: "Japan" },
+  { code: "+7", country: "Russia" },
+  { code: "+55", country: "Brazil" },
+  { code: "+27", country: "South Africa" },
+  { code: "+64", country: "New Zealand" },
+  { code: "+353", country: "Ireland" },
+  { code: "+31", country: "Netherlands" },
+  { code: "+39", country: "Italy" },
+  { code: "+34", country: "Spain" },
+  { code: "+41", country: "Switzerland" },
+  { code: "+92", country: "Pakistan" },
+  { code: "+880", country: "Bangladesh" },
+  { code: "+60", country: "Malaysia" },
+  { code: "+62", country: "Indonesia" },
+  { code: "+63", country: "Philippines" },
+  { code: "+66", country: "Thailand" },
+  { code: "+84", country: "Vietnam" },
+  { code: "+966", country: "Saudi Arabia" },
+  { code: "+965", country: "Kuwait" },
+  { code: "+974", country: "Qatar" },
+  { code: "+973", country: "Bahrain" },
+  { code: "+968", country: "Oman" },
+  { code: "+20", country: "Egypt" },
+  { code: "+90", country: "Turkey" },
+  { code: "+52", country: "Mexico" },
+  { code: "+54", country: "Argentina" },
+  { code: "+56", country: "Chile" },
+  { code: "+57", country: "Colombia" },
+  { code: "+51", country: "Peru" },
+  { code: "+58", country: "Venezuela" },
+  { code: "+32", country: "Belgium" },
+  { code: "+43", country: "Austria" },
+  { code: "+46", country: "Sweden" },
+  { code: "+47", country: "Norway" },
+  { code: "+45", country: "Denmark" },
+  { code: "+358", country: "Finland" },
+  { code: "+48", country: "Poland" },
+  { code: "+30", country: "Greece" },
+  { code: "+351", country: "Portugal" },
+  { code: "+380", country: "Ukraine" },
+  { code: "+972", country: "Israel" }
+].sort((a, b) => a.country.localeCompare(b.country));
+
 export default function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -30,6 +84,8 @@ export default function SignupPage() {
     }
 
     setLoading(true);
+
+    const phone = phoneNumber ? `${countryCode}${phoneNumber.replace(/\s+/g, '')}` : '';
 
     try {
       const res = await fetch('/api/auth/signup', {
@@ -127,13 +183,36 @@ export default function SignupPage() {
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
               Phone Number <span className="text-slate-500 font-normal lowercase">(optional)</span>
             </label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+919999999999"
-              className="w-full px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
-            />
+            <div className="flex gap-2">
+              <div className="relative w-[85px] min-w-[85px] max-w-[85px]">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-full px-2.5 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-transparent focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm appearance-none cursor-pointer"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={`${c.code}-${c.country}`} value={c.code} className="bg-slate-900 text-white">
+                      {c.code} ({c.country})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-white text-sm">
+                  {countryCode}
+                </div>
+                <div className="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="9999999999"
+                className="flex-1 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+              />
+            </div>
           </div>
 
           <div>
