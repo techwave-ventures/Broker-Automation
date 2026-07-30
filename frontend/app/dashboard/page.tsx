@@ -121,25 +121,25 @@ export default async function DashboardPage() {
             />
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, i) => {
                     const content = (
                         <>
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-sm text-foreground/60 font-medium">{stat.label}</span>
-                                <div className={`h-10 w-10 rounded-xl ${stat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-sm sm:text-base font-bold text-foreground/80 truncate mr-1">{stat.label}</span>
+                                <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl ${stat.bg} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}>
+                                    <stat.icon className={`h-4.5 w-4.5 sm:h-5 sm:w-5 ${stat.color}`} />
                                 </div>
                             </div>
-                            <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
-                            <p className="text-xs text-foreground/50 mt-1 flex items-center gap-1">
-                                <ArrowUpRight className="h-3 w-3 text-accent" />
+                            <p className="text-2xl sm:text-3xl font-bold tracking-tight">{stat.value}</p>
+                            <p className="text-[10px] sm:text-xs text-foreground/50 mt-1 flex items-center gap-1 truncate">
+                                <ArrowUpRight className="h-3 w-3 text-accent flex-shrink-0" />
                                 {stat.change}
                             </p>
                         </>
                     );
 
-                    const className = "bg-card border border-border rounded-2xl p-5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all group block cursor-pointer";
+                    const className = "bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all group block cursor-pointer";
 
                     if (stat.href) {
                         return (
@@ -158,11 +158,11 @@ export default async function DashboardPage() {
             </div>
 
             {/* Recent Leads + Bot Status */}
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {/* Recent Leads */}
-                <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden">
+                <div className="lg:col-span-2 xl:col-span-3 bg-card border border-border rounded-2xl overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                        <h2 className="font-semibold">Recent Leads</h2>
+                        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">Recent Leads</h2>
                         <Link href="/dashboard/leads" className="text-xs text-primary hover:underline flex items-center gap-1">
                             View all <ArrowUpRight className="h-3 w-3" />
                         </Link>
@@ -190,7 +190,7 @@ export default async function DashboardPage() {
 
                 {/* Bot Status */}
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
-                    <h2 className="font-semibold">AI Bot Status</h2>
+                    <h2 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">AI Bot Status</h2>
                     <div className="flex items-center gap-3 p-4 rounded-xl bg-accent/10 border border-accent/20">
                         <BotMessageSquare className="h-6 w-6 text-accent" />
                         <div>
