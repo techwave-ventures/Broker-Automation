@@ -181,7 +181,7 @@ export default function SignupPage() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Phone Number <span className="text-slate-500 font-normal lowercase">(optional)</span>
+              Phone Number
             </label>
             <div className="flex gap-2">
               <div className="relative w-[85px] min-w-[85px] max-w-[85px]">
@@ -207,6 +207,7 @@ export default function SignupPage() {
               </div>
               <input
                 type="tel"
+                required
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="9999999999"

@@ -37,8 +37,8 @@ export async function signup(req: Request, res: Response) {
   try {
     const { email, password, name, phone } = req.body || {};
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Validation Error', message: 'Email and password are required' });
+    if (!email || !password || !phone) {
+      return res.status(400).json({ error: 'Validation Error', message: 'Email, password, and phone number are required' });
     }
 
     if (password.length < 6) {
