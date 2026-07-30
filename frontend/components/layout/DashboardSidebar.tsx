@@ -26,7 +26,7 @@ const NAV_ITEMS = [
     { href: "/dashboard/conversations", label: "Conversations", icon: MessageSquare },
     { href: "/dashboard/templates", label: "Templates", icon: FileText },
     { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/dashboard/whatsapp-ai", label: "WhatsApp AI", icon: BotMessageSquare },
+    { href: "/dashboard/whatsapp-ai", label: "Roofiyo Bot", icon: BotMessageSquare },
     { href: "/dashboard/subscription", label: "Subscription", icon: Crown },
 ];
 
