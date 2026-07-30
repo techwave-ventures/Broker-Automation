@@ -12,7 +12,7 @@ import {
   saveTokens,
 } from '../services/business.js';
 import { sendImageMessage } from './meta.js';
-import { publishToChannel } from './ably.js';
+import { publishToChannel } from './websocket.js';
 import { createLead, getLeadsByUser } from '../models/Lead.js';
 import {
   findOrCreateConversation,
@@ -787,7 +787,6 @@ export async function handleGeminiReply(payload: any) {
             leadUserId
           );
 
-          await publishToChannel(`leads:${leadUserId}`, 'lead:created', newLead).catch(() => { });
           console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${newLead.key} for ${senderNumber}`);
         }
       } catch (leadErr) {

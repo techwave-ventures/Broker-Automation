@@ -3,7 +3,6 @@ import type { AuthenticatedRequest } from '../middleware/auth.js';
 import * as LeadModel from '../models/Lead.js';
 import { jsonError } from './http.js';
 import { z } from 'zod';
-import { publishToChannel } from '../lib/ably.js';
 
 const leadSchema = z.object({
   customerName: z.string().min(1),
@@ -66,9 +65,6 @@ export async function createLead(req: AuthenticatedRequest, res: Response) {
 
     const newLead = await LeadModel.createLead(parsed.data, userId);
 
-    // Notify connected clients
-    await publishToChannel(`leads:${userId}`, 'lead:created', newLead).catch(() => {});
-
     return res.status(201).json(newLead);
   } catch (error) {
     console.error('Failed to create lead:', error);
@@ -94,9 +90,6 @@ export async function updateLead(req: AuthenticatedRequest, res: Response) {
       return jsonError(res, 404, 'Lead not found or unauthorized');
     }
 
-    // Notify connected clients
-    await publishToChannel(`leads:${userId}`, 'lead:updated', updated).catch(() => {});
-
     return res.json(updated);
   } catch (error) {
     console.error('Failed to update lead:', error);
@@ -116,9 +109,6 @@ export async function deleteLead(req: AuthenticatedRequest, res: Response) {
     if (!deleted) {
       return jsonError(res, 404, 'Lead not found or unauthorized');
     }
-
-    // Notify connected clients
-    await publishToChannel(`leads:${userId}`, 'lead:deleted', { key }).catch(() => {});
 
     return res.json({ success: true });
   } catch (error) {

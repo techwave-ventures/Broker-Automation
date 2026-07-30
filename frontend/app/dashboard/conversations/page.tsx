@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSquare } from "lucide-react";
+import { socket } from "@/lib/socket";
 
 interface Message {
   id: string;
@@ -38,6 +39,7 @@ export default function ConversationsPage() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -73,9 +75,37 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     fetchChats();
-    const interval = setInterval(fetchChats, 5000);
-    return () => clearInterval(interval);
+    // Fetch logged in user to get email for user room
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user?.email) {
+          setUserId(data.user.email);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch session user:", err));
   }, []);
+
+  useEffect(() => {
+    socket.connect();
+
+    if (userId) {
+      socket.emit("join_user_room", userId);
+    }
+
+    const handleUpdate = () => {
+      fetchChats();
+    };
+
+    socket.on("webhook", handleUpdate);
+    socket.on("first", handleUpdate);
+
+    return () => {
+      socket.off("webhook", handleUpdate);
+      socket.off("first", handleUpdate);
+      socket.disconnect();
+    };
+  }, [userId]);
 
   const activeChat = chats.find((c) => c.id === activeChatId) || chats[0];
 
