@@ -31,7 +31,13 @@ export default function PropertiesPage() {
     const router = useRouter();
     const [properties, setProperties] = useState<Property[]>([]);
     const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState("All Active");
+    const [filters, setFilters] = useState({
+        status: "Available",
+        transactionType: "All",
+        category: "All",
+        type: "All",
+    });
+    const [filterOpen, setFilterOpen] = useState(false);
 
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [dialog, setDialog] = useState<{ type: "Sold" | "Rented" | "Hide" | "Republish" | "Delete", propertyId: string } | null>(null);
@@ -46,7 +52,17 @@ export default function PropertiesPage() {
         refresh();
     }, []);
 
-    const types = ["All Active", "Sold", "Rented", "Hidden", "Apartment / Flat", "Villa", "Office", "Commercial Plot"];
+    const getTypeOptions = () => {
+        const category = filters.category;
+        if (category === "Residential") return ["Apartment / Flat", "Villa", "Bungalow", "Independent House"];
+        if (category === "Commercial") return ["Office", "Shop", "Warehouse", "Showroom"];
+        if (category === "Land") return ["Residential Plot", "Commercial Plot", "Agricultural Land"];
+        return [
+            "Apartment / Flat", "Villa", "Bungalow", "Independent House",
+            "Office", "Shop", "Warehouse", "Showroom",
+            "Residential Plot", "Commercial Plot", "Agricultural Land"
+        ];
+    };
 
     const filtered = properties.filter((p) => {
         const matchSearch =
@@ -54,18 +70,12 @@ export default function PropertiesPage() {
             p.locality.toLowerCase().includes(search.toLowerCase()) ||
             p.city.toLowerCase().includes(search.toLowerCase());
 
-        let matchFilter = false;
+        const matchStatus = filters.status === "All" || p.status.toLowerCase() === filters.status.toLowerCase();
+        const matchTxType = filters.transactionType === "All" || p.transactionType.toLowerCase() === filters.transactionType.toLowerCase();
+        const matchCategory = filters.category === "All" || p.category?.toLowerCase() === filters.category.toLowerCase();
+        const matchType = filters.type === "All" || p.type?.toLowerCase() === filters.type.toLowerCase();
 
-        if (filter === "All Active") {
-            matchFilter = p.status === "Available";
-        } else if (["Sold", "Rented", "Hidden"].includes(filter)) {
-            matchFilter = p.status === filter;
-        } else {
-            // Type filters only show Available properties of that type
-            matchFilter = p.status === "Available" && p.type.includes(filter);
-        }
-
-        return matchSearch && matchFilter;
+        return matchSearch && matchStatus && matchTxType && matchCategory && matchType;
     });
 
     const triggerToast = (msg: string) => {
@@ -155,32 +165,154 @@ export default function PropertiesPage() {
             />
 
             {/* Search & Filter */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
-                    <input
-                        type="text"
-                        placeholder="Search by name or location..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                    />
+            <div className="space-y-3">
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or location..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setFilterOpen(!filterOpen)}
+                        className={`h-10 px-4 rounded-xl border flex items-center gap-2 text-sm font-semibold transition-colors flex-shrink-0 ${
+                            filterOpen || (filters.status !== "Available" || filters.transactionType !== "All" || filters.category !== "All" || filters.type !== "All")
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-card border-border text-foreground/75 hover:bg-muted"
+                        }`}
+                        title="Toggle filters"
+                    >
+                        <SlidersHorizontal className="h-4 w-4" />
+                        <span className="hidden sm:inline">Filters</span>
+                    </button>
                 </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                    <SlidersHorizontal className="h-4 w-4 text-foreground/40 flex-shrink-0" />
-                    {types.map((t) => (
+
+                {/* Collapsible Filter Panel (Dropdowns) */}
+                {filterOpen && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-muted/10 border border-border rounded-xl p-4 animate-in slide-in-from-top-2 fade-in">
+                        {/* Status Filter */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">Status</label>
+                            <select
+                                value={filters.status}
+                                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value, type: "All" }))}
+                                className="w-full h-9 px-3 rounded-lg bg-card border border-border text-xs font-semibold focus:outline-none"
+                            >
+                                <option value="Available">Available</option>
+                                <option value="Sold">Sold</option>
+                                <option value="Rented">Rented</option>
+                                <option value="Hidden">Hidden</option>
+                                <option value="All">All Statuses</option>
+                            </select>
+                        </div>
+
+                        {/* Transaction Type Filter */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">Transaction</label>
+                            <select
+                                value={filters.transactionType}
+                                onChange={(e) => setFilters(prev => ({ ...prev, transactionType: e.target.value }))}
+                                className="w-full h-9 px-3 rounded-lg bg-card border border-border text-xs font-semibold focus:outline-none"
+                            >
+                                <option value="All">All Transactions</option>
+                                <option value="Sell">For Sell</option>
+                                <option value="Rent">For Rent</option>
+                            </select>
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">Category</label>
+                            <select
+                                value={filters.category}
+                                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value, type: "All" }))}
+                                className="w-full h-9 px-3 rounded-lg bg-card border border-border text-xs font-semibold focus:outline-none"
+                            >
+                                <option value="All">All Categories</option>
+                                <option value="Residential">Residential</option>
+                                <option value="Commercial">Commercial</option>
+                                <option value="Land">Land</option>
+                            </select>
+                        </div>
+
+                        {/* Property Type Filter */}
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-bold uppercase tracking-wider text-foreground/45">Property Type</label>
+                            <select
+                                value={filters.type}
+                                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
+                                className="w-full h-9 px-3 rounded-lg bg-card border border-border text-xs font-semibold focus:outline-none"
+                            >
+                                <option value="All">All Types</option>
+                                {getTypeOptions().map(t => (
+                                    <option key={t} value={t}>{t}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {/* Only Show Active Filters below */}
+                {(filters.status !== "Available" || filters.transactionType !== "All" || filters.category !== "All" || filters.type !== "All") && (
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="font-semibold text-foreground/50">Active Filters:</span>
+                        
+                        {filters.status !== "Available" && (
+                            <button
+                                onClick={() => setFilters(prev => ({ ...prev, status: "Available" }))}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20 transition-all animate-fade-in"
+                                title="Clear status filter"
+                            >
+                                <span>Status: {filters.status}</span>
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+
+                        {filters.transactionType !== "All" && (
+                            <button
+                                onClick={() => setFilters(prev => ({ ...prev, transactionType: "All" }))}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20 transition-all animate-fade-in"
+                                title="Clear transaction filter"
+                            >
+                                <span>Tx: {filters.transactionType}</span>
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+
+                        {filters.category !== "All" && (
+                            <button
+                                onClick={() => setFilters(prev => ({ ...prev, category: "All", type: "All" }))}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20 transition-all animate-fade-in"
+                                title="Clear category filter"
+                            >
+                                <span>Category: {filters.category}</span>
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+
+                        {filters.type !== "All" && (
+                            <button
+                                onClick={() => setFilters(prev => ({ ...prev, type: "All" }))}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 font-bold hover:bg-primary/20 transition-all animate-fade-in"
+                                title="Clear type filter"
+                            >
+                                <span>Type: {filters.type}</span>
+                                <X className="h-3 w-3" />
+                            </button>
+                        )}
+
                         <button
-                            key={t}
-                            onClick={() => setFilter(t)}
-                            className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${filter === t
-                                ? "bg-primary text-primary-foreground shadow-sm bg-blue-600"
-                                : "bg-card border border-border text-foreground/70 hover:border-primary/50"
-                                }`}
+                            onClick={() => setFilters({ status: "Available", transactionType: "All", category: "All", type: "All" })}
+                            className="text-foreground/45 hover:text-primary font-bold underline transition-colors"
                         >
-                            {t}
+                            Reset All
                         </button>
-                    ))}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Grid */}
