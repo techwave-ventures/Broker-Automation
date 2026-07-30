@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSquare } from "lucide-react";
+import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSquare, ArrowLeft, Phone } from "lucide-react";
 import { socket, connectSocket } from "@/lib/socket";
 
 interface Message {
@@ -40,6 +40,8 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  // Mobile: false = inbox list, true = chat detail
+  const [showChat, setShowChat] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +56,6 @@ export default function ConversationsPage() {
             const params = new URLSearchParams(window.location.search);
             const phoneSearch = params.get("phone");
             if (phoneSearch) {
-              // Exact match or numeric match
               const target = data.find((c) =>
                 c.user.phone === phoneSearch ||
                 c.user.phone.replace(/[^0-9]/g, '') === phoneSearch.replace(/[^0-9]/g, '')
@@ -67,7 +68,7 @@ export default function ConversationsPage() {
         });
       }
     } catch (err) {
-      console.error("Failed to fetch chats from database:", err);
+      console.error("Failed to fetch chats:", err);
     } finally {
       setLoading(false);
     }
@@ -75,30 +76,20 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     fetchChats();
-    // Fetch logged in user to get email for user room
     fetch("/api/auth/me")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.user?.email) {
-          setUserId(data.user.email);
-        }
-      })
-      .catch((err) => console.error("Failed to fetch session user:", err));
+      .then((r) => r.json())
+      .then((d) => { if (d?.user?.email) setUserId(d.user.email); })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
     connectSocket(userId);
-
-    const handleUpdate = () => {
-      fetchChats();
-    };
-
-    socket.on("webhook", handleUpdate);
-    socket.on("first", handleUpdate);
-
+    const onUpdate = () => fetchChats();
+    socket.on("webhook", onUpdate);
+    socket.on("first", onUpdate);
     return () => {
-      socket.off("webhook", handleUpdate);
-      socket.off("first", handleUpdate);
+      socket.off("webhook", onUpdate);
+      socket.off("first", onUpdate);
       socket.disconnect();
     };
   }, [userId]);
@@ -109,28 +100,36 @@ export default function ConversationsPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeChatId, activeChat?.messages?.length]);
 
+  // Hide the fixed hamburger button while a chat is open so it doesn't
+  // cover the back-arrow in the chat header on mobile.
+  useEffect(() => {
+    const btn = document.getElementById("sidebar-mobile-toggle");
+    if (!btn) return;
+    btn.style.display = showChat ? "none" : "";
+    return () => { btn.style.display = ""; };
+  }, [showChat]);
+
+  const handleSelectChat = (chatId: string) => {
+    setActiveChatId(chatId);
+    setChats((prev) => prev.map((c) => c.id === chatId ? { ...c, unread: 0 } : c));
+    setShowChat(true);
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() || !activeChatId || sending) return;
-
-    const messageText = inputText.trim();
+    const text = inputText.trim();
     setInputText("");
     setSending(true);
-
     try {
       const res = await fetch(`/api/chats/${activeChatId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: messageText }),
+        body: JSON.stringify({ text }),
       });
-
-      if (res.ok) {
-        await fetchChats();
-      } else {
-        console.error("Failed to dispatch chat message");
-      }
+      if (res.ok) await fetchChats();
     } catch (err) {
-      console.error("Error sending message:", err);
+      console.error("Error sending:", err);
     } finally {
       setSending(false);
     }
@@ -139,19 +138,15 @@ export default function ConversationsPage() {
   const toggleAI = async () => {
     if (!activeChatId || !activeChat) return;
     const newStatus = activeChat.status === "bot_active" ? "human_takeover" : "bot_active";
-
     try {
       await fetch(`/api/chats/${activeChatId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-
-      setChats((prev) =>
-        prev.map((c) => (c.id === activeChatId ? { ...c, status: newStatus } : c))
-      );
+      setChats((prev) => prev.map((c) => c.id === activeChatId ? { ...c, status: newStatus } : c));
     } catch (err) {
-      console.error("Error updating AI status:", err);
+      console.error("Error toggling AI:", err);
     }
   };
 
@@ -161,220 +156,271 @@ export default function ConversationsPage() {
       c.user.phone.includes(search)
   );
 
+  // ─── Avatar helper ───────────────────────────────────────────────
+  const Avatar = ({ name, size = "md" }: { name: string; size?: "sm" | "md" | "lg" }) => {
+    const sz = size === "sm" ? "h-9 w-9 text-sm" : size === "lg" ? "h-12 w-12 text-base" : "h-10 w-10 text-sm";
+    return (
+      <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold flex-shrink-0`}>
+        {name[0]?.toUpperCase() || "?"}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading conversations from database...</span>
+      <div className="h-[100svh] lg:h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3 text-foreground/50">
+          <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-sm font-medium">Loading conversations...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-theme(spacing.16))] lg:h-screen p-4 lg:p-6 pb-20 lg:pb-6 relative overflow-hidden">
-      <div className="bg-card h-full rounded-[2rem] border border-border shadow-sm flex overflow-hidden">
-        {/* ── Left Sidebar (Chat List) ── */}
-        <div className="w-full lg:w-[350px] flex-shrink-0 border-r border-border flex flex-col bg-muted/20">
-          <div className="p-5 border-b border-border">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">Inbox</h1>
+    // Mobile: full-bleed, no padding. Desktop: padded with card wrapper.
+    <div className="h-[100svh] lg:h-screen lg:p-6 overflow-hidden flex flex-col lg:block">
+
+      {/* ════════════════════════════════════════
+          DESKTOP CARD WRAPPER (lg+)
+          On mobile we skip padding & the card border
+      ════════════════════════════════════════ */}
+      <div className="h-full lg:bg-card lg:rounded-[2rem] lg:border lg:border-border lg:shadow-sm flex overflow-hidden">
+
+        {/* ── PANEL 1: INBOX LIST ────────────────────────────────── */}
+        <div className={`
+          flex flex-col bg-background lg:bg-muted/20
+          w-full lg:w-[340px] lg:flex-shrink-0 lg:border-r lg:border-border
+          ${showChat ? "hidden lg:flex" : "flex"}
+        `}>
+
+          {/* Inbox header — sticky */}
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-3 flex-shrink-0">
+            <div className="flex items-center justify-between mb-3 pl-14 lg:pl-0">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight">Inbox</h1>
+                <p className="text-xs text-foreground/50 mt-0.5">{chats.length} conversation{chats.length !== 1 ? "s" : ""}</p>
+              </div>
               <button
                 onClick={fetchChats}
-                className="p-2 text-foreground/60 hover:text-foreground hover:bg-muted rounded-xl transition-colors"
-                title="Refresh Conversations"
+                className="h-9 w-9 rounded-xl bg-muted hover:bg-border transition-colors flex items-center justify-center text-foreground/60 hover:text-foreground"
+                title="Refresh"
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
             </div>
+            {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/40" />
               <input
                 type="text"
-                placeholder="Search leads or messages..."
+                placeholder="Search name or number..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-muted/60 border border-border/60 focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
               />
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          {/* Chat list */}
+          <div className="flex-1 overflow-y-auto divide-y divide-border/40">
             {filteredChats.length === 0 ? (
-              <div className="p-8 text-center text-foreground/50 text-sm flex flex-col items-center gap-2">
-                <MessageSquare className="h-8 w-8 text-foreground/30" />
-                <p className="font-semibold text-foreground/70">No Conversations Yet</p>
-                <p className="text-xs max-w-[200px]">Send a WhatsApp message to your connected number to start a live chat.</p>
+              <div className="p-10 text-center flex flex-col items-center gap-3 text-foreground/40">
+                <MessageSquare className="h-10 w-10" />
+                <div>
+                  <p className="font-semibold text-sm text-foreground/60">No conversations yet</p>
+                  <p className="text-xs mt-1 max-w-[180px] mx-auto leading-relaxed">
+                    Send a WhatsApp message to your connected number to start a chat.
+                  </p>
+                </div>
               </div>
             ) : (
-              filteredChats.map((chat) => (
-                <div
-                  key={chat.id}
-                  onClick={() => {
-                    setActiveChatId(chat.id);
-                    setChats((prev) =>
-                      prev.map((c) => (c.id === chat.id ? { ...c, unread: 0 } : c))
-                    );
-                  }}
-                  className={`p-4 border-b border-border/50 cursor-pointer transition-colors flex items-center gap-3 ${activeChatId === chat.id
-                    ? "bg-primary/5 border-l-4 border-l-primary"
-                    : "hover:bg-background"
+              filteredChats.map((chat) => {
+                const isActive = activeChatId === chat.id;
+                return (
+                  <div
+                    key={chat.id}
+                    onClick={() => handleSelectChat(chat.id)}
+                    className={`flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors relative ${
+                      isActive
+                        ? "bg-primary/8 lg:bg-primary/5 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-[3px] before:bg-primary before:rounded-r-full lg:before:hidden lg:border-l-4 lg:border-l-primary"
+                        : "hover:bg-muted/50 active:bg-muted lg:hover:bg-background"
                     }`}
-                >
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0 relative">
-                    {chat.user.name[0]?.toUpperCase() || "C"}
-                    {chat.unread > 0 && (
-                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-card">
-                        {chat.unread}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm truncate">{chat.user.name}</h3>
-                      <span
-                        className={`text-xs ${chat.unread > 0 ? "text-primary font-bold" : "text-foreground/40"
-                          }`}
-                      >
-                        {chat.lastMessageTime}
-                      </span>
+                  >
+                    {/* Avatar with unread badge */}
+                    <div className="relative flex-shrink-0">
+                      <Avatar name={chat.user.name} size="lg" />
+                      {chat.unread > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-4.5 w-4.5 min-w-[18px] px-1 bg-primary rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-background">
+                          {chat.unread > 9 ? "9+" : chat.unread}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-xs">
-                      <span
-                        className={`flex items-center gap-1 px-1.5 py-[1px] rounded flex-shrink-0 text-[9px] font-bold uppercase tracking-wider ${chat.status === "bot_active"
-                          ? "bg-blue-500/10 text-blue-600"
-                          : "bg-orange-500/10 text-orange-600"
-                          }`}
-                      >
-                        {chat.status === "bot_active" ? (
-                          <Bot className="h-2.5 w-2.5" />
-                        ) : (
-                          <User className="h-2.5 w-2.5" />
-                        )}
-                      </span>
-                      <p className="truncate text-foreground/60">{chat.lastMessage}</p>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className={`text-sm truncate ${chat.unread > 0 ? "font-bold" : "font-semibold"}`}>
+                          {chat.user.name}
+                        </h3>
+                        <span className={`text-[11px] flex-shrink-0 ${chat.unread > 0 ? "text-primary font-semibold" : "text-foreground/40"}`}>
+                          {chat.lastMessageTime}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {/* AI/Agent pill */}
+                        <span className={`flex items-center gap-0.5 px-1.5 py-px rounded text-[9px] font-bold flex-shrink-0 ${
+                          chat.status === "bot_active"
+                            ? "bg-blue-500/10 text-blue-500"
+                            : "bg-orange-500/10 text-orange-500"
+                        }`}>
+                          {chat.status === "bot_active" ? <Bot className="h-2.5 w-2.5" /> : <User className="h-2.5 w-2.5" />}
+                        </span>
+                        <p className={`text-xs truncate ${chat.unread > 0 ? "text-foreground/80 font-medium" : "text-foreground/50"}`}>
+                          {chat.lastMessage}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* ── Main Chat Area ── */}
-        {activeChat ? (
-          <div className="flex-1 flex flex-col bg-background">
-            {/* Chat Header */}
-            <div className="h-20 border-b border-border px-6 flex items-center justify-between bg-card shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="h-11 w-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold">
-                  {activeChat.user.name[0]?.toUpperCase() || "C"}
-                </div>
-                <div>
-                  <h2 className="font-bold text-lg">{activeChat.user.name}</h2>
-                  <p className="text-sm text-foreground/50">{activeChat.user.phone}</p>
-                </div>
-              </div>
+        {/* ── PANEL 2: CHAT DETAIL ───────────────────────────────── */}
+        <div className={`
+          flex-1 flex flex-col min-w-0
+          ${!showChat ? "hidden lg:flex" : "flex"}
+        `}>
+          {activeChat ? (
+            <>
+              {/* Chat top bar */}
+              <div className="flex items-center justify-between px-3 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm flex-shrink-0 gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* Back arrow — mobile only */}
+                  <button
+                    onClick={() => setShowChat(false)}
+                    className="lg:hidden h-9 w-9 rounded-xl hover:bg-muted transition-colors flex items-center justify-center flex-shrink-0 -ml-1"
+                    aria-label="Back to inbox"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
 
-              <div className="flex items-center gap-3">
+                  <Avatar name={activeChat.user.name} size="sm" />
+
+                  <div className="min-w-0">
+                    <h2 className="font-bold text-sm truncate">{activeChat.user.name}</h2>
+                    <div className="flex items-center gap-1 text-xs text-foreground/50">
+                      <Phone className="h-3 w-3" />
+                      <span className="truncate">{activeChat.user.phone}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI toggle */}
                 <button
                   onClick={toggleAI}
-                  className={`px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors ${activeChat.status === "bot_active"
-                    ? "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
-                    : "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20"
-                    }`}
+                  className={`h-8 px-3 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors flex-shrink-0 border ${
+                    activeChat.status === "bot_active"
+                      ? "bg-blue-500/10 text-blue-600 border-blue-500/20 hover:bg-blue-500/20"
+                      : "bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20"
+                  }`}
                 >
                   {activeChat.status === "bot_active" ? (
-                    <>
-                      <PauseCircle className="h-5 w-5" /> Take Over Chat
-                    </>
+                    <><PauseCircle className="h-3.5 w-3.5" /><span className="hidden xs:inline">Take Over</span></>
                   ) : (
-                    <>
-                      <PlayCircle className="h-5 w-5" /> Resume AI Bot
-                    </>
+                    <><PlayCircle className="h-3.5 w-3.5" /><span className="hidden xs:inline">Resume AI</span></>
                   )}
                 </button>
               </div>
-            </div>
 
-            {/* Messages Area */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4">
-              {activeChat.messages && activeChat.messages.length > 0 ? (
-                activeChat.messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex flex-col ${msg.sender === "user" ? "items-start" : "items-end"
-                      }`}
-                  >
-                    <div
-                      className={`max-w-[75%] overflow-hidden rounded-2xl text-sm ${msg.sender === "user"
-                        ? "bg-muted border border-border text-foreground rounded-tl-sm"
-                        : msg.sender === "agent"
-                          ? "bg-primary text-white rounded-tr-sm shadow-md"
-                          : "bg-blue-600 text-white rounded-tr-sm shadow-md"
-                        }`}
-                    >
-                      {msg.imageUrl && (
-                        <div className="w-full bg-black/10 overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={msg.imageUrl}
-                            alt="Property"
-                            className="w-full max-h-60 object-cover rounded-t-2xl hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
-                            }}
-                          />
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-4 space-y-3 bg-muted/10">
+                {activeChat.messages && activeChat.messages.length > 0 ? (
+                  activeChat.messages.map((msg) => {
+                    const isUser = msg.sender === "user";
+                    return (
+                      <div key={msg.id} className={`flex flex-col ${isUser ? "items-start" : "items-end"}`}>
+                        <div className={`max-w-[82%] sm:max-w-[70%] rounded-2xl overflow-hidden text-sm shadow-sm ${
+                          isUser
+                            ? "bg-card border border-border text-foreground rounded-tl-sm"
+                            : msg.sender === "agent"
+                              ? "bg-primary text-white rounded-tr-sm"
+                              : "bg-blue-600 text-white rounded-tr-sm"
+                        }`}>
+                          {msg.imageUrl && (
+                            <div className="overflow-hidden">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={msg.imageUrl}
+                                alt="Media"
+                                className="w-full max-h-56 object-cover hover:scale-105 transition-transform duration-300"
+                                onError={(e) => { (e.target as HTMLElement).style.display = "none"; }}
+                              />
+                            </div>
+                          )}
+                          <div className="px-3.5 py-2.5 whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                         </div>
-                      )}
-                      <div className="p-4 whitespace-pre-wrap">{msg.text}</div>
-                    </div>
-                    <div className="flex items-center gap-1 mt-1 text-[11px] text-foreground/40 px-1">
-                      <span>{msg.time}</span>
-                      {msg.sender !== "user" && (
-                        <span className="font-medium capitalize text-[10px]">
-                          • {msg.sender === "bot" ? "AI Bot" : "Agent"}
-                        </span>
-                      )}
-                    </div>
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-foreground/35 px-1">
+                          <span>{msg.time}</span>
+                          {!isUser && (
+                            <span className="font-medium">
+                              · {msg.sender === "bot" ? "AI Bot" : "Agent"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="h-full flex items-center justify-center text-foreground/40 text-sm py-16">
+                    No messages in this conversation yet.
                   </div>
-                ))
-              ) : (
-                <div className="h-full flex items-center justify-center text-foreground/40 text-sm">
-                  No message history available for this chat.
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
 
-            {/* Input Box */}
-            <form onSubmit={handleSendMessage} className="p-4 bg-card border-t border-border flex items-center gap-3">
-              <input
-                type="text"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  activeChat.status === "bot_active"
-                    ? "AI Bot is handling replies. Type here to reply manually..."
-                    : "Type your reply as Agent..."
-                }
-                className="flex-1 px-4 py-3 bg-muted/40 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-              />
-              <button
-                type="submit"
-                disabled={!inputText.trim() || sending}
-                className="p-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center"
+              {/* Input bar */}
+              <form
+                onSubmit={handleSendMessage}
+                className="flex items-center gap-2 px-3 sm:px-4 py-3 bg-background border-t border-border flex-shrink-0"
+                style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))" }}
               >
-                <Send className="h-5 w-5" />
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-foreground/40 text-sm">
-            Select a conversation from the left to view messages.
-          </div>
-        )}
+                <input
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder={
+                    activeChat.status === "bot_active"
+                      ? "AI is active — type to reply manually..."
+                      : "Type your reply as Agent..."
+                  }
+                  className="flex-1 px-4 py-2.5 bg-muted/50 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm min-w-0"
+                />
+                <button
+                  type="submit"
+                  disabled={!inputText.trim() || sending}
+                  className="h-10 w-10 bg-primary text-white rounded-2xl hover:bg-primary/90 transition-all disabled:opacity-40 flex items-center justify-center flex-shrink-0 shadow-sm"
+                >
+                  {sending
+                    ? <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <Send className="h-4 w-4" />
+                  }
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-foreground/35 p-8">
+              <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center">
+                <MessageSquare className="h-8 w-8" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-sm text-foreground/50">No chat selected</p>
+                <p className="text-xs mt-1">Pick a conversation from the inbox to start</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
