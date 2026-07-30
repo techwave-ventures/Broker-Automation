@@ -21,8 +21,8 @@ export async function createUser(data: {
   phone?: string;
 }): Promise<User> {
   const result = await pool.query<User>(
-    `INSERT INTO users (user_id, email, password_hash, name, avatar, phone)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO users (user_id, email, password_hash, name, avatar, phone, credits_balance)
+     VALUES ($1, $2, $3, $4, $5, $6, 100)
      RETURNING *`,
     [
       data.user_id,
@@ -33,6 +33,18 @@ export async function createUser(data: {
       data.phone || null,
     ]
   );
+  
+  // Log the signup bonus credits transaction
+  try {
+    await pool.query(
+      `INSERT INTO credit_transactions (user_id, amount, transaction_type, description)
+       VALUES ($1, 100, 'refill', 'Signup bonus credits')`,
+      [data.user_id]
+    );
+  } catch (txErr) {
+    console.error('Failed to log signup credits transaction:', txErr);
+  }
+
   return result.rows[0];
 }
 
