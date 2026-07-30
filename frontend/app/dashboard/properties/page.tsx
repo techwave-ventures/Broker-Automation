@@ -139,7 +139,7 @@ export default function PropertiesPage() {
             )}
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pl-14 lg:pl-0">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Properties</h1>
                     <p className="text-foreground/60 text-sm mt-1">
