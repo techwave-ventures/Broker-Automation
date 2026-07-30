@@ -206,26 +206,26 @@ export function LeadsClient({ initialLeads }: Props) {
   // Map lead to form initial values
   const editInitial: Partial<LeadFormData> | undefined = editingLead
     ? {
-        customerName: editingLead.customerName,
-        customerPhone: editingLead.customerPhone,
-        requestedLocality: editingLead.requestedLocality || "",
-        budget: editingLead.budget || "",
-        otherReqs: editingLead.otherReqs || "",
-        interestedPropertyId: editingLead.interestedPropertyId || "",
-        appointmentDate: editingLead.appointmentDate
-          ? new Date(editingLead.appointmentDate).toISOString().slice(0, 16)
-          : "",
-        status: editingLead.status,
-        leadScore: editingLead.leadScore,
-      }
+      customerName: editingLead.customerName,
+      customerPhone: editingLead.customerPhone,
+      requestedLocality: editingLead.requestedLocality || "",
+      budget: editingLead.budget || "",
+      otherReqs: editingLead.otherReqs || "",
+      interestedPropertyId: editingLead.interestedPropertyId || "",
+      appointmentDate: editingLead.appointmentDate
+        ? new Date(editingLead.appointmentDate).toISOString().slice(0, 16)
+        : "",
+      status: editingLead.status,
+      leadScore: editingLead.leadScore,
+    }
     : undefined;
 
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
 
-        {/* Header — pl-14 on mobile to clear the fixed hamburger button (left-4 + w-9 ≈ 52px) */}
-        <div className="flex flex-row items-center justify-between gap-3 pl-14 sm:pl-0">
+        {/* Header — pl-14 on mobile/tablet to clear the fixed hamburger button (left-4 + w-9 ≈ 52px) */}
+        <div className="flex flex-row items-center justify-between gap-3 pl-14 lg:pl-0">
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leads</h1>
             <p className="text-foreground/55 text-xs sm:text-sm mt-0.5">
@@ -286,11 +286,10 @@ export function LeadsClient({ initialLeads }: Props) {
               <button
                 key={s}
                 onClick={() => { setStatusFilter(s); setFilterOpen(false); }}
-                className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-card border border-border text-foreground/60 hover:border-primary/40"
-                }`}
+                className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${statusFilter === s
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-card border border-border text-foreground/60 hover:border-primary/40"
+                  }`}
               >
                 {s}
               </button>
@@ -372,11 +371,10 @@ export function LeadsClient({ initialLeads }: Props) {
       {/* Toast — safe-area aware */}
       {toast && (
         <div
-          className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border transition-all animate-fade-in-up max-w-[calc(100vw-2rem)] ${
-            toast.type === "success"
-              ? "bg-accent/10 text-accent border-accent/20"
-              : "bg-red-500/10 text-red-600 border-red-500/20"
-          }`}
+          className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border transition-all animate-fade-in-up max-w-[calc(100vw-2rem)] ${toast.type === "success"
+            ? "bg-accent/10 text-accent border-accent/20"
+            : "bg-red-500/10 text-red-600 border-red-500/20"
+            }`}
         >
           {toast.msg}
         </div>
