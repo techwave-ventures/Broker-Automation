@@ -7,6 +7,7 @@ import {
     ArrowUpRight,
     BotMessageSquare,
     Circle,
+    LayoutTemplate
 } from "lucide-react";
 import { fetchProperties, fetchLeads, fetchChats, getSessionUser } from "@/lib/api";
 
@@ -30,7 +31,7 @@ export default async function DashboardPage() {
 
     const activeLeadsCount = leads.filter((l: any) => l.status !== 'Closed').length;
     const closedLeadsCount = leads.filter((l: any) => l.status === 'Closed').length;
-    const conversionRate = leads.length > 0 
+    const conversionRate = leads.length > 0
         ? ((closedLeadsCount / leads.length) * 100).toFixed(1) + '%'
         : '0.0%';
 
@@ -42,6 +43,7 @@ export default async function DashboardPage() {
             icon: Building2,
             color: "text-primary",
             bg: "bg-primary/10",
+            href: "/dashboard/properties",
         },
         {
             label: "Active Leads",
@@ -50,6 +52,7 @@ export default async function DashboardPage() {
             icon: Users,
             color: "text-accent",
             bg: "bg-accent/10",
+            href: "/dashboard/leads",
         },
         {
             label: "Conversations",
@@ -58,14 +61,16 @@ export default async function DashboardPage() {
             icon: MessageSquare,
             color: "text-secondary",
             bg: "bg-secondary/10",
+            href: "/dashboard/conversations",
         },
         {
-            label: "Conversion Rate",
-            value: conversionRate,
-            change: `${closedLeadsCount} deals won`,
-            icon: TrendingUp,
+            label: "Templates",
+            value: "Manage",
+            change: "Message templates",
+            icon: LayoutTemplate,
             color: "text-orange-500",
             bg: "bg-orange-500/10",
+            href: "/dashboard/templates",
         },
     ];
 
@@ -118,24 +123,39 @@ export default async function DashboardPage() {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {stats.map((stat, i) => (
-                    <div
-                        key={i}
-                        className="bg-card border border-border rounded-2xl p-5 hover:border-primary/30 transition-colors group"
-                    >
-                        <div className="flex items-center justify-between mb-4">
-                            <span className="text-sm text-foreground/60 font-medium">{stat.label}</span>
-                            <div className={`h-10 w-10 rounded-xl ${stat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                {stats.map((stat, i) => {
+                    const content = (
+                        <>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm text-foreground/60 font-medium">{stat.label}</span>
+                                <div className={`h-10 w-10 rounded-xl ${stat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                                </div>
                             </div>
+                            <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
+                            <p className="text-xs text-foreground/50 mt-1 flex items-center gap-1">
+                                <ArrowUpRight className="h-3 w-3 text-accent" />
+                                {stat.change}
+                            </p>
+                        </>
+                    );
+
+                    const className = "bg-card border border-border rounded-2xl p-5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all group block cursor-pointer";
+
+                    if (stat.href) {
+                        return (
+                            <Link key={i} href={stat.href} className={className}>
+                                {content}
+                            </Link>
+                        );
+                    }
+
+                    return (
+                        <div key={i} className={className.replace("cursor-pointer", "")}>
+                            {content}
                         </div>
-                        <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
-                        <p className="text-xs text-foreground/50 mt-1 flex items-center gap-1">
-                            <ArrowUpRight className="h-3 w-3 text-accent" />
-                            {stat.change}
-                        </p>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Recent Leads + Bot Status */}
