@@ -63,6 +63,8 @@
   --radius-sm: calc(var(--radius) - 4px);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+  /* Custom breakpoints */
+  --breakpoint-xs: 375px;
 }
 
 
@@ -106,3 +108,12 @@ body {
 .animate-pulse-glow {
   animation: pulse-glow 3s infinite ease-in-out;
 }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out forwards;
+}

@@ -61,19 +61,19 @@ export function LeadsStats({ leads }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
       {stats.map((s) => (
         <div
           key={s.label}
-          className="bg-card border border-border rounded-2xl p-4 flex items-center gap-3 hover:shadow-md transition-shadow"
+          className="bg-card border border-border rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3 hover:shadow-md transition-shadow overflow-hidden"
         >
-          <div className={`h-10 w-10 rounded-xl ${s.bg} flex items-center justify-center flex-shrink-0`}>
-            <s.icon className={`h-5 w-5 ${s.color}`} />
+          <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl ${s.bg} flex items-center justify-center flex-shrink-0`}>
+            <s.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${s.color}`} />
           </div>
-          <div className="min-w-0">
-            <p className="text-xl font-bold leading-none">{s.value}</p>
-            <p className="text-[11px] text-foreground/50 mt-0.5 font-medium">{s.label}</p>
-            <p className="text-[10px] text-foreground/35 truncate">{s.sub}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg sm:text-xl font-bold leading-none">{s.value}</p>
+            <p className="text-[10px] sm:text-[11px] text-foreground/50 mt-0.5 font-medium truncate">{s.label}</p>
+            <p className="text-[9px] sm:text-[10px] text-foreground/35 truncate hidden xs:block">{s.sub}</p>
           </div>
         </div>
       ))}

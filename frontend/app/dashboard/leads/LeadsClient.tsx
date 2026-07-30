@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Filter, PlusCircle, RefreshCw, Users } from "lucide-react";
+import { Search, Filter, PlusCircle, RefreshCw, Users, SlidersHorizontal } from "lucide-react";
 import { LeadsStats } from "./LeadsStats";
 import { LeadCard, type Lead } from "./LeadCard";
 import { LeadModal, type LeadFormData } from "./LeadModal";
@@ -29,24 +29,18 @@ const STATUSES = [
 // Skeleton card shown while loading
 function SkeletonCard() {
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 animate-pulse">
-      <div className="flex gap-5">
-        <div className="flex-shrink-0 space-y-2">
-          <div className="h-12 w-12 rounded-2xl bg-muted" />
-          <div className="h-3 w-24 rounded bg-muted" />
-          <div className="h-3 w-20 rounded bg-muted" />
+    <div className="bg-card border border-border rounded-2xl p-4 sm:p-5 animate-pulse">
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-muted" />
         </div>
-        <div className="flex-1 space-y-3">
-          <div className="h-3 w-32 rounded bg-muted" />
-          <div className="flex gap-2">
-            <div className="h-7 w-20 rounded-lg bg-muted" />
-            <div className="h-7 w-24 rounded-lg bg-muted" />
-          </div>
-          <div className="h-10 w-full rounded-xl bg-muted" />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="h-3 w-28 sm:w-36 rounded bg-muted" />
+          <div className="h-3 w-20 sm:w-24 rounded bg-muted" />
         </div>
-        <div className="flex-shrink-0 w-52 space-y-2">
-          <div className="h-12 w-full rounded-xl bg-muted" />
-          <div className="h-4 w-28 rounded bg-muted" />
+        <div className="flex-shrink-0 flex items-center gap-2">
+          <div className="h-7 w-20 sm:w-24 rounded-xl bg-muted" />
+          <div className="h-4 w-4 rounded bg-muted" />
         </div>
       </div>
     </div>
@@ -64,7 +58,7 @@ function DeleteConfirm({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
       <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in-up">
         <div className="h-12 w-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
           <Users className="h-6 w-6 text-red-500" />
@@ -99,6 +93,7 @@ export function LeadsClient({ initialLeads }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [refreshing, setRefreshing] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -123,7 +118,7 @@ export function LeadsClient({ initialLeads }: Props) {
     fetchPropertiesMinimal().then(setProperties);
   }, []);
 
-  // Poll for new leads every 10 seconds (same pattern as conversations page)
+  // Poll for new leads every 10 seconds
   const fetchLeads = useCallback(async (quiet = true) => {
     if (!quiet) setRefreshing(true);
     try {
@@ -227,14 +222,14 @@ export function LeadsClient({ initialLeads }: Props) {
 
   return (
     <>
-      <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
-            <p className="text-foreground/55 text-sm mt-1 max-w-lg">
-              Manage all your leads from WhatsApp AI conversations and manual entries.
+        {/* Header — pl-14 on mobile to clear the fixed hamburger button (left-4 + w-9 ≈ 52px) */}
+        <div className="flex flex-col xs:flex-row xs:items-start justify-between gap-3 pl-14 sm:pl-0">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leads</h1>
+            <p className="text-foreground/55 text-xs sm:text-sm mt-1">
+              Manage your leads from WhatsApp AI and manual entries.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -248,10 +243,10 @@ export function LeadsClient({ initialLeads }: Props) {
             </button>
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm"
             >
               <PlusCircle className="h-4 w-4" />
-              Add Lead
+              <span>Add Lead</span>
             </button>
           </div>
         </div>
@@ -260,28 +255,38 @@ export function LeadsClient({ initialLeads }: Props) {
         <LeadsStats leads={leads} />
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/35" />
-            <input
-              id="leads-search"
-              type="text"
-              placeholder="Search name or phone…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-            />
+        <div className="flex flex-col gap-3">
+          {/* Search row */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/35" />
+              <input
+                id="leads-search"
+                type="text"
+                placeholder="Search name or phone…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+              />
+            </div>
+            {/* Mobile filter toggle */}
+            <button
+              onClick={() => setFilterOpen((o) => !o)}
+              className={`sm:hidden h-10 w-10 rounded-xl border flex items-center justify-center transition-colors flex-shrink-0 ${filterOpen || statusFilter !== "All" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border text-foreground/60"}`}
+              title="Filter by status"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
           </div>
 
-          {/* Status chips */}
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Status chips — always visible on sm+, toggle on mobile */}
+          <div className={`${filterOpen ? "flex" : "hidden"} sm:flex items-center gap-2 flex-wrap`}>
             <Filter className="h-4 w-4 text-foreground/35 flex-shrink-0" />
             {STATUSES.map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+                onClick={() => { setStatusFilter(s); setFilterOpen(false); }}
+                className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
                   statusFilter === s
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "bg-card border border-border text-foreground/60 hover:border-primary/40"
@@ -301,7 +306,7 @@ export function LeadsClient({ initialLeads }: Props) {
         )}
 
         {/* Lead list */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {loading ? (
             <>
               <SkeletonCard />
@@ -309,14 +314,14 @@ export function LeadsClient({ initialLeads }: Props) {
               <SkeletonCard />
             </>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-foreground/35 bg-card rounded-3xl border border-dashed border-border">
-              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Users className="h-8 w-8 opacity-40" />
+            <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-foreground/35 bg-card rounded-3xl border border-dashed border-border px-4">
+              <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Users className="h-7 w-7 sm:h-8 sm:w-8 opacity-40" />
               </div>
-              <p className="font-semibold text-base">
+              <p className="font-semibold text-sm sm:text-base text-center">
                 {leads.length === 0 ? "No leads yet" : "No leads match your filters"}
               </p>
-              <p className="text-sm mt-1">
+              <p className="text-xs sm:text-sm mt-1 text-center max-w-xs">
                 {leads.length === 0
                   ? "Add a lead manually or wait for the WhatsApp AI to capture one."
                   : "Try a different search or filter."}
@@ -364,10 +369,10 @@ export function LeadsClient({ initialLeads }: Props) {
         />
       )}
 
-      {/* Toast */}
+      {/* Toast — safe-area aware */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border transition-all animate-fade-in-up ${
+          className={`fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium border transition-all animate-fade-in-up max-w-[calc(100vw-2rem)] ${
             toast.type === "success"
               ? "bg-accent/10 text-accent border-accent/20"
               : "bg-red-500/10 text-red-600 border-red-500/20"

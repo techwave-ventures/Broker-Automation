@@ -59,6 +59,16 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
     }
   }, [open, initial]);
 
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   const set = useCallback(<K extends keyof LeadFormData>(key: K, val: LeadFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: val }));
   }, []);
@@ -101,33 +111,33 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
         onClick={onClose}
       />
 
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-lg bg-card border-l border-border shadow-2xl flex flex-col animate-slide-in-right overflow-hidden">
+      {/* Drawer — full screen on mobile, right panel on sm+ */}
+      <div className="fixed inset-0 sm:inset-y-0 sm:right-0 sm:left-auto z-50 w-full sm:w-[min(100vw,480px)] bg-card sm:border-l border-border shadow-2xl flex flex-col animate-slide-in-right overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
-          <div>
-            <h2 className="text-lg font-bold">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex-shrink-0">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold">
               {mode === "create" ? "Add New Lead" : "Edit Lead"}
             </h2>
-            <p className="text-xs text-foreground/50 mt-0.5">
+            <p className="text-xs text-foreground/50 mt-0.5 truncate">
               {mode === "create"
-                ? "Manually add a lead from a phone call or referral"
+                ? "Manually add a lead from a call or referral"
                 : "Update lead details and status"}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="h-8 w-8 rounded-lg bg-muted hover:bg-border transition-colors flex items-center justify-center"
+            className="h-8 w-8 rounded-lg bg-muted hover:bg-border transition-colors flex items-center justify-center flex-shrink-0 ml-3"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Scrollable body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
 
-          {/* Name + Phone */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Name + Phone — stack on tiny screens, side-by-side on xs+ */}
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
                 <User className="h-3 w-3" /> Name *
@@ -155,7 +165,7 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
           </div>
 
           {/* Locality + Budget */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
                 <MapPin className="h-3 w-3" /> Locality
@@ -232,7 +242,7 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
           </div>
 
           {/* Status + Lead Score */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">Status</label>
               <div className="relative">
@@ -279,7 +289,7 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
         </form>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border flex gap-3 flex-shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-border flex gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
