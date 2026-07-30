@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSquare } from "lucide-react";
-import { socket } from "@/lib/socket";
+import { socket, connectSocket } from "@/lib/socket";
 
 interface Message {
   id: string;
@@ -87,11 +87,7 @@ export default function ConversationsPage() {
   }, []);
 
   useEffect(() => {
-    socket.connect();
-
-    if (userId) {
-      socket.emit("join_user_room", userId);
-    }
+    connectSocket(userId);
 
     const handleUpdate = () => {
       fetchChats();
