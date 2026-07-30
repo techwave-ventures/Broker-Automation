@@ -19,7 +19,12 @@ async function startServer() {
 
     const ioInstance = new Server(httpServer, {
       cors: {
-        origin: [env.FRONTEND_BASE_URL, 'http://localhost:3000', 'https://localhost:3000'],
+        origin: [
+          env.FRONTEND_BASE_URL,
+          'https://broker-automation.vercel.app',
+          'http://localhost:3000',
+          'https://localhost:3000'
+        ],
         methods: ['GET', 'POST'],
         credentials: true
       }
