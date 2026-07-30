@@ -21,16 +21,11 @@ export function TopNavbar() {
                     {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                 </button>
 
-                {/* Title & Subtitle */}
+                {/* Title */}
                 <div className="min-w-0">
-                    <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground truncate">
+                    <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground truncate">
                         {title}
                     </h1>
-                    {subtitle && (
-                        <p className="text-[11px] sm:text-xs text-foreground/50 truncate hidden xs:block">
-                            {subtitle}
-                        </p>
-                    )}
                 </div>
             </div>
 
