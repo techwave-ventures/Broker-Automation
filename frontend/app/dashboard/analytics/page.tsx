@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 import {
     TrendingUp,
     TrendingDown,
@@ -50,11 +51,11 @@ export default function AnalyticsPage() {
     const maxConv = weeklyData.length ? Math.max(...weeklyData.map((d) => d.conversations), 1) : 1;
 
     return (
-        <div className="p-6 lg:p-8 space-y-8">
-            <div className="pl-14 lg:pl-0">
-                <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-                <p className="text-foreground/60 text-sm mt-1">Performance overview for the last 30 days</p>
-            </div>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+            <HeaderSetter
+                title="Analytics"
+                subtitle="Performance overview for the last 30 days"
+            />
 
             {/* KPIs */}
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

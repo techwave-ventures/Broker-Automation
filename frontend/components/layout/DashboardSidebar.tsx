@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { useHeader } from "./HeaderContext";
 
 const NAV_ITEMS = [
     { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -32,7 +33,7 @@ const NAV_ITEMS = [
 
 export function DashboardSidebar({ user }: { user: { name: string | null; email: string | null; picture: string | null } | null }) {
     const pathname = usePathname();
-    const [mobileOpen, setMobileOpen] = useState(false);
+    const { sidebarOpen: mobileOpen, setSidebarOpen: setMobileOpen } = useHeader();
 
     const isActive = (item: (typeof NAV_ITEMS)[0]) => {
         if (item.exact) return pathname === item.href;
@@ -41,15 +42,6 @@ export function DashboardSidebar({ user }: { user: { name: string | null; email:
 
     return (
         <>
-            {/* Mobile menu button */}
-            <button
-                id="sidebar-mobile-toggle"
-                onClick={() => setMobileOpen(!mobileOpen)}
-                className="lg:hidden fixed top-4 left-4 z-50 h-9 w-9 rounded-xl bg-card border border-border flex items-center justify-center shadow-md"
-            >
-                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-
             {/* Overlay */}
             {mobileOpen && (
                 <div

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Filter, PlusCircle, RefreshCw, Users, SlidersHorizontal } from "lucide-react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 import { LeadsStats } from "./LeadsStats";
 import { LeadCard, type Lead } from "./LeadCard";
 import { LeadModal, type LeadFormData } from "./LeadModal";
@@ -223,33 +224,30 @@ export function LeadsClient({ initialLeads }: Props) {
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 max-w-7xl mx-auto">
-
-        {/* Header — pl-14 on mobile/tablet to clear the fixed hamburger button (left-4 + w-9 ≈ 52px) */}
-        <div className="flex flex-row items-center justify-between gap-3 pl-14 lg:pl-0">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leads</h1>
-            <p className="text-foreground/55 text-xs sm:text-sm mt-0.5">
-              Manage your leads.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => fetchLeads(false)}
-              disabled={refreshing}
-              className="h-9 w-9 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
-              title="Refresh"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              onClick={openCreate}
-              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm"
-            >
-              <PlusCircle className="h-4 w-4" />
-              <span>Add Lead</span>
-            </button>
-          </div>
-        </div>
+        <HeaderSetter
+          title="Leads"
+          subtitle="Manage your leads."
+          actions={
+            <>
+              <button
+                onClick={() => fetchLeads(false)}
+                disabled={refreshing}
+                className="h-9 w-9 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                onClick={openCreate}
+                className="flex items-center justify-center h-9 w-9 sm:h-auto sm:w-auto sm:gap-1.5 sm:px-4 sm:py-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors shadow-sm"
+                title="Add Lead"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Lead</span>
+              </button>
+            </>
+          }
+        />
 
         {/* Stats */}
         <LeadsStats leads={leads} />

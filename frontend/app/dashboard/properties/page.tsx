@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Building2, Plus, Search, SlidersHorizontal, MapPin, Bed, Bath, IndianRupee, MoreVertical, Edit2, CheckCircle2, ShieldOff, EyeOff, Eye, Trash2, X } from "lucide-react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 import { useState, useEffect } from "react";
 import { getProperties, Property, updatePropertyStatus, deleteProperty } from "@/lib/properties";
 
@@ -138,22 +139,20 @@ export default function PropertiesPage() {
                 </div>
             )}
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pl-14 lg:pl-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Properties</h1>
-                    <p className="text-foreground/60 text-sm mt-1">
-                        Manage your property listings
-                    </p>
-                </div>
-                <Link
-                    href="/dashboard/properties/add"
-                    className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all hover:scale-105 w-fit shadow-md shadow-primary/20"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Property
-                </Link>
-            </div>
+            <HeaderSetter
+                title="Properties"
+                subtitle="Manage your property listings"
+                actions={
+                    <Link
+                        href="/dashboard/properties/add"
+                        className="flex items-center justify-center h-9 w-9 sm:h-auto sm:w-auto sm:gap-2 bg-primary text-primary-foreground sm:px-4 sm:py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all hover:scale-105 shadow-md shadow-primary/20"
+                        title="Add Property"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden sm:inline">Add Property</span>
+                    </Link>
+                }
+            />
 
             {/* Search & Filter */}
             <div className="flex flex-col sm:flex-row gap-3">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { User, Mail, Phone, Building, Shield, Bell, Camera, CheckCircle2 } from "lucide-react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 interface UserProp {
     name: string | null;
@@ -59,7 +60,7 @@ export default function ProfileForm({ user }: { user: UserProp | null }) {
     };
 
     return (
-        <div className="p-6 lg:p-8 space-y-8 max-w-5xl mx-auto relative min-h-[80vh]">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-5xl mx-auto relative min-h-[80vh]">
 
             {/* Toast */}
             {toast && (
@@ -69,13 +70,10 @@ export default function ProfileForm({ user }: { user: UserProp | null }) {
                 </div>
             )}
 
-            {/* Header */}
-            <div className="pl-14 lg:pl-0">
-                <h1 className="text-2xl font-bold tracking-tight">My Profile</h1>
-                <p className="text-foreground/60 text-sm mt-1">
-                    Manage your personal information and preferences
-                </p>
-            </div>
+            <HeaderSetter
+                title="My Profile"
+                subtitle="Manage your personal information and preferences"
+            />
 
             <div className="grid lg:grid-cols-3 gap-8">
 

@@ -2,6 +2,7 @@
 
 import { BotMessageSquare, Circle, Settings2, Zap, Phone, Globe, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 const BOT_FEATURES = [
     { id: "auto_qualify", label: "Auto-qualify leads", description: "Automatically score and qualify incoming leads based on budget and intent.", enabled: true },
@@ -103,18 +104,17 @@ export default function WhatsAppAIPage() {
     const hasConnectedPhone = !!displayPhoneNumber;
 
     return (
-        <div className="p-6 lg:p-8 space-y-8">
-            <div className="flex justify-between items-start pl-14 lg:pl-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Roofiyo AI Bot</h1>
-                    <p className="text-foreground/60 text-sm mt-1">Configure your AI assistant behavior and integrations</p>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+            <HeaderSetter
+                title="Roofiyo AI Bot"
+                subtitle="Configure your AI assistant behavior and integrations"
+            />
+
+            {savedNotice && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-4 py-2 rounded-xl text-sm font-semibold animate-fade-in w-fit">
+                    Saved successfully!
                 </div>
-                {savedNotice && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 px-4 py-2 rounded-xl text-sm font-semibold animate-fade-in">
-                        Saved successfully!
-                    </div>
-                )}
-            </div>
+            )}
 
             {/* Status card */}
             <div className="bg-card border border-border rounded-2xl p-6">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Crown, Check, Zap, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 interface BillingStatus {
   plan_type: string;
@@ -253,18 +254,17 @@ export default function SubscriptionPage() {
   const planTypeUpper = (status?.plan_type || "free").toUpperCase();
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
-      {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pl-14 lg:pl-0">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Subscription & Credits</h1>
-          <p className="text-foreground/60 text-sm mt-1">Manage plans, credit top-ups, and auto-refill triggers</p>
-        </div>
-        <div className="flex items-center gap-2 self-start md:self-auto px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold">
-          <Crown className="h-4 w-4" />
-          {planTypeUpper} Plan — {isSubscribed ? "Active" : "Inactive / Trial"}
-        </div>
-      </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
+      <HeaderSetter
+        title="Subscription & Credits"
+        subtitle="Manage plans, credit top-ups, and auto-refill triggers"
+        actions={
+          <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-semibold">
+            <Crown className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{planTypeUpper} Plan — {isSubscribed ? "Active" : "Inactive / Trial"}</span>
+          </div>
+        }
+      />
 
       {/* Overview Cards */}
       <div className="grid md:grid-cols-3 gap-6">

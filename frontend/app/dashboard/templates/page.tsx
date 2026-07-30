@@ -6,6 +6,7 @@ import {
     Check, X, Globe, FileText, CheckCircle2, ChevronRight, Info,
     RefreshCw, ArrowUpDown
 } from "lucide-react";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 interface TemplateComponent {
     type: string;
@@ -417,7 +418,7 @@ export default function TemplatesPage() {
     }
 
     return (
-        <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
             {/* Toast System */}
             {toast && (
                 <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in bg-card px-5 py-3.5 rounded-xl shadow-2xl border border-border flex items-center gap-3">
@@ -430,44 +431,42 @@ export default function TemplatesPage() {
                 </div>
             )}
 
-            {/* Header section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/60 pl-14 lg:pl-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">WhatsApp Templates</h1>
-                    <p className="text-sm text-foreground/50 mt-1">
-                        Create, delete and sync templates for your connected WhatsApp Business Account.
-                    </p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <select
-                        value={selectedWabaId}
-                        onChange={(e) => setSelectedWabaId(e.target.value)}
-                        className="h-10 px-3.5 rounded-xl bg-card border border-border text-sm font-medium focus:ring-1 focus:ring-primary focus:outline-none"
-                    >
-                        {wabas.map(w => (
-                            <option key={w.waba_id} value={w.waba_id}>
-                                WABA: {w.waba_id.substring(0, 10)}...
-                            </option>
-                        ))}
-                    </select>
-                    <button
-                        onClick={() => fetchTemplates(selectedWabaId, true)}
-                        disabled={syncingTemplates}
-                        className="h-10 px-4 rounded-xl bg-secondary text-foreground font-semibold text-sm flex items-center gap-2 hover:opacity-90 border border-border/80 shadow-sm transition-all disabled:opacity-50"
-                        title="Bulk Sync all template statuses"
-                    >
-                        <RefreshCw className={`h-3.5 w-3.5 ${syncingTemplates ? 'animate-spin' : ''}`} />
-                        Bulk Sync
-                    </button>
-                    <button
-                        onClick={() => setShowCreateModal(true)}
-                        className="h-10 px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm flex items-center gap-2 hover:opacity-95 shadow-sm transition-all"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Create Template
-                    </button>
-                </div>
-            </div>
+            <HeaderSetter
+                title="WhatsApp Templates"
+                subtitle="Create, delete and sync templates for your connected WhatsApp Business Account."
+                actions={
+                    <>
+                        <select
+                            value={selectedWabaId}
+                            onChange={(e) => setSelectedWabaId(e.target.value)}
+                            className="h-10 px-2 sm:px-3.5 rounded-xl bg-card border border-border text-xs sm:text-sm font-medium focus:ring-1 focus:ring-primary focus:outline-none max-w-[110px] sm:max-w-none"
+                        >
+                            {wabas.map(w => (
+                                <option key={w.waba_id} value={w.waba_id}>
+                                    WABA: {w.waba_id.substring(0, 10)}...
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                            onClick={() => fetchTemplates(selectedWabaId, true)}
+                            disabled={syncingTemplates}
+                            className="flex items-center justify-center h-10 w-10 sm:w-auto sm:px-4 rounded-xl bg-secondary text-foreground font-semibold text-sm gap-2 hover:opacity-90 border border-border/80 shadow-sm transition-all disabled:opacity-50"
+                            title="Bulk Sync all template statuses"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${syncingTemplates ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">Bulk Sync</span>
+                        </button>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center justify-center h-10 w-10 sm:w-auto sm:px-4 rounded-xl bg-primary text-primary-foreground font-semibold text-sm gap-2 hover:opacity-95 shadow-sm transition-all"
+                            title="Create Template"
+                        >
+                            <Plus className="h-4 w-4" />
+                            <span className="hidden sm:inline">Create Template</span>
+                        </button>
+                    </>
+                }
+            />
 
             {/* Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-card border border-border p-3.5 rounded-2xl">

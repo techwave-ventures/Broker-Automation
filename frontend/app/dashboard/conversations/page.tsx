@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, Send, Bot, PauseCircle, PlayCircle, User, RefreshCw, MessageSquare, ArrowLeft, Phone } from "lucide-react";
 import { socket, connectSocket } from "@/lib/socket";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 interface Message {
   id: string;
@@ -42,6 +43,16 @@ export default function ConversationsPage() {
   const [userId, setUserId] = useState<string | null>(null);
   // Mobile: false = inbox list, true = chat detail
   const [showChat, setShowChat] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -180,6 +191,20 @@ export default function ConversationsPage() {
   return (
     // Mobile: full-bleed, no padding. Desktop: padded with card wrapper.
     <div className="h-[100svh] lg:h-screen lg:p-6 overflow-hidden flex flex-col lg:block">
+      <HeaderSetter
+        title="Conversations"
+        subtitle="Manage conversations and live chat"
+        hideNavbar={isMobile && showChat}
+        actions={
+          <button
+            onClick={fetchChats}
+            className="h-9 w-9 rounded-xl bg-muted hover:bg-border transition-colors flex items-center justify-center text-foreground/60 hover:text-foreground"
+            title="Refresh"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        }
+      />
 
       {/* ════════════════════════════════════════
           DESKTOP CARD WRAPPER (lg+)
@@ -195,20 +220,7 @@ export default function ConversationsPage() {
         `}>
 
           {/* Inbox header — sticky */}
-          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3 pl-14 lg:pl-0">
-              <div>
-                <h1 className="text-xl font-bold tracking-tight">Inbox</h1>
-                <p className="text-xs text-foreground/50 mt-0.5">{chats.length} conversation{chats.length !== 1 ? "s" : ""}</p>
-              </div>
-              <button
-                onClick={fetchChats}
-                className="h-9 w-9 rounded-xl bg-muted hover:bg-border transition-colors flex items-center justify-center text-foreground/60 hover:text-foreground"
-                title="Refresh"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
-            </div>
+          <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-4 py-3.5 flex-shrink-0">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/40" />

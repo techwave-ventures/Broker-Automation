@@ -7,6 +7,7 @@ import {
     Info, Calendar, Hash, Building2, Check
 } from "lucide-react";
 import { WhatsAppEmbeddedSignup } from "@/components/WhatsAppEmbeddedSignup";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
     return (
@@ -100,7 +101,11 @@ export default function SettingsPage() {
     const primaryPhone = phones[0];
 
     return (
-        <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6 relative">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6 relative">
+            <HeaderSetter
+                title="Settings"
+                subtitle="Manage your Roofiyo AI workspace, WhatsApp integration, and preferences."
+            />
 
             {/* Toast */}
             {toast && (
@@ -109,12 +114,6 @@ export default function SettingsPage() {
                     <span className="font-semibold text-sm">{toast}</span>
                 </div>
             )}
-
-            {/* Page Header */}
-            <div className="pl-14 lg:pl-0">
-                <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-sm text-foreground/50 mt-1">Manage your Roofiyo AI workspace, WhatsApp integration, and preferences.</p>
-            </div>
 
             {/* ── 1. WhatsApp Bot Connection ── */}
             <SectionCard title="Connected WhatsApp Account" icon={Smartphone}>

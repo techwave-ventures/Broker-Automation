@@ -10,6 +10,7 @@ import {
     FileText
 } from "lucide-react";
 import { fetchProperties, fetchLeads, fetchChats, getSessionUser, fetchWabas, fetchTemplates } from "@/lib/api";
+import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 const statusColors: Record<string, string> = {
     new: "bg-primary text-primary-foreground",
@@ -114,23 +115,10 @@ export default async function DashboardPage() {
     });
 
     return (
-        <div className="p-6 lg:p-8 space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between pl-14 lg:pl-0">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Good morning, {displayName} 👋</h1>
-                    <p className="text-foreground/60 text-sm mt-1">
-                        Here&apos;s what&apos;s happening with your properties today.
-                    </p>
-                </div>
-                <Link
-                    href="/dashboard/properties/add"
-                    className="hidden sm:flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all hover:scale-105"
-                >
-                    <Building2 className="h-4 w-4" />
-                    Add Property
-                </Link>
-            </div>
+        <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+            <HeaderSetter
+                title="Overview"
+            />
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
