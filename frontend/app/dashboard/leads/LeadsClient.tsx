@@ -229,7 +229,7 @@ export function LeadsClient({ initialLeads }: Props) {
           <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Leads</h1>
             <p className="text-foreground/55 text-xs sm:text-sm mt-1">
-              Manage your leads from WhatsApp AI and manual entries.
+              Manage your leads.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -323,7 +323,7 @@ export function LeadsClient({ initialLeads }: Props) {
               </p>
               <p className="text-xs sm:text-sm mt-1 text-center max-w-xs">
                 {leads.length === 0
-                  ? "Add a lead manually or wait for the WhatsApp AI to capture one."
+                  ? "Add a lead manually or wait for the Roofiyo Bot to capture one."
                   : "Try a different search or filter."}
               </p>
               {leads.length === 0 && (
