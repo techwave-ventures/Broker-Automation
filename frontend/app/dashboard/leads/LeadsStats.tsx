@@ -61,20 +61,22 @@ export function LeadsStats({ leads }: Props) {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((s) => (
         <div
           key={s.label}
-          className="bg-card border border-border rounded-2xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3 hover:shadow-md transition-shadow overflow-hidden"
+          className="bg-card border border-border rounded-2xl p-4 sm:p-5 hover:border-primary/30 hover:-translate-y-1 hover:shadow-xl transition-all group block"
         >
-          <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl ${s.bg} flex items-center justify-center flex-shrink-0`}>
-            <s.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${s.color}`} />
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm sm:text-base font-bold text-foreground/80 truncate mr-1">{s.label}</span>
+            <div className={`h-8 w-8 sm:h-10 sm:w-10 rounded-xl ${s.bg} flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0`}>
+              <s.icon className={`h-4.5 w-4.5 sm:h-5 sm:w-5 ${s.color}`} />
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-lg sm:text-xl font-bold leading-none">{s.value}</p>
-            <p className="text-[10px] sm:text-[11px] text-foreground/50 mt-0.5 font-medium truncate">{s.label}</p>
-            <p className="text-[9px] sm:text-[10px] text-foreground/35 truncate hidden xs:block">{s.sub}</p>
-          </div>
+          <p className="text-2xl sm:text-3xl font-bold tracking-tight">{s.value}</p>
+          <p className="text-[10px] sm:text-xs text-foreground/50 mt-1 flex items-center gap-1 truncate">
+            {s.sub}
+          </p>
         </div>
       ))}
     </div>
