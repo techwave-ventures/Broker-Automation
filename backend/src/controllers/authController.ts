@@ -41,8 +41,12 @@ export async function signup(req: Request, res: Response) {
       return res.status(400).json({ error: 'Validation Error', message: 'Email, password, and phone number are required' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Validation Error', message: 'Password must be at least 6 characters long' });
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one symbol'
+      });
     }
 
     // 2. Check if user already exists
