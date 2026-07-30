@@ -306,7 +306,7 @@ export default function PropertyDetailPage() {
                         </p>
                     </div>
 
-                    <div className="lg:text-right flex flex-col items-end">
+                    <div className="max-lg:w-full max-lg:flex-row max-lg:justify-between max-lg:items-center lg:text-right flex flex-col items-end">
                         <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-1">
                             Asking Price
                         </p>
@@ -324,7 +324,7 @@ export default function PropertyDetailPage() {
                     <div className="lg:col-span-2 space-y-10">
 
                         {/* Quick Stats Banner */}
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-6 bg-card border border-border p-4 sm:p-6 rounded-3xl shadow-sm">
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-4 sm:gap-6 bg-card border border-border p-4 sm:p-6 rounded-3xl shadow-sm">
                             {property.category === "Land" ? (
                                 <>
                                     {property.plotArea ? (
@@ -339,7 +339,7 @@ export default function PropertyDetailPage() {
                                         </div>
                                     ) : null}
                                     {property.plotLength && property.plotWidth ? (
-                                        <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                        <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                             <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
                                                 <Map className="h-6 w-6 text-blue-500" />
                                             </div>
@@ -349,7 +349,7 @@ export default function PropertyDetailPage() {
                                             </div>
                                         </div>
                                     ) : null}
-                                    <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                    <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                         <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center">
                                             <Building2 className="h-6 w-6 text-purple-500" />
                                         </div>
@@ -373,7 +373,7 @@ export default function PropertyDetailPage() {
                                         </div>
                                     ) : null}
                                     {property.washrooms ? (
-                                        <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                        <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                             <div className="h-12 w-12 rounded-full bg-cyan-500/10 flex items-center justify-center">
                                                 <Bath className="h-6 w-6 text-cyan-500" />
                                             </div>
@@ -384,7 +384,7 @@ export default function PropertyDetailPage() {
                                         </div>
                                     ) : null}
                                     {property.furnishing ? (
-                                        <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                        <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                             <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
                                                 <Wind className="h-6 w-6 text-blue-500" />
                                             </div>
@@ -409,7 +409,7 @@ export default function PropertyDetailPage() {
                                         </div>
                                     )}
                                     {(property.baths ?? 0) > 0 && (
-                                        <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                        <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                             <div className="h-12 w-12 rounded-full bg-cyan-500/10 flex items-center justify-center">
                                                 <Bath className="h-6 w-6 text-cyan-500" />
                                             </div>
@@ -420,7 +420,7 @@ export default function PropertyDetailPage() {
                                         </div>
                                     )}
                                     {(property.builtUpArea || property.plotArea) ? (
-                                        <div className="flex items-center gap-3 border-l border-border pl-2 sm:pl-6">
+                                        <div className="flex items-center gap-3 sm:border-l border-border sm:pl-6">
                                             <div className="h-12 w-12 rounded-full bg-emerald-500/10 flex items-center justify-center">
                                                 <Maximize className="h-6 w-6 text-emerald-500" />
                                             </div>

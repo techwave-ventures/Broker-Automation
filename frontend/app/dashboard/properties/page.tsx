@@ -185,7 +185,7 @@ export default function PropertiesPage() {
             </div>
 
             {/* Grid */}
-            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                 {filtered.map((property) => (
                     <div
                         key={property.id}
