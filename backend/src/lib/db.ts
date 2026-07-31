@@ -6,7 +6,7 @@ export const pool = new Pool({
   ssl: env.POSTGRES_URL.includes('sslmode=require') || env.POSTGRES_URL.includes('neon.tech') || env.POSTGRES_URL.includes('render')
     ? { rejectUnauthorized: false }
     : undefined,
-  max: 10,
+  max: 30,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
