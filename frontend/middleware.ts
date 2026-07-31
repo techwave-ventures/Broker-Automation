@@ -36,7 +36,9 @@ export async function middleware(request: NextRequest) {
 
   // 2. If user is not logged in and trying to access dashboard, redirect to login
   if (!isLoggedIn && isDashboardRoute) {
-    return NextResponse.redirect(new URL('/auth/login', request.url));
+    const response = NextResponse.redirect(new URL('/auth/login', request.url));
+    response.cookies.set('session_token', '', { maxAge: 0, path: '/' });
+    return response;
   }
 
   return NextResponse.next();

@@ -2,6 +2,7 @@ import { DashboardSidebar } from "@/components/layout/DashboardSidebar";
 import { HeaderProvider } from "@/components/layout/HeaderContext";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { getSessionUser } from "@/lib/api";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
     children,
@@ -9,6 +10,9 @@ export default async function DashboardLayout({
     children: React.ReactNode;
 }) {
     const user = await getSessionUser();
+    if (!user) {
+        redirect("/auth/login");
+    }
 
     return (
         <HeaderProvider>

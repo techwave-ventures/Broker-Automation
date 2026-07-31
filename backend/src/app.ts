@@ -3,6 +3,7 @@ import cors from 'cors';
 import { apiRouter } from './routes/index.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { pool } from './lib/db.js';
+import { clearExpiredSessionCookie } from './middleware/auth.js';
 
 let activeRequests = 0;
 
@@ -20,6 +21,7 @@ export function createApp() {
   const app = express();
 
   app.use(cors());
+  app.use(clearExpiredSessionCookie);
 
   // Performance tracking middleware
   app.use((req, res, next) => {

@@ -12,6 +12,31 @@ export type AuthenticatedRequest = Request & {
   };
 };
 
+export async function clearExpiredSessionCookie(req: Request, res: Response, next: NextFunction) {
+  try {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies['session_token'];
+    if (token) {
+      const payload = await verifyJWT(token);
+      if (!payload) {
+        res.clearCookie('session_token', {
+          httpOnly: true,
+          secure: env.NODE_ENV === 'production',
+          sameSite: 'lax',
+        });
+        if (req.headers.cookie) {
+          const cookieList = req.headers.cookie.split(';').map(c => c.trim());
+          const filtered = cookieList.filter(c => !c.startsWith('session_token='));
+          req.headers.cookie = filtered.join('; ');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking global session cookie:', error);
+  }
+  next();
+}
+
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (isAuthBypassed) {
