@@ -22,6 +22,7 @@ export default function WhatsAppAIPage() {
 
     // Real-time analytics state
     const [analytics, setAnalytics] = useState({
+        convsToday: 0,
         msgsToday: 0,
         leadsGenerated: 0,
         autoQualified: 0,
@@ -50,7 +51,8 @@ export default function WhatsAppAIPage() {
             if (analyticRes.ok) {
                 const analyticData = await analyticRes.json();
                 setAnalytics({
-                    msgsToday: analyticData.kpis?.totalConversations?.value ?? 0,
+                    convsToday: analyticData.kpis?.totalConversations?.value ?? 0,
+                    msgsToday: analyticData.kpis?.totalMessages?.value ?? 0,
                     leadsGenerated: analyticData.kpis?.totalLeads?.value ?? 0,
                     autoQualified: analyticData.kpis?.qualifiedLeads?.value ?? 0,
                     viewingsBooked: analyticData.kpis?.viewingsScheduled?.value ?? 0
@@ -173,9 +175,10 @@ export default function WhatsAppAIPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-border">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-6 pt-6 border-t border-border">
                     {[
-                        { label: "Msgs Today", value: masterEnabled ? analytics.msgsToday.toString() : "0" },
+                        { label: "Active Convs", value: masterEnabled ? analytics.convsToday.toString() : "0" },
+                        { label: "Total Messages", value: masterEnabled ? analytics.msgsToday.toString() : "0" },
                         { label: "Leads Generated", value: analytics.leadsGenerated.toString() },
                         { label: "Auto-Qualified", value: analytics.autoQualified.toString() },
                         { label: "Viewings Booked", value: analytics.viewingsBooked.toString() },

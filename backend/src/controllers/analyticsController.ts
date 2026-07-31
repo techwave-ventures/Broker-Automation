@@ -67,6 +67,22 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
             ),
         ]);
 
+        // Total Messages
+        const [totalMsgsThis, totalMsgsPrev] = await Promise.all([
+            pool.query(
+                `SELECT COUNT(*) AS count FROM messages m
+          JOIN conversations c ON m.conversation_id = c.id
+          WHERE (c.user_id = $1 OR c.user_id = $2) AND m.created_at >= $3`,
+                [subId, email, thisPeriodStart]
+            ),
+            pool.query(
+                `SELECT COUNT(*) AS count FROM messages m
+          JOIN conversations c ON m.conversation_id = c.id
+          WHERE (c.user_id = $1 OR c.user_id = $2) AND m.created_at >= $3 AND m.created_at < $4`,
+                [subId, email, prevPeriodStart, prevPeriodEnd]
+            ),
+        ]);
+
         // Viewings Scheduled (appointment booked or visited)
         const [viewingsThis, viewingsPrev] = await Promise.all([
             pool.query(
@@ -173,6 +189,8 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
         const qualLeadsBefore = Number(qualLeadsPrev.rows[0]?.count ?? 0);
         const totalConvsNow = Number(totalConvsThis.rows[0]?.count ?? 0);
         const totalConvsBefore = Number(totalConvsPrev.rows[0]?.count ?? 0);
+        const totalMsgsNow = Number(totalMsgsThis.rows[0]?.count ?? 0);
+        const totalMsgsBefore = Number(totalMsgsPrev.rows[0]?.count ?? 0);
         const viewingsNow = Number(viewingsThis.rows[0]?.count ?? 0);
         const viewingsBefore = Number(viewingsPrev.rows[0]?.count ?? 0);
 
@@ -193,6 +211,7 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response) {
                 totalLeads: { value: totalLeadsNow, ...calcChange(totalLeadsNow, totalLeadsBefore) },
                 qualifiedLeads: { value: qualLeadsNow, ...calcChange(qualLeadsNow, qualLeadsBefore) },
                 totalConversations: { value: totalConvsNow, ...calcChange(totalConvsNow, totalConvsBefore) },
+                totalMessages: { value: totalMsgsNow, ...calcChange(totalMsgsNow, totalMsgsBefore) },
                 viewingsScheduled: { value: viewingsNow, ...calcChange(viewingsNow, viewingsBefore) },
             },
             weeklyData,
