@@ -17,7 +17,6 @@ const envSchema = z.object({
   FB_GRAPH_API_VERSION: z.string().default('v22.0'),
   FB_REG_PIN: z.string().optional(),
   FB_VERIFY_TOKEN: z.string().optional(),
-  ABLY_KEY: z.string().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   GCP_PROJECT_ID: z.string().optional(),
   GCP_LOCATION: z.string().default('us-central1'),

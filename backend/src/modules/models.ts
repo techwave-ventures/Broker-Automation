@@ -4,16 +4,6 @@ export interface AuthUserModel {
   name?: string;
 }
 
-export interface AblyTokenRequestModel {
-  keyName: string;
-  ttl: number;
-  clientId: string;
-  capability?: string;
-  timestamp?: number;
-  nonce?: string;
-  mac?: string;
-}
-
 export interface GraphApiErrorModel {
   message?: string;
   code?: number;
