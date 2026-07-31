@@ -432,21 +432,10 @@ export default function TemplatesPage() {
             )}
 
             <HeaderSetter
-                title="WhatsApp Templates"
+                title="Templates"
                 subtitle="Create, delete and sync templates for your connected WhatsApp Business Account."
                 actions={
                     <>
-                        <select
-                            value={selectedWabaId}
-                            onChange={(e) => setSelectedWabaId(e.target.value)}
-                            className="h-10 px-2 sm:px-3.5 rounded-xl bg-card border border-border text-xs sm:text-sm font-medium focus:ring-1 focus:ring-primary focus:outline-none max-w-[110px] sm:max-w-none"
-                        >
-                            {wabas.map(w => (
-                                <option key={w.waba_id} value={w.waba_id}>
-                                    WABA: {w.waba_id.substring(0, 10)}...
-                                </option>
-                            ))}
-                        </select>
                         <button
                             onClick={() => fetchTemplates(selectedWabaId, true)}
                             disabled={syncingTemplates}
@@ -469,7 +458,18 @@ export default function TemplatesPage() {
             />
 
             {/* Filters Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-card border border-border p-3.5 rounded-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 bg-card border border-border p-3.5 rounded-2xl">
+                <select
+                    value={selectedWabaId}
+                    onChange={(e) => setSelectedWabaId(e.target.value)}
+                    className="h-9 px-3 rounded-xl bg-background border border-border/80 text-sm focus:outline-none font-medium"
+                >
+                    {wabas.map(w => (
+                        <option key={w.waba_id} value={w.waba_id}>
+                            WABA: {w.waba_id.substring(0, 10)}...
+                        </option>
+                    ))}
+                </select>
                 <div className="relative">
                     <Search className="absolute left-3 top-2.5 h-4.5 w-4.5 text-foreground/40" />
                     <input
@@ -561,7 +561,7 @@ export default function TemplatesPage() {
                                             {renderSortIcon("name")}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-4">
+                                    <th className="px-6 py-4 hidden sm:table-cell">
                                         <button
                                             onClick={() => handleSort("category")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
@@ -570,7 +570,7 @@ export default function TemplatesPage() {
                                             {renderSortIcon("category")}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-4 font-bold">Language</th>
+                                    <th className="px-6 py-4 font-bold hidden md:table-cell">Language</th>
                                     <th className="px-6 py-4">
                                         <button
                                             onClick={() => handleSort("status")}
@@ -580,7 +580,7 @@ export default function TemplatesPage() {
                                             {renderSortIcon("status")}
                                         </button>
                                     </th>
-                                    <th className="px-6 py-4">
+                                    <th className="px-6 py-4 hidden lg:table-cell">
                                         <button
                                             onClick={() => handleSort("created_at")}
                                             className="flex items-center gap-1.5 hover:text-foreground transition-colors focus:outline-none"
@@ -602,12 +602,12 @@ export default function TemplatesPage() {
                                         <td className="px-6 py-4.5 font-bold text-foreground/80 group-hover:text-primary transition-colors">
                                             {template.name}
                                         </td>
-                                        <td className="px-6 py-4.5">
+                                        <td className="px-6 py-4.5 hidden sm:table-cell">
                                             <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] font-bold uppercase tracking-wide text-foreground/60 border border-border">
                                                 {template.category}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4.5 text-foreground/50">
+                                        <td className="px-6 py-4.5 text-foreground/50 hidden md:table-cell">
                                             <span className="flex items-center gap-1.5">
                                                 <Globe className="h-3 w-3" />
                                                 {template.language}
@@ -628,7 +628,7 @@ export default function TemplatesPage() {
                                                 </button>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4.5 text-foreground/50">
+                                        <td className="px-6 py-4.5 text-foreground/50 hidden lg:table-cell">
                                             {template.created_at ? new Date(template.created_at).toLocaleString() : "N/A"}
                                         </td>
                                         <td className="px-6 py-4.5 text-right" onClick={(e) => e.stopPropagation()}>
