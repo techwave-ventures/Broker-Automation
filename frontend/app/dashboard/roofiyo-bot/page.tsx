@@ -1,6 +1,6 @@
 "use client";
 
-import { BotMessageSquare, Circle, Settings2, Zap, Phone, Globe, RefreshCw } from "lucide-react";
+import { BotMessageSquare, Circle, Settings2, Zap, Phone, RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { HeaderSetter } from "@/components/layout/HeaderContext";
 
@@ -20,8 +20,17 @@ export default function WhatsAppAIPage() {
     const [saving, setSaving] = useState(false);
     const [savedNotice, setSavedNotice] = useState(false);
 
-    const fetchConfig = async () => {
+    // Real-time analytics state
+    const [analytics, setAnalytics] = useState({
+        msgsToday: 0,
+        leadsGenerated: 0,
+        autoQualified: 0,
+        viewingsBooked: 0
+    });
+
+    const fetchConfigAndAnalytics = async () => {
         try {
+            // Fetch bot config
             const res = await fetch("/api/bot-configs");
             if (res.ok) {
                 const data = await res.json();
@@ -35,15 +44,27 @@ export default function WhatsAppAIPage() {
                     { id: "multilingual", label: "Multilingual support", description: "Respond in Hindi, Marathi, and English automatically.", enabled: data.multilingual ?? false },
                 ]);
             }
+
+            // Fetch real-time analytics
+            const analyticRes = await fetch("/api/analytics");
+            if (analyticRes.ok) {
+                const analyticData = await analyticRes.json();
+                setAnalytics({
+                    msgsToday: analyticData.kpis?.totalConversations?.value ?? 0,
+                    leadsGenerated: analyticData.kpis?.totalLeads?.value ?? 0,
+                    autoQualified: analyticData.kpis?.qualifiedLeads?.value ?? 0,
+                    viewingsBooked: analyticData.kpis?.viewingsScheduled?.value ?? 0
+                });
+            }
         } catch (err) {
-            console.error("Failed to load bot config:", err);
+            console.error("Failed to load bot config or analytics:", err);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchConfig();
+        fetchConfigAndAnalytics();
     }, []);
 
     const saveConfig = async (updatedFields: any) => {
@@ -106,7 +127,7 @@ export default function WhatsAppAIPage() {
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <HeaderSetter
-                title="Roofiyo AI Bot"
+                title="Roofiyo Bot"
                 subtitle="Configure your AI assistant behavior and integrations"
             />
 
@@ -154,10 +175,10 @@ export default function WhatsAppAIPage() {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-border">
                     {[
-                        { label: "Msgs Today", value: masterEnabled ? "347" : "0" },
-                        { label: "Leads Generated", value: "18" },
-                        { label: "Auto-Qualified", value: "11" },
-                        { label: "Viewings Booked", value: "6" },
+                        { label: "Msgs Today", value: masterEnabled ? analytics.msgsToday.toString() : "0" },
+                        { label: "Leads Generated", value: analytics.leadsGenerated.toString() },
+                        { label: "Auto-Qualified", value: analytics.autoQualified.toString() },
+                        { label: "Viewings Booked", value: analytics.viewingsBooked.toString() },
                     ].map((s) => (
                         <div key={s.label} className="text-center">
                             <p className="text-xl font-bold">{s.value}</p>
@@ -167,57 +188,68 @@ export default function WhatsAppAIPage() {
                 </div>
             </div>
 
-            {/* Channels */}
-            <div className="bg-card border border-border rounded-2xl p-6">
-                <h2 className="font-semibold mb-4 flex items-center gap-2">
-                    <Phone className="h-5 w-5 text-primary" />
-                    Active Channels
-                </h2>
-                <div className="max-w-md">
-                    <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-background">
-                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            {/* Channels & Features in same row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Active Channels */}
+                <div className="lg:col-span-1">
+                    <div className="bg-card border border-border rounded-2xl p-6 h-full">
+                        <h2 className="font-semibold mb-4 flex items-center gap-2">
                             <Phone className="h-5 w-5 text-primary" />
+                            Active Channels
+                        </h2>
+                        <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-background">
+                            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Phone className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-medium text-sm">WhatsApp Business</p>
+                                <p className="text-xs text-foreground/50 truncate">
+                                    {hasConnectedPhone ? `+${displayPhoneNumber}` : "No phone number connected"}
+                                </p>
+                            </div>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${hasConnectedPhone ? 'bg-accent/10 text-accent' : 'bg-destructive/10 text-destructive'}`}>
+                                {hasConnectedPhone ? "Connected" : "Disconnected"}
+                            </span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm">WhatsApp Business</p>
-                            <p className="text-xs text-foreground/50 truncate">
-                                {hasConnectedPhone ? `+${displayPhoneNumber}` : "No phone number connected"}
-                            </p>
-                        </div>
-                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${hasConnectedPhone ? 'bg-accent/10 text-accent' : 'bg-destructive/10 text-destructive'}`}>
-                            {hasConnectedPhone ? "Connected" : "Disconnected"}
-                        </span>
                     </div>
                 </div>
-            </div>
 
-            {/* Features toggles */}
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-border flex items-center gap-2">
-                    <Settings2 className="h-5 w-5 text-primary" />
-                    <h2 className="font-semibold">Bot Features</h2>
-                </div>
-                <div className="divide-y divide-border">
-                    {features.map((feat) => (
-                        <div key={feat.id} className="flex items-center gap-4 px-6 py-4">
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                    <Zap className={`h-4 w-4 ${feat.enabled ? "text-primary" : "text-foreground/30"}`} />
-                                    <p className="font-medium text-sm">{feat.label}</p>
-                                </div>
-                                <p className="text-xs text-foreground/50 mt-0.5 ml-6">{feat.description}</p>
-                            </div>
-                            <button
-                                id={`toggle-${feat.id}`}
-                                onClick={() => toggle(feat.id)}
-                                className={`relative h-6 w-11 rounded-full transition-colors flex-shrink-0 ${feat.enabled ? "bg-primary" : "bg-border"}`}
-                            >
-                                <span
-                                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${feat.enabled ? "translate-x-5" : "translate-x-0.5"}`}
-                                />
-                            </button>
+                {/* Bot Features */}
+                <div className="lg:col-span-2 bg-card border border-border rounded-2xl overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div className="px-6 py-4 border-b border-border flex items-center gap-2">
+                            <Settings2 className="h-5 w-5 text-primary" />
+                            <h2 className="font-semibold">Bot Features</h2>
                         </div>
-                    ))}
+                        <div className="divide-y divide-border">
+                            {features.map((feat) => (
+                                <div key={feat.id} className="flex items-center gap-4 px-6 py-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <Zap className={`h-4 w-4 ${feat.enabled ? "text-primary" : "text-foreground/30"}`} />
+                                            <p className="font-medium text-sm">{feat.label}</p>
+                                        </div>
+                                        <p className="text-xs text-foreground/50 mt-0.5 ml-6">{feat.description}</p>
+                                    </div>
+                                    <button
+                                        id={`toggle-${feat.id}`}
+                                        onClick={() => toggle(feat.id)}
+                                        role="switch"
+                                        aria-checked={feat.enabled}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none flex-shrink-0 ${
+                                            feat.enabled ? "bg-primary" : "bg-secondary border border-border"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                                feat.enabled ? "translate-x-6" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
