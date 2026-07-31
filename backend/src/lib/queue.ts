@@ -111,7 +111,7 @@ export async function handleUpdateRollingSummary(payload: any) {
   });
 }
 
-async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number, description: string) {
+export async function deductCreditsAndCheckAutoRecharge(userId: string, amount: number, description: string) {
   try {
     // 1. Deduct credits
     const updateRes = await pool.query(
