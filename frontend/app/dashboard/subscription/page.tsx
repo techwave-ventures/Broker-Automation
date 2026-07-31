@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Crown, Check, Zap, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import { Crown, Check, Zap, ArrowRight, Loader2, RefreshCw, X, Calendar, DollarSign, History } from "lucide-react";
 import { HeaderSetter } from "@/components/layout/HeaderContext";
 
 interface BillingStatus {
@@ -28,6 +28,21 @@ export default function SubscriptionPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cashfreeAppId, setCashfreeAppId] = useState<string>("");
   const [cashfreeEnv, setCashfreeEnv] = useState<string>("sandbox");
+
+  // Modal active states
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showRefillModal, setShowRefillModal] = useState(false);
+  const [showAutoRefillModal, setShowAutoRefillModal] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+  const paginatedTransactions = transactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Top-up form state
   const [topUpCredits, setTopUpCredits] = useState<number>(5000);
@@ -62,7 +77,6 @@ export default function SubscriptionPage() {
     try {
       const response = await fetch('/api/billing/status', {
         headers: {
-          // In local dev, requireAuth is bypassed or uses local-dev session
           "Authorization": "Bearer local-dev",
         },
       });
@@ -153,6 +167,7 @@ export default function SubscriptionPage() {
         redirectTarget: "_modal",
       }).then(() => {
         alert("Subscription window closed. Checking authorization status...");
+        setShowUpgradeModal(false);
         fetchBillingData();
       });
     } catch (err: any) {
@@ -201,6 +216,7 @@ export default function SubscriptionPage() {
         redirectTarget: "_modal",
       }).then(() => {
         alert(`Payment window closed. Updating credit balance...`);
+        setShowRefillModal(false);
         fetchBillingData();
       });
     } catch (err: any) {
@@ -229,6 +245,7 @@ export default function SubscriptionPage() {
 
       if (response.ok) {
         alert("Auto-recharge configuration updated successfully.");
+        setShowAutoRefillModal(false);
         fetchBillingData();
       } else {
         const data = await response.json();
@@ -254,9 +271,9 @@ export default function SubscriptionPage() {
   const planTypeUpper = (status?.plan_type || "free").toUpperCase();
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-6xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
       <HeaderSetter
-        title="Subscription & Credits"
+        title="Subscriptions"
         subtitle="Manage plans, credit top-ups, and auto-refill triggers"
         actions={
           <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-semibold">
@@ -266,8 +283,8 @@ export default function SubscriptionPage() {
         }
       />
 
-      {/* Overview Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
+      {/* Overview Cards (Analytics Row) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
         {/* Credits Remaining */}
         <div className="bg-card border border-border rounded-2xl p-6 space-y-3">
           <div className="text-foreground/50 text-sm font-medium">Credits Remaining</div>
@@ -310,99 +327,234 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Payment / Upgrade & Refills */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Plans Upgrade */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-6 flex flex-col justify-between">
+      {/* Main split grid: Left - Credit History, Right - Billing Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Transaction History (Credit Logs) - 2 Columns wide on desktop */}
+        <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              Credit History
+            </h3>
+            <button onClick={fetchBillingData} className="p-2 text-foreground/60 hover:text-foreground transition-colors" title="Refresh Logs">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {transactions.length === 0 ? (
+            <div className="text-center py-16 text-foreground/45 text-sm">No transaction records found.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-border text-foreground/50 text-[10px] font-bold uppercase tracking-wider bg-secondary/10">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4">Amount</th>
+                    <th className="py-3 px-4">Description</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {paginatedTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-secondary/10 transition-colors">
+                      <td className="py-3.5 px-4 text-foreground/80 whitespace-nowrap">
+                        {new Date(tx.created_at).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold uppercase text-[10px] tracking-wide">
+                        <span className={`px-2.5 py-0.5 rounded-full ${tx.amount > 0
+                            ? "bg-green-500/10 text-green-600 border border-green-500/20"
+                            : "bg-red-500/10 text-red-600 border border-red-500/20"
+                          }`}>
+                          {tx.transaction_type}
+                        </span>
+                      </td>
+                      <td className={`py-3.5 px-4 font-bold text-sm ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
+                        {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
+                      </td>
+                      <td className="py-3.5 px-4 text-foreground/60 leading-relaxed max-w-[200px] sm:max-w-none truncate sm:whitespace-normal">
+                        {tx.description}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {transactions.length > itemsPerPage && (
+            <div className="flex items-center justify-between pt-4 border-t border-border/50 text-xs mt-4">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                className="px-3 py-1.5 rounded-lg border border-border bg-secondary font-semibold hover:bg-border/30 disabled:opacity-40 transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-foreground/50 font-medium">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                className="px-3 py-1.5 rounded-lg border border-border bg-secondary font-semibold hover:bg-border/30 disabled:opacity-40 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Interactive Controls Panel - 1 Column wide on desktop */}
+        <div className="lg:col-span-1 bg-card border border-border rounded-2xl p-6 space-y-6 h-fit">
           <div>
-            <h3 className="font-bold text-xl mb-2">Upgrade Plan</h3>
-            <p className="text-sm text-foreground/50 mb-4">Choose the plan that fits your business outreach scale</p>
+            <h3 className="font-bold text-lg">Billing Actions</h3>
+            <p className="text-xs text-foreground/50 mt-1">Upgrade your capabilities or top-up credits to prevent interruptions.</p>
+          </div>
 
-            <div className="border border-border rounded-xl p-4 bg-background/50 space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-lg">Standard Plan</span>
-                <span className="bg-green-500/10 text-green-500 text-xs px-2.5 py-0.5 rounded-full font-semibold">Recommended</span>
-              </div>
-              <div className="text-2xl font-extrabold text-foreground">₹2,999<span className="text-xs font-normal text-foreground/60"> / month</span></div>
+          <div className="flex flex-col gap-3.5">
+            {/* Action 1: Upgrade Plan */}
+            <button
+              onClick={() => setShowUpgradeModal(true)}
+              className="w-full bg-primary text-primary-foreground hover:opacity-95 py-3 px-4 rounded-xl font-bold flex items-center justify-between shadow-sm transition-all text-sm group"
+            >
+              <span className="flex items-center gap-2">
+                <Crown className="h-4.5 w-4.5 group-hover:scale-110 transition-transform" />
+                Upgrade Plan
+              </span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
 
-              <ul className="space-y-2 text-sm text-foreground/80 pt-2 pb-2">
-                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> 3,000 credits included monthly (expire monthly)</li>
-                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Standard extra top-ups at ₹1.00 / credit</li>
-                <li className="flex items-center gap-2"><Check className="h-4 w-4 text-primary" /> Full access to bot configs & templates</li>
-              </ul>
+            {/* Action 2: Refill Credits */}
+            <button
+              onClick={() => setShowRefillModal(true)}
+              className="w-full bg-secondary border border-border/80 text-foreground hover:bg-border/40 py-3 px-4 rounded-xl font-bold flex items-center justify-between transition-all text-sm group"
+            >
+              <span className="flex items-center gap-2">
+                <Zap className="h-4.5 w-4.5 text-primary group-hover:scale-110 transition-transform" />
+                Refill Credits
+              </span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
 
-              <div className="pt-4 border-t border-border/80 space-y-3">
-                <p className="text-xs font-bold text-foreground/75 uppercase tracking-wider">Configure Auto-Refill (Autopay)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] font-semibold text-foreground/50 block mb-1">Refill Credit Amount</label>
-                    <select
-                      value={upgradeAutoRechargeAmount}
-                      onChange={(e) => setUpgradeAutoRechargeAmount(parseInt(e.target.value, 10))}
-                      className="w-full bg-background border border-border rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary"
-                    >
-                      <option value={1000}>1,000 Credits (₹1,000)</option>
-                      <option value={3000}>3,000 Credits (₹3,000)</option>
-                      <option value={5000}>5,000 Credits (₹4,500)</option>
-                      <option value={10000}>10,000 Credits (₹8,000)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-semibold text-foreground/50 block mb-1">Trigger Threshold</label>
-                    <select
-                      value={upgradeAutoRechargeThreshold}
-                      onChange={(e) => setUpgradeAutoRechargeThreshold(parseInt(e.target.value, 10))}
-                      className="w-full bg-background border border-border rounded-xl px-2.5 py-2 text-xs font-semibold focus:outline-none focus:border-primary"
-                    >
-                      <option value={100}>Below 100 cr.</option>
-                      <option value={200}>Below 200 cr.</option>
-                      <option value={500}>Below 500 cr.</option>
-                    </select>
+            {/* Action 3: Auto Refill Settings */}
+            <button
+              onClick={() => setShowAutoRefillModal(true)}
+              className="w-full bg-secondary border border-border/80 text-foreground hover:bg-border/40 py-3 px-4 rounded-xl font-bold flex items-center justify-between transition-all text-sm group"
+            >
+              <span className="flex items-center gap-2">
+                <RefreshCw className="h-4.5 w-4.5 text-foreground/60 group-hover:rotate-180 transition-transform duration-350" />
+                Auto-Refill Settings
+              </span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Modal 1: Upgrade Plan */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+              <h3 className="font-bold text-lg">Upgrade to Standard</h3>
+              <button onClick={() => setShowUpgradeModal(false)} className="h-8 w-8 rounded-full border border-border/60 flex items-center justify-center hover:bg-secondary transition-all">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="border border-border rounded-xl p-4 bg-background/50 space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-base">Standard Plan</span>
+                  <span className="bg-green-500/10 text-green-500 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">Recommended</span>
+                </div>
+                <div className="text-xl font-extrabold text-foreground">₹2,999<span className="text-xs font-normal text-foreground/60"> / month</span></div>
+
+                <ul className="space-y-1.5 text-xs text-foreground/80 pt-2 pb-2">
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-primary flex-shrink-0" /> 3,000 credits included monthly (expire monthly)</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-primary flex-shrink-0" /> Standard extra top-ups at ₹1.00 / credit</li>
+                  <li className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-primary flex-shrink-0" /> Full access to bot configs & templates</li>
+                </ul>
+
+                <div className="pt-3 border-t border-border/80 space-y-3">
+                  <p className="text-[10px] font-bold text-foreground/75 uppercase tracking-wider">Configure Auto-Refill (Autopay)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-semibold text-foreground/50 block mb-1">Refill Credit Amount</label>
+                      <select
+                        value={upgradeAutoRechargeAmount}
+                        onChange={(e) => setUpgradeAutoRechargeAmount(parseInt(e.target.value, 10))}
+                        className="w-full bg-background border border-border rounded-xl px-2 py-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value={1000}>1,000 Credits (₹1,000)</option>
+                        <option value={3000}>3,000 Credits (₹3,000)</option>
+                        <option value={5000}>5,000 Credits (₹4,500)</option>
+                        <option value={10000}>10,000 Credits (₹8,000)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-semibold text-foreground/50 block mb-1">Trigger Threshold</label>
+                      <select
+                        value={upgradeAutoRechargeThreshold}
+                        onChange={(e) => setUpgradeAutoRechargeThreshold(parseInt(e.target.value, 10))}
+                        className="w-full bg-background border border-border rounded-xl px-2 py-1.5 text-xs font-semibold focus:outline-none"
+                      >
+                        <option value={100}>Below 100 cr.</option>
+                        <option value={200}>Below 200 cr.</option>
+                        <option value={500}>Below 500 cr.</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              <button
+                onClick={handleUpgradeSubscription}
+                disabled={submitting || status?.plan_type === "standard"}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    {status?.plan_type === "standard" ? "Current Standard Plan" : "Upgrade to Standard"}
+                  </>
+                )}
+              </button>
             </div>
           </div>
-
-          <button
-            onClick={handleUpgradeSubscription}
-            disabled={submitting || status?.plan_type === "standard"}
-            className="w-full mt-4 bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Zap className="h-4 w-4" />
-                {status?.plan_type === "standard" ? "Current Standard Plan" : "Upgrade to Standard"}
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </button>
         </div>
+      )}
 
-        {/* Credit Top Up */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-6 flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-xl mb-2">Refill Pre-paid Credits</h3>
-            <p className="text-sm text-foreground/50 mb-4">Add credits to avoid service interruptions. Rate depends on plan & tiers.</p>
-
-            <div className="space-y-4">
+      {/* Modal 2: Refill Credits */}
+      {showRefillModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+              <h3 className="font-bold text-lg">Refill Pre-paid Credits</h3>
+              <button onClick={() => setShowRefillModal(false)} className="h-8 w-8 rounded-full border border-border/60 flex items-center justify-center hover:bg-secondary transition-all">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground/70 block mb-2">Number of Credits</label>
+                <label className="text-xs font-bold text-foreground/60 block mb-1.5">Number of Credits</label>
                 <input
                   type="number"
                   value={topUpCredits}
                   onChange={(e) => setTopUpCredits(parseInt(e.target.value, 10) || 0)}
                   min={status?.plan_type === "custom" ? 5000 : 1}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 font-bold focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-xl px-4.5 py-2.5 font-bold focus:outline-none focus:border-primary text-sm"
                 />
                 {topUpError && (
                   <p className="text-red-500 text-xs mt-1.5 font-medium">{topUpError}</p>
                 )}
               </div>
 
-              {/* Tiers Pricing Info */}
+              {/* Pricing Tiers */}
               <div className="bg-background/40 p-4 border border-border rounded-xl space-y-2 text-xs">
                 <div className="font-semibold text-foreground/80 mb-1">Volume Pricing Tiers:</div>
                 <div className="flex justify-between text-foreground/60">
@@ -421,126 +573,85 @@ export default function SubscriptionPage() {
 
               <div className="flex justify-between items-center border-t border-border pt-4">
                 <div>
-                  <div className="text-xs text-foreground/50">Current Rate</div>
-                  <div className="font-bold">₹{topUpRate.toFixed(2)} / credit</div>
+                  <div className="text-[10px] text-foreground/50">Current Rate</div>
+                  <div className="font-bold text-sm">₹{topUpRate.toFixed(2)} / credit</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-foreground/50">Total Amount Payable</div>
-                  <div className="text-2xl font-extrabold text-primary">₹{topUpCost.toFixed(2)}</div>
+                  <div className="text-[10px] text-foreground/50">Total Amount Payable</div>
+                  <div className="text-xl font-extrabold text-primary">₹{topUpCost.toFixed(2)}</div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <button
-            onClick={handleTopUpPayment}
-            disabled={submitting || !!topUpError}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <>
-                <Zap className="h-4 w-4" />
-                Purchase Credits
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Auto Recharge Settings */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <h3 className="font-bold text-xl mb-2">Auto-Refill Settings</h3>
-        <p className="text-sm text-foreground/50 mb-6">Automatically refill credits whenever balance drops below 200 to prevent bot downtime</p>
-
-        <form onSubmit={handleSaveAutoRecharge} className="space-y-4 max-w-lg">
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="autoRechargeCheck"
-              checked={autoRechargeEnabled}
-              onChange={(e) => setAutoRechargeEnabled(e.target.checked)}
-              className="h-4.5 w-4.5 text-primary rounded border-border focus:ring-primary bg-background"
-            />
-            <label htmlFor="autoRechargeCheck" className="text-sm font-semibold text-foreground/80">
-              Enable Auto-Refill (Trigger below 200 credits)
-            </label>
-          </div>
-
-          {autoRechargeEnabled && (
-            <div>
-              <label className="text-sm font-medium text-foreground/70 block mb-1.5">Refill Credit Amount</label>
-              <select
-                value={autoRechargeAmount}
-                onChange={(e) => setAutoRechargeAmount(parseInt(e.target.value, 10))}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 font-semibold focus:outline-none focus:border-primary"
+              <button
+                onClick={handleTopUpPayment}
+                disabled={submitting || !!topUpError}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
-                <option value={1000}>1,000 Credits (₹1,000 standard)</option>
-                <option value={3000}>3,000 Credits (₹3,000 standard)</option>
-                <option value={5000}>5,000 Credits (₹4,500 custom rate)</option>
-                <option value={10000}>10,000 Credits (₹8,000 custom rate)</option>
-              </select>
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    Purchase Credits
+                  </>
+                )}
+              </button>
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50"
-          >
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Refill Configuration"}
-          </button>
-        </form>
-      </div>
-
-      {/* Transaction History */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-bold text-xl">Transaction Logs</h3>
-          <button onClick={fetchBillingData} className="p-2 text-foreground/60 hover:text-foreground">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        </div>
-
-        {transactions.length === 0 ? (
-          <div className="text-center py-12 text-foreground/40 text-sm">No transaction records found.</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border text-foreground/50">
-                  <th className="py-3 px-4 font-semibold">Date</th>
-                  <th className="py-3 px-4 font-semibold">Transaction Type</th>
-                  <th className="py-3 px-4 font-semibold">Amount (Credits)</th>
-                  <th className="py-3 px-4 font-semibold">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="border-b border-border/50 hover:bg-background/25">
-                    <td className="py-3.5 px-4 text-foreground/80">
-                      {new Date(tx.created_at).toLocaleString()}
-                    </td>
-                    <td className="py-3.5 px-4 font-medium uppercase text-xs">
-                      <span className={`px-2 py-0.5 rounded-full ${tx.amount > 0
-                          ? "bg-green-500/10 text-green-600"
-                          : "bg-red-500/10 text-red-600"
-                        }`}>
-                        {tx.transaction_type}
-                      </span>
-                    </td>
-                    <td className={`py-3.5 px-4 font-bold ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
-                      {tx.amount > 0 ? `+${tx.amount}` : tx.amount}
-                    </td>
-                    <td className="py-3.5 px-4 text-foreground/60">{tx.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Modal 3: Auto Refill Settings */}
+      {showAutoRefillModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border">
+              <h3 className="font-bold text-lg">Auto-Refill Settings</h3>
+              <button onClick={() => setShowAutoRefillModal(false)} className="h-8 w-8 rounded-full border border-border/60 flex items-center justify-center hover:bg-secondary transition-all">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveAutoRecharge} className="p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="autoRechargeCheck"
+                  checked={autoRechargeEnabled}
+                  onChange={(e) => setAutoRechargeEnabled(e.target.checked)}
+                  className="h-4.5 w-4.5 text-primary rounded border-border focus:ring-primary bg-background"
+                />
+                <label htmlFor="autoRechargeCheck" className="text-xs font-semibold text-foreground/80">
+                  Enable Auto-Refill (Trigger below 200 credits)
+                </label>
+              </div>
+
+              {autoRechargeEnabled && (
+                <div>
+                  <label className="text-xs font-bold text-foreground/60 block mb-1.5">Refill Credit Amount</label>
+                  <select
+                    value={autoRechargeAmount}
+                    onChange={(e) => setAutoRechargeAmount(parseInt(e.target.value, 10))}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none"
+                  >
+                    <option value={1000}>1,000 Credits (₹1,000 standard)</option>
+                    <option value={3000}>3,000 Credits (₹3,000 standard)</option>
+                    <option value={5000}>5,000 Credits (₹4,500 custom rate)</option>
+                    <option value={10000}>10,000 Credits (₹8,000 custom rate)</option>
+                  </select>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center"
+              >
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Refill Configuration"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
