@@ -194,9 +194,13 @@ export async function saveTokens(
 }
 
 export async function registerNumber(phoneId: string, accessToken: string) {
+  const pin = process.env.FB_REG_PIN || env.FB_REG_PIN;
+  if (!pin) {
+    throw new Error("CRITICAL: FB_REG_PIN environment variable is missing.");
+  }
   return graphApiWrapperPost(`/${phoneId}/register`, accessToken, {
     messaging_product: 'whatsapp',
-    pin: env.FB_REG_PIN || '123456',
+    pin: pin,
   });
 }
 

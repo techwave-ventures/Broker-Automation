@@ -234,7 +234,8 @@ export async function generateAutoReply(
         }
 
         try {
-          const parsed = JSON.parse(responseText.trim()) as GeminiStructuredResponse;
+          const cleanText = responseText.replace(/```json|```/gi, '').trim();
+          const parsed = JSON.parse(cleanText) as GeminiStructuredResponse;
           return {
             reply: parsed.reply || '',
             reply_intro: parsed.reply_intro || '',

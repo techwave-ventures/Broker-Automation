@@ -711,6 +711,14 @@ export async function handleGeminiReply(payload: any) {
       conversationId
     );
 
+    // Validate and filter recommended property IDs against database results
+    const validDbKeys = new Set(properties.map(p => Number(p.key)));
+    if (structuredRes.recommended_property_ids) {
+      structuredRes.recommended_property_ids = structuredRes.recommended_property_ids
+        .map(id => Number(id))
+        .filter(id => !isNaN(id) && validDbKeys.has(id));
+    }
+
     // Merge intent/slots from Gemini if not already deterministically resolved
     if (intentResult.intent === 'UNKNOWN' && structuredRes.intent) {
       intentResult.intent = structuredRes.intent as any;
