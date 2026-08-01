@@ -13,7 +13,7 @@ import {
 } from '../services/business.js';
 import { sendImageMessage } from './meta.js';
 import { publishToChannel } from './websocket.js';
-import { createLead, getLeadsByUser } from '../models/Lead.js';
+import { createLead, getLeadsByUser, updateLead } from '../models/Lead.js';
 import {
   findOrCreateConversation,
   saveMessage,
@@ -140,7 +140,7 @@ export async function deductCreditsAndCheckAutoRecharge(userId: string, amount: 
     if (newBalance < threshold && user.auto_recharge_enabled) {
       const refillCredits = user.auto_recharge_amount || 5000;
       console.log(`⚡ [AUTO-RECHARGE] Credit balance (${newBalance}) fell below threshold (${threshold}) for user ${userId}. Initiating refill of ${refillCredits} credits.`);
-      
+
       let rate = 1.00;
       if (user.plan_type === 'custom') {
         if (refillCredits >= 10000) rate = 0.80;
@@ -280,7 +280,7 @@ export async function handleWhatsappSend(payload: any) {
   const cost = 1;
   console.log(`💳 [QUEUE WORKER] Charging ${cost} credit for outbound message...`);
   await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound service window message');
-  
+
   if (dbMessageId) {
     await pool.query('UPDATE messages SET credits_charged = $1 WHERE id = $2', [cost, dbMessageId]);
   } else {
@@ -315,10 +315,10 @@ export async function handleWhatsappTemplateSend(payload: any) {
   }
 
   // Determine cost
-  const isMarketing = String(category || '').toLowerCase() === 'marketing' || 
-                      String(templateName || '').toLowerCase().includes('marketing') ||
-                      String(templateName || '').toLowerCase().includes('promo') ||
-                      String(templateName || '').toLowerCase().includes('offer');
+  const isMarketing = String(category || '').toLowerCase() === 'marketing' ||
+    String(templateName || '').toLowerCase().includes('marketing') ||
+    String(templateName || '').toLowerCase().includes('promo') ||
+    String(templateName || '').toLowerCase().includes('offer');
   const cost = isMarketing ? 3 : 1;
 
   // Verify credit balance
@@ -382,8 +382,8 @@ export async function handleWhatsappTemplateSend(payload: any) {
 
   // Deduct credits based on message type
   await deductCreditsAndCheckAutoRecharge(
-    userId, 
-    cost, 
+    userId,
+    cost,
     `Outbound template message (${isMarketing ? 'marketing' : 'utility'})`
   );
   await pool.query('UPDATE messages SET credits_charged = $1 WHERE message_id = $2', [cost, messageId]);
@@ -797,42 +797,45 @@ export async function handleGeminiReply(payload: any) {
     console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${prevStage} -> ${mergedUpdates.stage}`);
     conversation.ai_state = await updateConversationAIState(conversationId, mergedUpdates);
 
-    // ── Auto Lead Promotion ─────────────────────────────────────
-    if (mergedUpdates.stage === 'SITE_VISIT' && prevStage !== 'SITE_VISIT') {
+    // ── Auto Lead Promotion & Updating ────────────────────────────
+    if (mergedUpdates.stage === 'SITE_VISIT' || structuredRes.appointmentDate) {
       try {
         let leadUserId = userId;
         const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
         if (emailRes.rows[0]?.email) leadUserId = emailRes.rows[0].email;
 
         const existing = await getLeadsByUser(leadUserId);
-        const alreadyExists = existing.some(l => l.customerPhone === senderNumber);
+        const existingLead = existing.find(l => l.customerPhone === senderNumber);
 
-        if (!alreadyExists) {
-          const aiState = conversation.ai_state;
-          const targetPropertyIds = Array.isArray(aiState.interested_property_ids) && aiState.interested_property_ids.length > 0
-            ? aiState.interested_property_ids
-            : (Array.isArray(aiState.recommended_property_ids) ? aiState.recommended_property_ids : []);
+        const aiState = conversation.ai_state;
+        const targetPropertyIds = Array.isArray(aiState.interested_property_ids) && aiState.interested_property_ids.length > 0
+          ? aiState.interested_property_ids
+          : (Array.isArray(aiState.recommended_property_ids) ? aiState.recommended_property_ids : []);
 
-          const primaryPropertyId = targetPropertyIds.length > 0
-            ? String(targetPropertyIds[0])
-            : undefined;
+        const primaryPropertyId = targetPropertyIds.length > 0
+          ? String(targetPropertyIds[0])
+          : undefined;
 
-          const propertyListString = targetPropertyIds.length > 0
-            ? `Target Property IDs: ${targetPropertyIds.join(', ')}`
-            : '';
+        const propertyListString = targetPropertyIds.length > 0
+          ? `Target Property IDs: ${targetPropertyIds.join(', ')}`
+          : '';
 
+        const budget = (aiState.transaction_type === 'Rent' ? aiState.rent_budget : aiState.buy_budget) || undefined;
+        const otherReqs = [
+          aiState.property_type,
+          aiState.beds ? `${aiState.beds} BHK` : null,
+          aiState.furnishing,
+          propertyListString,
+        ].filter(Boolean).join(', ') || undefined;
+
+        if (!existingLead) {
           const newLead = await createLead(
             {
               customerName: conversation.customer_name || senderNumber,
               customerPhone: senderNumber,
               requestedLocality: aiState.locality || undefined,
-              budget: (aiState.transaction_type === 'Rent' ? aiState.rent_budget : aiState.buy_budget) || undefined,
-              otherReqs: [
-                aiState.property_type,
-                aiState.beds ? `${aiState.beds} BHK` : null,
-                aiState.furnishing,
-                propertyListString,
-              ].filter(Boolean).join(', ') || undefined,
+              budget: budget,
+              otherReqs: otherReqs,
               interestedPropertyId: primaryPropertyId,
               appointmentDate: structuredRes.appointmentDate || null,
               status: 'Upcoming Visit',
@@ -842,9 +845,27 @@ export async function handleGeminiReply(payload: any) {
           );
 
           console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${newLead.key} for ${senderNumber}`);
+        } else {
+          // Update existing lead with newly captured details and the appointment date
+          if (structuredRes.appointmentDate || budget || aiState.locality || primaryPropertyId) {
+            await updateLead(
+              existingLead.key as string,
+              {
+                requestedLocality: aiState.locality || existingLead.requestedLocality || undefined,
+                budget: budget || existingLead.budget || undefined,
+                interestedPropertyId: primaryPropertyId || existingLead.interestedPropertyId || undefined,
+                appointmentDate: structuredRes.appointmentDate || existingLead.appointmentDate || null,
+                status: 'Upcoming Visit',
+                leadScore: 'High',
+                otherReqs: otherReqs || existingLead.otherReqs || undefined,
+              },
+              leadUserId
+            );
+            console.log(`🏠 [LEAD UPDATED] Enhanced existing Lead ${existingLead.key} for ${senderNumber} with new AI state (Appt: ${structuredRes.appointmentDate || existingLead.appointmentDate}).`);
+          }
         }
       } catch (leadErr) {
-        console.error('❌ [LEAD AUTO-PROMOTE] Failed to create lead from conversation:', leadErr);
+        console.error('❌ [LEAD AUTO-PROMOTE / UPDATE] Failed to save lead from conversation:', leadErr);
       }
     }
 
@@ -896,7 +917,7 @@ export async function handleGeminiReply(payload: any) {
           direction: 'outbound',
           status: 'sent',
         });
-        
+
         // Deduct 1 credit for outbound image message
         const cost = 1;
         await deductCreditsAndCheckAutoRecharge(userId, cost, 'Outbound image message');
