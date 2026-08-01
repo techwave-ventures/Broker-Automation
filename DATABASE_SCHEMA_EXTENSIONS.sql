@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS properties (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_properties_user ON properties (user_id);
+CREATE INDEX IF NOT EXISTS idx_properties_matching ON properties (user_id, status, category, city);
 
 -- 2. Leads
 CREATE TABLE IF NOT EXISTS leads (

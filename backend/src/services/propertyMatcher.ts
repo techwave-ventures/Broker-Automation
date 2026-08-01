@@ -45,18 +45,76 @@ export async function findMatchingProperties(
     params.push(state.city);
   }
 
+  // Task 1: Explicit SQL Category and Type Constraints
+  if ((state as any).category) {
+    query += ` AND category = $${params.length + 1}`;
+    params.push((state as any).category);
+  }
+
+  if (state.property_type) {
+    query += ` AND type = $${params.length + 1}`;
+    params.push(state.property_type);
+  }
+
   const res = await pool.query(query, params);
   let matchedRows = res.rows;
+  let filtersRelaxed = false;
+
+  // Task 2: Implement Query Relaxation (Fallback Search)
+  if (matchedRows.length === 0 && (state.budget || state.locality)) {
+    let fallbackQuery = `
+      SELECT key, title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status, slug, short_code, image 
+      FROM properties 
+      WHERE user_id = $1 AND status = 'Available'
+    `;
+    const fallbackParams: any[] = [userId];
+
+    if (excludedIds.length > 0) {
+      fallbackQuery += ` AND key != ALL($${fallbackParams.length + 1})`;
+      fallbackParams.push(excludedIds);
+    }
+    if (state.transaction_type) {
+      fallbackQuery += ` AND transaction_type = $${fallbackParams.length + 1}`;
+      fallbackParams.push(state.transaction_type);
+    }
+    if (state.beds) {
+      fallbackQuery += ` AND beds = $${fallbackParams.length + 1}`;
+      fallbackParams.push(state.beds);
+    }
+    if (state.city) {
+      fallbackQuery += ` AND city ILIKE $${fallbackParams.length + 1}`;
+      fallbackParams.push(state.city);
+    }
+    if ((state as any).category) {
+      fallbackQuery += ` AND category = $${fallbackParams.length + 1}`;
+      fallbackParams.push((state as any).category);
+    }
+    if (state.property_type) {
+      fallbackQuery += ` AND type = $${fallbackParams.length + 1}`;
+      fallbackParams.push(state.property_type);
+    }
+
+    const fallbackRes = await pool.query(fallbackQuery, fallbackParams);
+    if (fallbackRes.rows.length > 0) {
+      matchedRows = fallbackRes.rows;
+      filtersRelaxed = true;
+    }
+  }
 
   // 5. Filter by budget (up to 30% upside tolerance) and handle fallback
   const parsedBudget = state.budget ? parseBudgetString(state.budget) : null;
   let filteredRows = matchedRows;
 
-  if (parsedBudget) {
+  if (parsedBudget && !filtersRelaxed) {
     filteredRows = matchedRows.filter(p => {
       const price = p.transaction_type === 'Sell' ? parseFloat(p.expected_price) : parseFloat(p.monthly_rent);
       return !isNaN(price) && price <= parsedBudget * 1.30;
     });
+  }
+
+  if (filteredRows.length === 0 && (state.budget || state.locality) && !filtersRelaxed) {
+    filteredRows = matchedRows;
+    filtersRelaxed = true;
   }
 
   // 6. Ranking and scoring (by Locality proximity & Budget alignment)
@@ -98,13 +156,17 @@ export async function findMatchingProperties(
   const topListings = ranked.slice(0, 3).map(r => r.property);
 
   // Format context string to feed to Prompt Builder
-  const contextString = topListings.map((p: any, index: number) => {
+  let contextString = topListings.map((p: any, index: number) => {
     const priceText = p.transaction_type === 'Sell' ? `Price: ₹${p.expected_price}` : `Rent: ₹${p.monthly_rent}/mo`;
     return `${index + 1}. [ID: ${p.key}] ${p.title} (${p.type} for ${p.transaction_type})
   - Location: ${p.locality}, ${p.city} (${p.full_address})
   - ${priceText}
   - Details: ${p.beds ? p.beds + ' BHK, ' : ''}${p.baths ? p.baths + ' baths, ' : ''}${p.description || ''}`;
   }).join('\n\n');
+
+  if (filtersRelaxed && topListings.length > 0) {
+    contextString = `Note: No exact matches found for the requested budget/locality. Showing broader results in the city.\n\n` + contextString;
+  }
 
   return {
     properties: topListings,
