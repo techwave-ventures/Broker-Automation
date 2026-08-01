@@ -60,8 +60,10 @@ export async function findMatchingProperties(
   let matchedRows = res.rows;
   let filtersRelaxed = false;
 
+  const targetBudget = state.transaction_type === 'Rent' ? state.rent_budget : state.buy_budget;
+
   // Task 2: Implement Query Relaxation (Fallback Search)
-  if (matchedRows.length === 0 && (state.budget || state.locality)) {
+  if (matchedRows.length === 0 && (targetBudget || state.locality)) {
     let fallbackQuery = `
       SELECT key, title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status, slug, short_code, image 
       FROM properties 
@@ -102,7 +104,7 @@ export async function findMatchingProperties(
   }
 
   // 5. Filter by budget (up to 30% upside tolerance) and handle fallback
-  const parsedBudget = state.budget ? parseBudgetString(state.budget) : null;
+  const parsedBudget = targetBudget ? parseBudgetString(targetBudget) : null;
   let filteredRows = matchedRows;
 
   if (parsedBudget && !filtersRelaxed) {
@@ -112,7 +114,7 @@ export async function findMatchingProperties(
     });
   }
 
-  if (filteredRows.length === 0 && (state.budget || state.locality) && !filtersRelaxed) {
+  if (filteredRows.length === 0 && (targetBudget || state.locality) && !filtersRelaxed) {
     filteredRows = matchedRows;
     filtersRelaxed = true;
   }

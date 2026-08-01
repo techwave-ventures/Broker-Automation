@@ -10,13 +10,23 @@ export function resolveNextState(
   let nextStage = geminiResponse.stage || currentState.stage;
 
   // 1. Check for critical search preferences slots:
-  // transaction_type, locality, budget, beds, property_type
-  const criticalFields = ['transaction_type', 'locality', 'budget', 'beds', 'property_type'] as const;
+  // transaction_type, locality, rent_budget/buy_budget, beds, property_type
+  const criticalFields = ['transaction_type', 'locality', 'beds', 'property_type'] as const;
   
   // We check the currentState (which contains any new slots merged before Gemini is invoked)
   const missing = criticalFields.filter(
     field => currentState[field] === null || currentState[field] === undefined
   );
+
+  if (currentState.transaction_type === 'Rent') {
+    if (currentState.rent_budget === null || currentState.rent_budget === undefined) {
+      missing.push('rent_budget' as any);
+    }
+  } else if (currentState.transaction_type === 'Sell') {
+    if (currentState.buy_budget === null || currentState.buy_budget === undefined) {
+      missing.push('buy_budget' as any);
+    }
+  }
 
   // 2. Enforce Slot-Filling Lock:
   // If critical fields are missing, force stage to COLLECT_INFO (unless we are still in GREETING or transitioning to viewing/visit stages)

@@ -609,7 +609,7 @@ export async function handleWebhookProcess(payload: any) {
             const slotsToMerge: Record<string, any> = {};
             for (const [key, value] of Object.entries(intentResult.slots)) {
               if (value !== null && value !== undefined) {
-                if (key === 'beds') {
+                if (key === 'beds' || key === 'baths') {
                   slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
                 } else {
                   slotsToMerge[key] = value;
@@ -618,6 +618,30 @@ export async function handleWebhookProcess(payload: any) {
             }
 
             if (Object.keys(slotsToMerge).length > 0) {
+              // Normalization Block: Category Switch Logic
+              const currentState = conversation.ai_state;
+              if (slotsToMerge.category && currentState.category && slotsToMerge.category !== currentState.category) {
+                slotsToMerge.recommended_property_ids = [];
+                slotsToMerge.interested_property_ids = [];
+                if (!slotsToMerge.transaction_type) {
+                  slotsToMerge.transaction_type = null;
+                }
+                if (slotsToMerge.category === 'Land' || slotsToMerge.category === 'Commercial') {
+                  slotsToMerge.beds = null;
+                  slotsToMerge.baths = null;
+                  slotsToMerge.furnishing = null;
+                }
+              }
+
+              // Transaction Switch Logic
+              if (slotsToMerge.transaction_type && currentState.transaction_type && slotsToMerge.transaction_type !== currentState.transaction_type) {
+                if (slotsToMerge.transaction_type === 'Rent') {
+                  slotsToMerge.buy_budget = null;
+                } else if (slotsToMerge.transaction_type === 'Sell') {
+                  slotsToMerge.rent_budget = null;
+                }
+              }
+
               console.log(`📝 [SLOTS EXTRACTED] Merging slots into ai_state for conversation ${conversation.id}:`, slotsToMerge);
               conversation.ai_state = await updateConversationAIState(conversation.id, slotsToMerge);
             }
@@ -729,7 +753,7 @@ export async function handleGeminiReply(payload: any) {
     if (structuredRes.slots) {
       for (const [key, value] of Object.entries(structuredRes.slots)) {
         if (value !== null && value !== undefined) {
-          if (key === 'beds') {
+          if (key === 'beds' || key === 'baths') {
             slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
           } else {
             slotsToMerge[key] = value;
@@ -747,6 +771,30 @@ export async function handleGeminiReply(payload: any) {
       nextStateUpdates.rolling_summary = structuredRes.updated_rolling_summary;
     }
     const mergedUpdates = { ...slotsToMerge, ...nextStateUpdates };
+
+    // Normalization Block: Category Switch Logic
+    const currentState = conversation.ai_state;
+    if (mergedUpdates.category && currentState.category && mergedUpdates.category !== currentState.category) {
+      mergedUpdates.recommended_property_ids = [];
+      mergedUpdates.interested_property_ids = [];
+      if (!mergedUpdates.transaction_type) {
+        mergedUpdates.transaction_type = null;
+      }
+      if (mergedUpdates.category === 'Land' || mergedUpdates.category === 'Commercial') {
+        mergedUpdates.beds = null;
+        mergedUpdates.baths = null;
+        mergedUpdates.furnishing = null;
+      }
+    }
+
+    // Transaction Switch Logic
+    if (mergedUpdates.transaction_type && currentState.transaction_type && mergedUpdates.transaction_type !== currentState.transaction_type) {
+      if (mergedUpdates.transaction_type === 'Rent') {
+        mergedUpdates.buy_budget = null;
+      } else if (mergedUpdates.transaction_type === 'Sell') {
+        mergedUpdates.rent_budget = null;
+      }
+    }
 
     console.log(`⚙️ [STATE MACHINE] Transitioning stage: ${prevStage} -> ${mergedUpdates.stage}`);
     conversation.ai_state = await updateConversationAIState(conversationId, mergedUpdates);
@@ -780,7 +828,7 @@ export async function handleGeminiReply(payload: any) {
               customerName: conversation.customer_name || senderNumber,
               customerPhone: senderNumber,
               requestedLocality: aiState.locality || undefined,
-              budget: aiState.budget || undefined,
+              budget: (aiState.transaction_type === 'Rent' ? aiState.rent_budget : aiState.buy_budget) || undefined,
               otherReqs: [
                 aiState.property_type,
                 aiState.beds ? `${aiState.beds} BHK` : null,

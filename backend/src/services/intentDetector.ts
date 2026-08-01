@@ -6,8 +6,11 @@ export interface IntentResult {
     transaction_type?: 'Sell' | 'Rent' | null;
     locality?: string | null;
     city?: string | null;
-    budget?: string | null;
+    rent_budget?: string | null;
+    buy_budget?: string | null;
+    category?: 'Residential' | 'Commercial' | 'Land' | null;
     beds?: number | null;
+    baths?: number | null;
     property_type?: string | null;
     furnishing?: string | null;
     parking?: string | null;
