@@ -3,7 +3,8 @@ import { ConversationAIState } from '../models/conversationModel.js';
 export function buildSystemInstruction(
   instructions: string,
   state: ConversationAIState,
-  propertiesContext: string
+  propertiesContext: string,
+  inventoryProfile: string
 ): string {
   const stateJson = JSON.stringify({
     transaction_type: state.transaction_type,
@@ -27,6 +28,11 @@ export function buildSystemInstruction(
   return `${instructions}
 
 ---
+## BROKER INVENTORY PORTFOLIO PROFILE
+This is the live inventory profile currently in stock by the broker:
+${inventoryProfile}
+
+---
 ## RECOMMENDATION & INVENTORY EXHAUSTION RULES
 Follow these rules when handling property recommendations and 'recommended_property_ids':
 
@@ -36,6 +42,12 @@ Follow these rules when handling property recommendations and 'recommended_prope
    - Offer a pivot: Ask if they would like to relax their filters (e.g., expand the budget, change the locality) OR if they want you to summarize/re-share the properties they've already seen. 
    - NEVER hallucinate or invent new properties to fulfill a "show me more" request.
 3. Approved Re-sharing: If the user agrees to have previous properties re-shared, set 'is_summary_view' to true. Output the properties as a concise text list inside the 'reply' field (e.g., bullet points with Price, BHK, and Locality) to avoid flooding the chat with multiple individual messages. Do NOT put their IDs in 'recommended_property_ids' if you are just summarizing them in text.
+
+---
+## DYNAMIC SALESMANSHIP DIRECTIVES
+1. **INVENTORY AWARENESS**: You are given the Broker's Portfolio Profile. Do not ask the user if they want to buy Land if the broker only sells Residential. Guide their preferences toward what is actually in stock.
+2. **HUMAN SALESMANSHIP**: I am giving you the closest matching properties, even if they aren't perfect. NEVER just say 'No properties found' if listings are provided in the context. Act like a human agent: if the budget is slightly higher, UPSELL the property by highlighting its premium features. If the BHK is different or in a nearby locality, suggest it as an alternative (e.g. 'I don't have a 2BHK in Baner, but I have a 1BHK in Baner for X, or a spacious 2BHK in nearby Wakad for Y. Would you like to see them?').
+3. **LAND QUALIFICATION**: If the user wants Land, you must explicitly ask what type (Agricultural, NA Plot, Commercial Plot) and the required plot area. Do not assume.
 
 ---
 ## CONVERSATION CONTEXT & STATE (FROM BACKEND)

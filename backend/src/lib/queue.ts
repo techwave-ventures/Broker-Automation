@@ -621,16 +621,15 @@ export async function handleWebhookProcess(payload: any) {
               // Normalization Block: Category Switch Logic
               const currentState = conversation.ai_state;
               if (slotsToMerge.category && currentState.category && slotsToMerge.category !== currentState.category) {
+                slotsToMerge.beds = null;
+                slotsToMerge.baths = null;
+                slotsToMerge.furnishing = null;
+                slotsToMerge.property_type = null;
+                slotsToMerge.rent_budget = null;
+                slotsToMerge.buy_budget = null;
+                slotsToMerge.transaction_type = null;
                 slotsToMerge.recommended_property_ids = [];
                 slotsToMerge.interested_property_ids = [];
-                if (!slotsToMerge.transaction_type) {
-                  slotsToMerge.transaction_type = null;
-                }
-                if (slotsToMerge.category === 'Land' || slotsToMerge.category === 'Commercial') {
-                  slotsToMerge.beds = null;
-                  slotsToMerge.baths = null;
-                  slotsToMerge.furnishing = null;
-                }
               }
 
               // Transaction Switch Logic
@@ -775,16 +774,15 @@ export async function handleGeminiReply(payload: any) {
     // Normalization Block: Category Switch Logic
     const currentState = conversation.ai_state;
     if (mergedUpdates.category && currentState.category && mergedUpdates.category !== currentState.category) {
+      mergedUpdates.beds = null;
+      mergedUpdates.baths = null;
+      mergedUpdates.furnishing = null;
+      mergedUpdates.property_type = null;
+      mergedUpdates.rent_budget = null;
+      mergedUpdates.buy_budget = null;
+      mergedUpdates.transaction_type = null;
       mergedUpdates.recommended_property_ids = [];
       mergedUpdates.interested_property_ids = [];
-      if (!mergedUpdates.transaction_type) {
-        mergedUpdates.transaction_type = null;
-      }
-      if (mergedUpdates.category === 'Land' || mergedUpdates.category === 'Commercial') {
-        mergedUpdates.beds = null;
-        mergedUpdates.baths = null;
-        mergedUpdates.furnishing = null;
-      }
     }
 
     // Transaction Switch Logic

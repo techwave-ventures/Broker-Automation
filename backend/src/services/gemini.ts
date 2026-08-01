@@ -39,6 +39,7 @@ export function getVertexAI() {
 }
 
 import { buildSystemInstruction } from './promptBuilder.js';
+import { getBrokerInventoryProfile } from './propertyMatcher.js';
 import { ConversationAIState } from '../models/conversationModel.js';
 import { checkAndConsumeTokens, estimateTokenCount } from '../lib/rateLimiter.js';
 
@@ -129,7 +130,19 @@ export async function generateAutoReply(
     return fallbackResponse;
   }
 
-  const systemInstructionText = buildSystemInstruction(instructions, aiState, propertiesContext);
+  let propertiesUser = 'local-dev';
+  if (conversationId) {
+    const emailRes = await pool.query(
+      `SELECT u.email FROM users u JOIN conversations c ON c.user_id = u.user_id WHERE c.id = $1 LIMIT 1`,
+      [conversationId]
+    );
+    if (emailRes.rows[0]?.email) {
+      propertiesUser = emailRes.rows[0].email;
+    }
+  }
+  const inventoryProfile = await getBrokerInventoryProfile(propertiesUser);
+
+  const systemInstructionText = buildSystemInstruction(instructions, aiState, propertiesContext, inventoryProfile);
 
   // 1. Calculate prompt size and check rate limiter
   const totalPromptText = systemInstructionText + 
