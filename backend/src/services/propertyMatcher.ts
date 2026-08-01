@@ -83,9 +83,9 @@ export async function findMatchingProperties(
     .map(p => {
       let score = 0;
 
-      // 1. Category match (+50 points)
+      // 1. Category match (+35 points)
       if (state.category && p.category && state.category.toLowerCase() === p.category.toLowerCase()) {
-        score += 50;
+        score += 35;
       }
 
       // 2. Locality match (+30 points)
@@ -97,9 +97,31 @@ export async function findMatchingProperties(
         }
       }
 
-      // 3. Beds match (+20 points)
-      if (state.beds && p.beds && Number(state.beds) === Number(p.beds)) {
-        score += 20;
+      // 3. Category-specific match criteria
+      const propCategory = (p.category || '').toLowerCase();
+      if (propCategory === 'residential') {
+        // Beds match (+20 points)
+        if (state.beds && p.beds && Number(state.beds) === Number(p.beds)) {
+          score += 20;
+        }
+        // Property type match (+15 points)
+        if (state.property_type && p.type && state.property_type.toLowerCase() === p.type.toLowerCase()) {
+          score += 15;
+        }
+      } else if (propCategory === 'commercial') {
+        // Property type match (+20 points)
+        if (state.property_type && p.type && state.property_type.toLowerCase() === p.type.toLowerCase()) {
+          score += 20;
+        }
+        // Furnishing match (+15 points)
+        if (state.furnishing && p.furnishing && state.furnishing.toLowerCase() === p.furnishing.toLowerCase()) {
+          score += 15;
+        }
+      } else if (propCategory === 'land') {
+        // Property type match (+35 points)
+        if (state.property_type && p.type && state.property_type.toLowerCase() === p.type.toLowerCase()) {
+          score += 35;
+        }
       }
 
       // 4. Budget penalty (-1 point per 1% over budget, up to 40%)
