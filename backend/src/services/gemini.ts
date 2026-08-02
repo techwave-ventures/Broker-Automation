@@ -250,7 +250,18 @@ export async function generateAutoReply(
         }
 
         try {
-          const cleanText = responseText.replace(/```json|```/gi, '').trim();
+          let cleanText = responseText.trim();
+          const jsonBlockRegex = /```json\s*([\s\S]*?)\s*```/i;
+          const match = jsonBlockRegex.exec(cleanText);
+          if (match) {
+            cleanText = match[1].trim();
+          } else {
+            const startIdx = cleanText.indexOf('{');
+            const endIdx = cleanText.lastIndexOf('}');
+            if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+              cleanText = cleanText.substring(startIdx, endIdx + 1).trim();
+            }
+          }
           const parsed = JSON.parse(cleanText) as GeminiStructuredResponse;
           return {
             reply: parsed.reply || '',

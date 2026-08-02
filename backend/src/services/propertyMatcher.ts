@@ -125,16 +125,22 @@ export async function findMatchingProperties(
       }
 
       // 4. Budget penalty (-1 point per 1% over budget, up to 40%)
-      if (parsedBudget) {
-        const price = p.transaction_type === 'Sell' ? parseFloat(p.expected_price) : parseFloat(p.monthly_rent);
-        if (!isNaN(price) && parsedBudget > 0) {
-          if (price > parsedBudget) {
-            const pctOverage = ((price - parsedBudget) / parsedBudget) * 100;
-            if (pctOverage > 40) {
-              return null; // Skip if it exceeds 40% overage
-            }
-            score -= Math.round(pctOverage);
+      const propTxType = p.transaction_type;
+      const budgetStr = propTxType === 'Rent' ? state.rent_budget : state.buy_budget;
+      const budgetVal = budgetStr ? parseBudgetString(budgetStr) : null;
+
+      const price = propTxType === 'Sell' ? parseFloat(p.expected_price) : parseFloat(p.monthly_rent);
+      if (isNaN(price)) {
+        return null; // Skip if price is missing or malformed
+      }
+
+      if (budgetVal && budgetVal > 0) {
+        if (price > budgetVal) {
+          const pctOverage = ((price - budgetVal) / budgetVal) * 100;
+          if (pctOverage > 40) {
+            return null; // Skip if it exceeds 40% overage
           }
+          score -= Math.round(pctOverage);
         }
       }
 
