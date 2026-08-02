@@ -440,11 +440,19 @@ export async function handleTokenExchangeFollowup(payload: any) {
 
 export async function handleWebhookProcess(payload: any) {
   const data = payload;
-  await publishToChannel('get-started', 'webhook', data);
-
-  if (data.object !== 'whatsapp_business_account') {
-    return;
+  const lockKey = `lock:webhook:${data.customerPhone || data.from}`;
+  const acquired = await redisConnection.set(lockKey, 'locked', 'PX', 10000, 'NX');
+  if (!acquired) {
+    console.warn(`⚠️ [WEBHOOK CONCURRENCY] Skipping duplicate webhook retry for phone: ${data.customerPhone || data.from}`);
+    return { status: 'skipped_duplicate' };
   }
+
+  try {
+    await publishToChannel('get-started', 'webhook', data);
+
+    if (data.object !== 'whatsapp_business_account') {
+      return;
+    }
 
   for (const entry of data.entry ?? []) {
     const wabaId = entry.id;
@@ -669,6 +677,9 @@ export async function handleWebhookProcess(payload: any) {
         }
       }
     }
+  }
+  } finally {
+    await redisConnection.del(lockKey).catch(() => {});
   }
 }
 
@@ -925,7 +936,7 @@ export async function handleGeminiReply(payload: any) {
 
         console.log(`[GEMINI PROCESS] Successfully saved and sent image message ${i + 1}`);
       } catch (imgErr: any) {
-        console.warn(`[GEMINI PROCESS] Failed to send image, falling back to text. Error: ${imgErr.message}`);
+        console.warn(`⚠️ [IMAGE FALLBACK] Failed to send image card to ${senderNumber}. Falling back to standard text message.`);
         await handleWhatsappSend({
           phoneNumberId,
           accessToken,

@@ -9,6 +9,47 @@ function graphApiUrl(path: string) {
   return `https://graph.facebook.com/${env.FB_GRAPH_API_VERSION}${path}`;
 }
 
+async function handleGraphApiResponse(response: Response) {
+  let data: any;
+  try {
+    data = await response.json();
+  } catch (parseErr) {
+    if (!response.ok) {
+      const error = new Error(`HTTP Error ${response.status}`) as any;
+      error.status = response.status;
+      throw error;
+    }
+    throw parseErr;
+  }
+
+  if (!response.ok || data?.error) {
+    const metaError = data?.error || {};
+    const errorCode = metaError.code;
+    const errorMessage = metaError.message || 'Graph API error';
+
+    const error = new Error(errorMessage) as any;
+    error.status = response.status;
+    error.graphApiError = metaError;
+
+    const isRateLimit =
+      errorCode === 130429 ||
+      errorCode === 80007 ||
+      errorCode === 4 ||
+      errorCode === 17 ||
+      String(errorMessage).toLowerCase().includes('rate limit') ||
+      String(errorMessage).toLowerCase().includes('throttled') ||
+      response.status === 429;
+
+    if (isRateLimit) {
+      error.status = 429;
+      error.retryAfterMs = 60000;
+    }
+    throw error;
+  }
+
+  return data;
+}
+
 async function graphApiWrapperGet(path: string, accessToken?: string) {
   return metaRateLimiter.limit(async () => {
     const headers: Record<string, string> = {
@@ -23,7 +64,7 @@ async function graphApiWrapperGet(path: string, accessToken?: string) {
       headers,
       cache: 'no-store',
     });
-    return response.json();
+    return handleGraphApiResponse(response);
   });
 }
 
@@ -40,7 +81,7 @@ async function graphApiWrapperPost(path: string, accessToken: string, body: Grap
       cache: 'no-store',
       body: JSON.stringify(body),
     });
-    return response.json();
+    return handleGraphApiResponse(response);
   });
 }
 
@@ -56,7 +97,7 @@ async function graphApiWrapperDelete(path: string, accessToken: string) {
       headers,
       cache: 'no-store',
     });
-    return response.json();
+    return handleGraphApiResponse(response);
   });
 }
 
@@ -221,7 +262,7 @@ export async function verifyCode(phoneId: string, accessToken: string, otpCode: 
 }
 
 export async function send(phoneNumberId: string, accessToken: string, destPhone: string, messageContent: string) {
-  return graphApiWrapperPost(`/${phoneNumberId}/messages`, accessToken, {
+  return await graphApiWrapperPost(`/${phoneNumberId}/messages`, accessToken, {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
     to: destPhone,
