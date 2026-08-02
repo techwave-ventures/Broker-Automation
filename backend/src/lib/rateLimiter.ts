@@ -1,4 +1,4 @@
-import { redisConnection } from './queue.js';
+import { redisConnection } from './redis.js';
 
 // Default Vertex AI Gemini 2.5 Flash standard tier limit configurations
 const DEFAULT_MAX_RPM = 15;

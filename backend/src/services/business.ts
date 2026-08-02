@@ -2,6 +2,7 @@ import { pool } from '../lib/db.js';
 import { env } from '../config/env.js';
 import { metaRateLimiter } from '../lib/rateLimiter.js';
 import { cache } from '../lib/cache.js';
+import { redisConnection } from '../lib/redis.js';
 
 type GraphApiPayload = Record<string, unknown>;
 
@@ -45,6 +46,22 @@ async function handleGraphApiResponse(response: Response) {
       error.retryAfterMs = 60000;
     }
     throw error;
+  }
+
+  // Extract and store x-app-usage header for successful calls
+  const usageHeader = response.headers.get('x-app-usage');
+  if (usageHeader) {
+    try {
+      const parsed = JSON.parse(usageHeader);
+      const callCount = typeof parsed.call_count === 'number' ? parsed.call_count : 0;
+      const cpuTime = typeof parsed.total_cputime === 'number' ? parsed.total_cputime : 0;
+      const totalTime = typeof parsed.total_time === 'number' ? parsed.total_time : 0;
+
+      const maxUsage = Math.max(callCount, cpuTime, totalTime);
+      await redisConnection.set('ratelimit:meta:app_usage', maxUsage, 'EX', 60);
+    } catch (parseErr) {
+      console.warn('⚠️ [PROACTIVE LIMIT] Failed to parse x-app-usage header:', parseErr);
+    }
   }
 
   return data;

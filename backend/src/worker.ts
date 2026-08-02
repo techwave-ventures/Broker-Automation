@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import { initDatabase } from './lib/dbInit.js';
+import { redisConnection } from './lib/redis.js';
 import {
-  redisConnection,
   handleWhatsappSend,
   handleWhatsappTemplateSend,
   handleTokenExchangeFollowup,

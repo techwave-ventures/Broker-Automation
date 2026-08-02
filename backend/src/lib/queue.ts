@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { Redis } from 'ioredis';
+import { redisConnection } from './redis.js';
 import { env } from '../config/env.js';
 import { pool } from './db.js';
 import { cashfreeFetch } from './cashfree.js';
@@ -26,24 +26,7 @@ import { findMatchingProperties } from '../services/propertyMatcher.js';
 import { updateRollingSummary } from '../services/summaryService.js';
 import { formatOutboundMessages, OutboundMessage } from '../services/whatsappFormatter.js';
 
-const redisUrl = env.REDIS_URL || 'redis://localhost:6379';
-const isTls = redisUrl.startsWith('rediss://');
-
-// Universal Redis connection with silent error handling and fallback
-export const redisConnection = new Redis(redisUrl, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-  retryStrategy(times) {
-    if (times > 3) return null; // Stop infinite reconnect loop if Redis service is offline
-    return Math.min(times * 200, 1000);
-  },
-  tls: isTls ? { rejectUnauthorized: false } : undefined,
-});
-
-redisConnection.on('error', (err) => {
-  // Gracefully log Redis connection warnings without crashing
-  console.warn('⚠️ [REDIS WARNING] Connection alert:', err.message);
-});
+// Redis connection is now imported from './redis.js'
 
 export const whatsappQueue = new Queue('whatsapp-queue', {
   connection: redisConnection,
@@ -185,9 +168,26 @@ export async function deductCreditsAndCheckAutoRecharge(userId: string, amount: 
   }
 }
 
+async function checkProactiveRateLimit() {
+  try {
+    const currentUsageStr = await redisConnection.get('ratelimit:meta:app_usage');
+    if (currentUsageStr) {
+      const currentUsage = parseInt(currentUsageStr, 10);
+      if (!isNaN(currentUsage) && currentUsage >= 85) {
+        const delayMs = currentUsage >= 95 ? 5000 : 2000;
+        console.warn(`⚠️ [PROACTIVE RATE LIMIT] Meta API usage at ${currentUsage}%. Pausing outbound queue for ${delayMs}ms.`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  } catch (err) {
+    console.error('Failed to check proactive rate limit:', err);
+  }
+}
+
 // Handler functions for BullMQ Worker
 export async function handleWhatsappSend(payload: any) {
   const { phoneNumberId, accessToken, destPhone, messageContent, wabaId, senderType = 'bot', dbMessageId } = payload;
+  await checkProactiveRateLimit();
 
   console.log(`\n----------------------------------------------------------------`);
   console.log(`⚙️ [QUEUE WORKER] Processing 'whatsapp_send' job...`);
@@ -304,6 +304,7 @@ export async function handleWhatsappTemplateSend(payload: any) {
     wabaId,
     category,
   } = payload;
+  await checkProactiveRateLimit();
 
   // Find owner user_id
   let userId = 'local-dev';
