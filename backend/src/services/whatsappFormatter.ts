@@ -6,6 +6,23 @@ export interface OutboundMessage {
   imageUrl?: string; // If set, send this image before the text card
 }
 
+function safeTruncateCaption(text: string, linkStr?: string, maxLength: number = 1000): string {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+
+  if (linkStr && text.includes(linkStr)) {
+    const index = text.indexOf(linkStr);
+    const mainText = text.substring(0, index);
+    const suffix = text.substring(index);
+    const maxMainLength = maxLength - suffix.length - 3;
+    if (maxMainLength > 0) {
+      return mainText.substring(0, maxMainLength) + '...' + suffix;
+    }
+  }
+
+  return text.substring(0, maxLength - 3) + '...';
+}
+
 export function generatePropertyCard(p: any): OutboundMessage {
   const priceText = p.transaction_type === 'Sell'
     ? `💰 *Price*: ₹${p.expected_price}`
@@ -21,7 +38,7 @@ ${priceText}
 🔗 *Link*: ${slugLink}`;
 
   return {
-    text,
+    text: p.image ? safeTruncateCaption(text, slugLink, 1000) : text,
     imageUrl: p.image || undefined,
   };
 }
