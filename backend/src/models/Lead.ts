@@ -11,7 +11,7 @@ export interface Lead {
   interestedPropertyId?: string; // key of the property
   interestedPropertyTitle?: string | null; // loaded dynamically via join or null
   appointmentDate?: string | null;
-  status: 'Upcoming Visit' | 'Visited' | 'Negotiating' | 'Browsing (No Visit)' | 'Closed';
+  status: 'Upcoming Visit' | 'Visited' | 'Negotiating' | 'Browsing (No Visit)' | 'Closed' | 'Lost (Not Interested)';
   leadScore: 'High' | 'Medium' | 'Low';
   created_at?: string;
   updated_at?: string;
@@ -92,7 +92,7 @@ export async function createLead(
   ];
 
   const result = await pool.query(query, values);
-  
+
   // Reload to get property_title if set
   const reloaded = await getLeadByKey(result.rows[0].key);
   if (!reloaded) throw new Error('Failed to retrieve newly created lead');

@@ -25,6 +25,7 @@ const STATUSES = [
   "Visited",
   "Negotiating",
   "Closed",
+  "Lost (Not Interested)",
 ] as const;
 
 // Skeleton card shown while loading

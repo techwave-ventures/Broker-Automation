@@ -26,7 +26,7 @@ export interface Lead {
   interestedPropertyId?: string;
   interestedPropertyTitle?: string | null;
   appointmentDate?: string | null;
-  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed";
+  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
 }
 
@@ -44,6 +44,7 @@ const STATUSES: Lead["status"][] = [
   "Visited",
   "Negotiating",
   "Closed",
+  "Lost (Not Interested)",
 ];
 
 const statusStyle: Record<Lead["status"], string> = {
@@ -52,6 +53,7 @@ const statusStyle: Record<Lead["status"], string> = {
   "Negotiating": "bg-purple-500/10 text-purple-600 border-purple-500/20",
   "Browsing (No Visit)": "bg-foreground/8 text-foreground/60 border-border",
   "Closed": "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+  "Lost (Not Interested)": "bg-red-500/10 text-red-600 border-red-500/20",
 };
 
 const scoreStyle: Record<Lead["leadScore"], string> = {

@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS leads (
   other_reqs TEXT,
   interested_property_id BIGINT REFERENCES properties(key) ON DELETE SET NULL,
   appointment_date TIMESTAMP,
-  status VARCHAR(50) DEFAULT 'Browsing (No Visit)' CHECK (status IN ('Upcoming Visit', 'Visited', 'Negotiating', 'Browsing (No Visit)', 'Closed')),
+  status VARCHAR(50) DEFAULT 'Browsing (No Visit)' CHECK (status IN ('Upcoming Visit', 'Visited', 'Negotiating', 'Browsing (No Visit)', 'Closed', 'Lost (Not Interested)')),
   lead_score VARCHAR(10) DEFAULT 'Low' CHECK (lead_score IN ('High', 'Medium', 'Low')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

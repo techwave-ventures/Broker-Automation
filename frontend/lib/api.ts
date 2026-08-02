@@ -191,7 +191,7 @@ export interface LeadPayload {
   otherReqs?: string;
   interestedPropertyId?: string;
   appointmentDate?: string | null;
-  status?: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed";
+  status?: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore?: "High" | "Medium" | "Low";
 }
 

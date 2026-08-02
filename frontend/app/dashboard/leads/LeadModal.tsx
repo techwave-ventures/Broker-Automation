@@ -12,7 +12,7 @@ export interface LeadFormData {
   otherReqs: string;
   interestedPropertyId: string;
   appointmentDate: string;
-  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed";
+  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
 }
 
@@ -31,6 +31,7 @@ const STATUSES: LeadFormData["status"][] = [
   "Visited",
   "Negotiating",
   "Closed",
+  "Lost (Not Interested)",
 ];
 
 const SCORES: LeadFormData["leadScore"][] = ["High", "Medium", "Low"];
@@ -264,15 +265,14 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
                     key={s}
                     type="button"
                     onClick={() => set("leadScore", s)}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
-                      form.leadScore === s
-                        ? s === "High"
-                          ? "bg-amber-500 text-white border-amber-500"
-                          : s === "Medium"
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${form.leadScore === s
+                      ? s === "High"
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : s === "Medium"
                           ? "bg-primary text-white border-primary"
                           : "bg-foreground/20 text-foreground border-border"
-                        : "bg-background border-border text-foreground/50 hover:border-foreground/30"
-                    }`}
+                      : "bg-background border-border text-foreground/50 hover:border-foreground/30"
+                      }`}
                   >
                     {s}
                   </button>

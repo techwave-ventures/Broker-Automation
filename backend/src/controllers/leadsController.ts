@@ -12,7 +12,7 @@ const leadSchema = z.object({
   otherReqs: z.string().optional(),
   interestedPropertyId: z.string().optional(),
   appointmentDate: z.string().nullable().optional(),
-  status: z.enum(['Upcoming Visit', 'Visited', 'Negotiating', 'Browsing (No Visit)', 'Closed']).default('Browsing (No Visit)'),
+  status: z.enum(['Upcoming Visit', 'Visited', 'Negotiating', 'Browsing (No Visit)', 'Closed', 'Lost (Not Interested)']).default('Browsing (No Visit)'),
   leadScore: z.enum(['High', 'Medium', 'Low']).default('Low')
 });
 

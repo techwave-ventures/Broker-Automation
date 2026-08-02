@@ -3,7 +3,7 @@
 import { Users, TrendingUp, Calendar, Flame } from "lucide-react";
 
 interface Lead {
-  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed";
+  status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
   appointmentDate?: string | null;
 }
