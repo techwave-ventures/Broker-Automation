@@ -66,14 +66,54 @@ export async function findOrCreateConversation(
   );
 
   if (existing.rows.length > 0) {
-    if (customerName && !existing.rows[0].customer_name) {
+    const conversation = existing.rows[0];
+    
+    // Check if the conversation has been inactive for more than 24 hours
+    const lastActive = conversation.last_message_at ? new Date(conversation.last_message_at).getTime() : 0;
+    const now = Date.now();
+    const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+    
+    if (lastActive > 0 && (now - lastActive > SESSION_TTL_MS)) {
+      console.log(`🧹 [TTL STATE WIPE] Conversation ID ${conversation.id} inactive for >24 hours. Wiping ai_state.`);
+      const defaultState: ConversationAIState = {
+        transaction_type: null,
+        locality: null,
+        city: null,
+        rent_budget: null,
+        buy_budget: null,
+        category: null,
+        beds: null,
+        baths: null,
+        property_type: null,
+        amenities: [],
+        parking: null,
+        furnishing: null,
+        move_in_date: null,
+        purpose: null,
+        recommended_property_ids: [],
+        interested_property_ids: [],
+        stage: 'GREETING',
+        rolling_summary: 'Session restarted due to inactivity.'
+      };
+      
+      await pool.query(
+        `UPDATE conversations 
+         SET ai_state = $1, status = 'bot_active', updated_at = CURRENT_TIMESTAMP 
+         WHERE id = $2`,
+        [JSON.stringify(defaultState), conversation.id]
+      );
+      conversation.ai_state = defaultState;
+      conversation.status = 'bot_active';
+    }
+
+    if (customerName && !conversation.customer_name) {
       await pool.query(
         `UPDATE conversations SET customer_name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-        [customerName, existing.rows[0].id]
+        [customerName, conversation.id]
       );
-      existing.rows[0].customer_name = customerName;
+      conversation.customer_name = customerName;
     }
-    return existing.rows[0];
+    return conversation;
   }
 
   const result = await pool.query(

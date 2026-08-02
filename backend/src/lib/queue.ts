@@ -568,119 +568,124 @@ export async function handleWebhookProcess(payload: any) {
             status: 'delivered',
           });
 
-          // FIX 1: Acquire a per-conversation PostgreSQL advisory lock to prevent concurrent
-          // workers from processing the same conversation at the same time (race condition fix).
-          const lockAcquired = await pool.query(
-            'SELECT pg_try_advisory_lock($1)',
-            [conversation.id]
-          );
-          if (!lockAcquired.rows[0]?.pg_try_advisory_lock) {
-            console.warn(`⚠️ [LOCK] Another worker is already processing conversation ${conversation.id}. Skipping to prevent duplicate reply.`);
-            continue;
-          }
-
+          // FIX 1: Acquire a per-conversation PostgreSQL advisory lock on a dedicated connection client
+          // to prevent concurrent workers from processing the same conversation at the same time.
+          const client = await pool.connect();
           try {
-            // FIX 2: Skip if the bot already replied to this conversation in the last 5 seconds
-            // (secondary safety net against race conditions and Meta webhook retries).
-            const recentBotReply = await pool.query(
-              `SELECT id FROM messages
-               WHERE conversation_id = $1 AND sender_type = 'bot' AND direction = 'outbound'
-               AND created_at > NOW() - INTERVAL '5 seconds'
-               LIMIT 1`,
+            const lockAcquired = await client.query(
+              'SELECT pg_try_advisory_lock($1)',
               [conversation.id]
             );
-            if (recentBotReply.rows.length > 0) {
-              console.warn(`⚠️ [DEDUP] Skipping AI reply — bot already replied to conversation ${conversation.id} within the last 5 seconds.`);
+            if (!lockAcquired.rows[0]?.pg_try_advisory_lock) {
+              console.warn(`⚠️ [LOCK] Another worker is already processing conversation ${conversation.id}. Skipping to prevent duplicate reply.`);
+              client.release();
               continue;
             }
 
-            // Run Intent and Entity Detection
-            const intentResult = await detectIntent(body, conversation.ai_state?.stage || 'GREETING');
-            console.log(`🔍 [INTENT DETECTED] Customer message intent: ${intentResult.intent}`, intentResult.slots);
-
-            if (intentResult.intent === 'HUMAN_TAKEOVER') {
-              console.log(`🤖 [HUMAN TAKEOVER] Triggered. Disabling AI response for conversation ID: ${conversation.id}`);
-              await pool.query(
-                "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+            try {
+              // FIX 2: Skip if the bot already replied to this conversation in the last 5 seconds
+              const recentBotReply = await client.query(
+                `SELECT id FROM messages
+                 WHERE conversation_id = $1 AND sender_type = 'bot' AND direction = 'outbound'
+                 AND created_at > NOW() - INTERVAL '5 seconds'
+                 LIMIT 1`,
                 [conversation.id]
               );
-
-              // Publish status update to Ably so dashboard UI refreshes
-              await publishToChannel('get-started', 'webhook', {
-                type: 'status_change',
-                conversationId: conversation.id,
-                status: 'human_takeover'
-              });
-              continue; // Bypasses Gemini and auto-reply entirely
-            }
-
-            // Merge any extracted slots/preferences into conversation.ai_state
-            if (intentResult.slots && Object.values(intentResult.slots).some(v => v !== null && v !== undefined)) {
-              const slotsToMerge: Record<string, any> = {};
-              for (const [key, value] of Object.entries(intentResult.slots)) {
-                if (value !== null && value !== undefined) {
-                  if (key === 'beds' || key === 'baths') {
-                    slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
-                  } else {
-                    slotsToMerge[key] = value;
-                  }
-                }
+              if (recentBotReply.rows.length > 0) {
+                console.warn(`⚠️ [DEDUP] Skipping AI reply — bot already replied to conversation ${conversation.id} within the last 5 seconds.`);
+                continue;
               }
 
-              if (Object.keys(slotsToMerge).length > 0) {
-                // Normalization Block: Category Switch Logic
-                const currentState = conversation.ai_state;
-                if (slotsToMerge.category && currentState.category && slotsToMerge.category !== currentState.category) {
-                  slotsToMerge.beds = null;
-                  slotsToMerge.baths = null;
-                  slotsToMerge.furnishing = null;
-                  slotsToMerge.property_type = null;
-                  slotsToMerge.rent_budget = null;
-                  slotsToMerge.buy_budget = null;
-                  slotsToMerge.transaction_type = null;
-                  slotsToMerge.recommended_property_ids = [];
-                  slotsToMerge.interested_property_ids = [];
-                }
+              // Run Intent and Entity Detection
+              const intentResult = await detectIntent(body, conversation.ai_state?.stage || 'GREETING');
+              console.log(`🔍 [INTENT DETECTED] Customer message intent: ${intentResult.intent}`, intentResult.slots);
 
-                // Transaction Switch Logic
-                if (slotsToMerge.transaction_type) {
-                  if (slotsToMerge.transaction_type === 'Rent') {
-                    slotsToMerge.buy_budget = null;
-                  } else if (slotsToMerge.transaction_type === 'Sell') {
-                    slotsToMerge.rent_budget = null;
-                  }
-                }
+              if (intentResult.intent === 'HUMAN_TAKEOVER') {
+                console.log(`🤖 [HUMAN TAKEOVER] Triggered. Disabling AI response for conversation ID: ${conversation.id}`);
+                await client.query(
+                  "UPDATE conversations SET status = 'human_takeover', updated_at = CURRENT_TIMESTAMP WHERE id = $1",
+                  [conversation.id]
+                );
 
-                console.log(`📝 [SLOTS EXTRACTED] Merging slots into ai_state for conversation ${conversation.id}:`, slotsToMerge);
-                conversation.ai_state = await updateConversationAIState(conversation.id, slotsToMerge);
-              }
-            }
-
-            // 3. Process AI auto-reply if enabled
-            if (conversation.status !== 'human_takeover') {
-              const botConfigResult = await pool.query(
-                'SELECT is_auto_reply_enabled FROM bot_configs WHERE phone_id = $1 LIMIT 1',
-                [phoneNumberId]
-              );
-              const botConfig = botConfigResult.rows[0];
-              const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
-              if (isAutoReplyEnabled) {
-                await enqueueGeminiReplyJob({
+                // Publish status update to Ably so dashboard UI refreshes
+                await publishToChannel('get-started', 'webhook', {
+                  type: 'status_change',
                   conversationId: conversation.id,
-                  phoneNumberId,
-                  wabaId: entry.id,
-                  senderNumber,
-                  userId,
-                  body,
-                  intentResult,
+                  status: 'human_takeover'
                 });
+                continue; // Bypasses Gemini and auto-reply entirely
               }
+
+              // Merge any extracted slots/preferences into conversation.ai_state
+              if (intentResult.slots && Object.values(intentResult.slots).some(v => v !== null && v !== undefined)) {
+                const slotsToMerge: Record<string, any> = {};
+                for (const [key, value] of Object.entries(intentResult.slots)) {
+                  if (value !== null && value !== undefined) {
+                    if (key === 'beds' || key === 'baths') {
+                      slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
+                    } else {
+                      slotsToMerge[key] = value;
+                    }
+                  }
+                }
+
+                if (Object.keys(slotsToMerge).length > 0) {
+                  // Normalization Block: Category Switch Logic
+                  const currentState = conversation.ai_state;
+                  if (slotsToMerge.category && currentState.category && slotsToMerge.category !== currentState.category) {
+                    slotsToMerge.beds = null;
+                    slotsToMerge.baths = null;
+                    slotsToMerge.furnishing = null;
+                    slotsToMerge.property_type = null;
+                    slotsToMerge.rent_budget = null;
+                    slotsToMerge.buy_budget = null;
+                    slotsToMerge.transaction_type = null;
+                    slotsToMerge.recommended_property_ids = [];
+                    slotsToMerge.interested_property_ids = [];
+                  }
+
+                  // Transaction Switch Logic
+                  if (slotsToMerge.transaction_type) {
+                    if (slotsToMerge.transaction_type === 'Rent') {
+                      slotsToMerge.buy_budget = null;
+                    } else if (slotsToMerge.transaction_type === 'Sell') {
+                      slotsToMerge.rent_budget = null;
+                    }
+                  }
+
+                  console.log(`📝 [SLOTS EXTRACTED] Merging slots into ai_state for conversation ${conversation.id}:`, slotsToMerge);
+                  conversation.ai_state = await updateConversationAIState(conversation.id, slotsToMerge);
+                }
+              }
+
+              // 3. Process AI auto-reply if enabled
+              if (conversation.status !== 'human_takeover') {
+                const botConfigResult = await client.query(
+                  'SELECT is_auto_reply_enabled FROM bot_configs WHERE phone_id = $1 LIMIT 1',
+                  [phoneNumberId]
+                );
+                const botConfig = botConfigResult.rows[0];
+                const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
+                if (isAutoReplyEnabled) {
+                  await enqueueGeminiReplyJob({
+                    conversationId: conversation.id,
+                    phoneNumberId,
+                    wabaId: entry.id,
+                    senderNumber,
+                    userId,
+                    body,
+                    intentResult,
+                  });
+                }
+              }
+            } finally {
+              await client.query(
+                'SELECT pg_advisory_unlock($1)',
+                [conversation.id]
+              ).catch(err => console.error('Failed to release advisory lock:', err));
             }
           } finally {
-            await pool.query(
-              'SELECT pg_advisory_unlock($1)',
-              [conversation.id]
-            ).catch(err => console.error('Failed to release advisory lock:', err));
+            client.release();
           }
         }
       }
@@ -721,9 +726,9 @@ export async function handleGeminiReply(payload: any) {
   }
   const instructions = botConfig?.bot_instructions || 'You are a helpful real estate assistant.';
 
-  // A. Fetch recent message history (last 4 messages)
+  // A. Fetch recent message history (reduced context window from 16 to 6 to minimize context token bloat)
   const messagesRes = await pool.query(
-    'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 16',
+    'SELECT body, sender_type FROM messages WHERE conversation_id = $1 ORDER BY created_at DESC LIMIT 6',
     [conversationId]
   );
   const history = messagesRes.rows.reverse().map((row: any) => ({
