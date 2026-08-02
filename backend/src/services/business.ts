@@ -284,6 +284,13 @@ export async function graphApiCallAction(
   return graphApiWrapperPost(`/${phoneNumberId}/calls`, token, body);
 }
 
+export async function getPhoneNumberDetails(phoneNumberId: string, accessToken: string) {
+  return await graphApiWrapperGet(
+    `/${phoneNumberId}?fields=quality_rating,status,whatsapp_business_manager_messaging_limit,display_phone_number`,
+    accessToken
+  );
+}
+
 export async function graphApiCallPermissionsGet(
   userId: string,
   wabaId: string,

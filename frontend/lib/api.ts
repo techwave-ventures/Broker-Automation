@@ -155,6 +155,19 @@ export async function fetchWabas() {
   }
 }
 
+export async function fetchPhones() {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${BACKEND_URL}/api/auth/waba`, { headers, next: { revalidate: 0 } });
+    if (!res.ok) return [];
+    const data = await safeJsonParse(res);
+    return data?.phones || [];
+  } catch (error) {
+    console.error("Failed to fetch phones from backend:", error);
+    return [];
+  }
+}
+
 export async function fetchTemplates(wabaId: string) {
   try {
     const headers = await getAuthHeaders();

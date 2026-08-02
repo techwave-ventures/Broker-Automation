@@ -4,6 +4,7 @@ import { env, isAuthBypassed } from '../config/env.js';
 import { signJWT, verifyJWT, type JWTPayload } from '../config/jwt.js';
 import { createUser, findUserByEmail, findUserById } from '../models/userModel.js';
 import { pool } from '../lib/db.js';
+import { getPhoneNumberDetails } from '../services/business.js';
 
 export function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -206,18 +207,57 @@ export async function getWabas(req: Request, res: Response) {
     }
 
     const wabasRes = await pool.query(
-      `SELECT waba_id, business_id, app_id, last_updated FROM wabas WHERE user_id = $1 ORDER BY last_updated DESC`,
+      `SELECT waba_id, business_id, app_id, last_updated, access_token FROM wabas WHERE user_id = $1 ORDER BY last_updated DESC`,
       [userId]
     );
 
     const phonesRes = await pool.query(
-      `SELECT phone_id FROM phones WHERE user_id = $1`,
+      `SELECT phone_id, display_phone_number FROM phones WHERE user_id = $1`,
       [userId]
     );
 
+    const enrichedPhones = [];
+    const accessToken = wabasRes.rows[0]?.access_token;
+
+    if (accessToken) {
+      for (const phone of phonesRes.rows) {
+        try {
+          const details = await getPhoneNumberDetails(phone.phone_id, accessToken);
+          enrichedPhones.push({
+            phone_id: phone.phone_id,
+            display_phone_number: details.display_phone_number || phone.display_phone_number || '',
+            quality_rating: details.quality_rating || 'UNKNOWN',
+            status: details.status || 'UNKNOWN',
+            messaging_limit: details.whatsapp_business_manager_messaging_limit || 'UNKNOWN',
+          });
+        } catch (err) {
+          console.error(`Failed to fetch Meta details for phone ${phone.phone_id}:`, err);
+          enrichedPhones.push({
+            phone_id: phone.phone_id,
+            display_phone_number: phone.display_phone_number || '',
+            quality_rating: 'UNKNOWN',
+            status: 'UNKNOWN',
+            messaging_limit: 'UNKNOWN',
+          });
+        }
+      }
+    } else {
+      for (const phone of phonesRes.rows) {
+        enrichedPhones.push({
+          phone_id: phone.phone_id,
+          display_phone_number: phone.display_phone_number || '',
+          quality_rating: 'UNKNOWN',
+          status: 'UNKNOWN',
+          messaging_limit: 'UNKNOWN',
+        });
+      }
+    }
+
+    const wabasClean = wabasRes.rows.map(({ access_token, ...rest }) => rest);
+
     return res.json({
-      wabas: wabasRes.rows,
-      phones: phonesRes.rows,
+      wabas: wabasClean,
+      phones: enrichedPhones,
     });
   } catch (err) {
     console.error('Failed to get user WABAs:', err);
