@@ -28,6 +28,7 @@ export interface Lead {
   appointmentDate?: string | null;
   status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
+  created_at?: string;
 }
 
 interface Props {
@@ -346,6 +347,15 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               </div>
             </div>
           </div>
+
+          {/* Footer - Date Added */}
+          {lead.created_at && (
+            <div className="mt-2 pt-3 border-t border-border/40 text-right">
+              <p className="text-[10px] text-foreground/40 font-medium">
+                Added {new Date(lead.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} at {new Date(lead.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
