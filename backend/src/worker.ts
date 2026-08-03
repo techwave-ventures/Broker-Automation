@@ -85,8 +85,8 @@ async function startWorker() {
       connection: redisConnection,
       concurrency: 1, // Only 1 concurrent Gemini call to avoid parallel race condition/conflicts
       limiter: {
-        max: 5,
-        duration: 60000, // 5 requests per 60 seconds (5 RPM limit)
+        max: 1000,
+        duration: 60000, // 1000 requests per 60 seconds (1000 RPM limit)
       },
       settings: {
         backoffStrategies: {

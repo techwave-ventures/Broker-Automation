@@ -1,7 +1,7 @@
 import { redisConnection } from './redis.js';
 
 // Default Vertex AI Gemini 2.5 Flash standard tier limit configurations
-const DEFAULT_MAX_RPM = 15;
+const DEFAULT_MAX_RPM = 1000;
 const DEFAULT_MAX_TPM = 300000; // Conservative safety limit for 1M standard limit
 
 export function estimateTokenCount(text: string): number {
