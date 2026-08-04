@@ -85,11 +85,11 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
       const payload: LeadPayload = {
         customerName: form.customerName.trim(),
         customerPhone: form.customerPhone.trim(),
-        requestedLocality: form.requestedLocality || undefined,
-        budget: form.budget || undefined,
-        otherReqs: form.otherReqs || undefined,
-        interestedPropertyId: form.interestedPropertyId || undefined,
-        appointmentDate: form.appointmentDate || null,
+        requestedLocality: form.requestedLocality,
+        budget: form.budget,
+        otherReqs: form.otherReqs,
+        interestedPropertyId: form.interestedPropertyId,
+        appointmentDate: form.appointmentDate,
         status: form.status,
         leadScore: form.leadScore,
       };

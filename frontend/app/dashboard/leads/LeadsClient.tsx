@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search, Filter, PlusCircle, RefreshCw, Users, SlidersHorizontal } from "lucide-react";
 import { HeaderSetter } from "@/components/layout/HeaderContext";
 import { LeadsStats } from "./LeadsStats";
@@ -206,7 +206,7 @@ export function LeadsClient({ initialLeads }: Props) {
   };
 
   // Map lead to form initial values
-  const editInitial: Partial<LeadFormData> | undefined = editingLead
+  const editInitial: Partial<LeadFormData> | undefined = useMemo(() => editingLead
     ? {
       customerName: editingLead.customerName,
       customerPhone: editingLead.customerPhone,
@@ -215,12 +215,16 @@ export function LeadsClient({ initialLeads }: Props) {
       otherReqs: editingLead.otherReqs || "",
       interestedPropertyId: editingLead.interestedPropertyId || "",
       appointmentDate: editingLead.appointmentDate
-        ? new Date(editingLead.appointmentDate).toISOString().slice(0, 16)
+        ? (() => {
+          const d = new Date(editingLead.appointmentDate);
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        })()
         : "",
       status: editingLead.status,
       leadScore: editingLead.leadScore,
     }
-    : undefined;
+    : undefined, [editingLead]);
 
   return (
     <>
