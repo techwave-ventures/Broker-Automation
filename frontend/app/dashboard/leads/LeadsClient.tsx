@@ -10,9 +10,8 @@ import {
   createLeadApi,
   updateLeadApi,
   deleteLeadApi,
-  fetchPropertiesMinimal,
-  type PropertyOption,
 } from "@/lib/api";
+import { getProperties, type Property } from "@/lib/properties";
 
 interface Props {
   initialLeads: Lead[];
@@ -90,7 +89,7 @@ function DeleteConfirm({
 
 export function LeadsClient({ initialLeads }: Props) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -117,7 +116,7 @@ export function LeadsClient({ initialLeads }: Props) {
 
   // Fetch properties for modal dropdown once
   useEffect(() => {
-    fetchPropertiesMinimal().then(setProperties);
+    getProperties().then(setProperties);
   }, []);
 
   // Poll for new leads every 10 seconds
@@ -347,6 +346,7 @@ export function LeadsClient({ initialLeads }: Props) {
                 onEdit={openEdit}
                 onDelete={(l) => setDeleteTarget(l)}
                 onStatusChange={handleStatusChange}
+                properties={properties}
               />
             ))
           )}
