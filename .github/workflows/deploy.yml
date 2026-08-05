@@ -76,7 +76,7 @@ jobs:
           task-definition: ${{ steps.render-backend-td.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE_BACKEND }}
           cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          wait-for-service-stability: false
 
       # --- BACKEND WORKER DEPLOYMENT ---
 
@@ -98,7 +98,7 @@ jobs:
           task-definition: ${{ steps.render-worker-td.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE_WORKER }}
           cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          wait-for-service-stability: false
 
       # --- FRONTEND DEPLOYMENT ---
 
@@ -133,4 +133,4 @@ jobs:
           task-definition: ${{ steps.render-frontend-td.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE_FRONTEND }}
           cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          wait-for-service-stability: false
