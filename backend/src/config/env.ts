@@ -3,6 +3,21 @@ import { z } from 'zod';
 
 dotenv.config();
 
+// Fetch secrets dynamically from AWS Secrets Manager if SECRETS_ARN is provided
+if (process.env.SECRETS_ARN) {
+  const { SecretsManagerClient, GetSecretValueCommand } = await import("@aws-sdk/client-secrets-manager");
+  try {
+    const client = new SecretsManagerClient({ region: process.env.AWS_REGION || "ap-south-1" });
+    const response = await client.send(new GetSecretValueCommand({ SecretId: process.env.SECRETS_ARN }));
+    if (response.SecretString) {
+      const secrets = JSON.parse(response.SecretString);
+      Object.assign(process.env, secrets);
+    }
+  } catch (error) {
+    console.error("Failed to load secrets from AWS Secrets Manager:", error);
+  }
+}
+
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
