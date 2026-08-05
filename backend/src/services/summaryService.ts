@@ -30,31 +30,22 @@ Instructions:
 `;
 
   try {
-    console.log('📡 [SUMMARY DEBUG] Checking Vertex AI Instance:', {
+    console.log('📡 [SUMMARY DEBUG] Checking Google Gen AI Instance:', {
       hasAi: !!ai,
       aiKeys: ai ? Object.keys(ai) : []
     });
 
-    const model = ai.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        temperature: 0.3,
-      },
-    });
-
-    console.log('📡 [SUMMARY DEBUG] Generative Model resolved:', {
-      hasModel: !!model,
-      modelType: typeof model,
-      modelKeys: model ? Object.keys(model) : []
-    });
-
-    const response = await model.generateContent({
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        temperature: 0.3,
+      }
     });
 
-    const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const responseText = response.text || response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!responseText) {
-      throw new Error('Empty summary returned from Vertex AI');
+      throw new Error('Empty summary returned from Google Gen AI');
     }
 
     return responseText.trim();

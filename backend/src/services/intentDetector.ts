@@ -1,4 +1,3 @@
-import { getVertexAI } from './gemini.js';
 
 export interface IntentResult {
   intent: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';

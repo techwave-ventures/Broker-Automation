@@ -1,11 +1,11 @@
-import { VertexAI } from '@google-cloud/vertexai';
+import { GoogleGenAI } from '@google/genai';
 import { env } from '../config/env.js';
 
-let vertexAIInstance: any = null;
+let googleGenAIInstance: any = null;
 
 export function getVertexAI() {
-  if (vertexAIInstance) return vertexAIInstance;
-  
+  if (googleGenAIInstance) return googleGenAIInstance;
+
   const projectId = env.GCP_PROJECT_ID;
   const location = env.GCP_LOCATION || 'us-central1';
 
@@ -29,11 +29,16 @@ export function getVertexAI() {
   }
 
   try {
-    // VertexAI SDK will automatically pick up standard credentials from googleAuthOptions or local ADC
-    vertexAIInstance = new VertexAI({ project: projectId, location, googleAuthOptions });
-    return vertexAIInstance;
+    // Initialize Google Gen AI client with Vertex AI mode enabled
+    googleGenAIInstance = new GoogleGenAI({
+      vertexai: true,
+      project: projectId,
+      location,
+      googleAuthOptions
+    });
+    return googleGenAIInstance;
   } catch (err) {
-    console.error('❌ Failed to initialize Vertex AI client:', err);
+    console.error('❌ Failed to initialize Google Gen AI client:', err);
     return null;
   }
 }
@@ -145,8 +150,8 @@ export async function generateAutoReply(
   const systemInstructionText = buildSystemInstruction(instructions, aiState, propertiesContext, inventoryProfile);
 
   // 1. Calculate prompt size and check rate limiter
-  const totalPromptText = systemInstructionText + 
-    history.map(h => h.text).join(' ') + 
+  const totalPromptText = systemInstructionText +
+    history.map(h => h.text).join(' ') +
     propertiesContext;
   const estimatedTokens = estimateTokenCount(totalPromptText);
 
@@ -213,40 +218,29 @@ export async function generateAutoReply(
           throw new DOMException('Aborted', 'AbortError');
         }
 
-        console.log('📡 [GEMINI DEBUG] Checking Vertex AI Instance:', {
+        console.log('📡 [GEMINI DEBUG] Checking Google Gen AI Instance:', {
           hasAi: !!ai,
           aiKeys: ai ? Object.keys(ai) : []
         });
 
-        const model = ai.getGenerativeModel({
-          model: 'gemini-2.5-flash',
-          systemInstruction: {
-            parts: [{ text: systemInstructionText }]
-          },
-          generationConfig: {
+        console.log(`📡 [GEMINI API] Attempting call to model gemini-2.5-flash-lite (Attempt ${attempt}/${maxRetries}) for conversation ${conversationId}...`);
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash-lite',
+          contents,
+          config: {
+            systemInstruction: systemInstructionText,
             responseMimeType: 'application/json',
             temperature: 0.5,
-          },
-        });
-
-        console.log('📡 [GEMINI DEBUG] Generative Model resolved:', {
-          hasModel: !!model,
-          modelType: typeof model,
-          modelKeys: model ? Object.keys(model) : []
-        });
-
-        console.log(`📡 [GEMINI API] Attempting call to model gemini-2.5-flash (Attempt ${attempt}/${maxRetries}) for conversation ${conversationId}...`);
-        const response = await model.generateContent({
-          contents,
+          }
         }, {
           signal: abortController?.signal
         });
 
         console.log(`📡 [GEMINI API] Received response from model for conversation ${conversationId}.`);
-        const responseText = response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const responseText = response.text || response.response?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!responseText) {
-          console.warn('⚠️ [VERTEX AI] Empty response object received:', JSON.stringify(response));
-          throw new Error('Empty response from Vertex AI');
+          console.warn('⚠️ [GOOGLE GEN AI] Empty response object received:', JSON.stringify(response));
+          throw new Error('Empty response from Google Gen AI');
         }
 
         try {
