@@ -110,6 +110,77 @@ export async function initDatabase() {
     );
     `,
     `
+    CREATE TABLE IF NOT EXISTS pages (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      page_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, page_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS ad_accounts (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      ad_account_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, ad_account_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS datasets (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      dataset_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, dataset_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS catalogs (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      catalog_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, catalog_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS instagram_accounts (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      instagram_account_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, instagram_account_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS businesses (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      business_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, business_id)
+    );
+    `,
+    `
     CREATE TABLE IF NOT EXISTS properties (
       key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       user_id VARCHAR(100) NOT NULL,
