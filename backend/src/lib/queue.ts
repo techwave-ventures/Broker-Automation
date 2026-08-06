@@ -213,17 +213,33 @@ export async function handleWhatsappSend(payload: any) {
   console.log(`💰 [QUEUE WORKER] Credit check passed (balance: ${userCheck.rows[0]?.credits_balance ?? 0})`);
 
   console.log(`🌐 [QUEUE WORKER] Transmitting text message via Meta Graph API...`);
-  let result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+  let result: any;
+  try {
+    result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+  } catch (err: any) {
+    if (err.graphApiError) result = { error: err.graphApiError };
+    else result = { error: { message: err.message, code: err.code || err.status || 500 } };
+  }
 
   // Auto-recovery for Error 133010 (Account not registered on Cloud API)
   if (result?.error?.code === 133010) {
     console.warn(`⚠️ [AUTO-REGISTERING] Phone ${phoneNumberId} returned Error 133010 (Unregistered). Registering on Cloud API...`);
-    const regResult = await registerNumber(phoneNumberId, accessToken);
+    let regResult: any;
+    try {
+      regResult = await registerNumber(phoneNumberId, accessToken);
+    } catch (err: any) {
+      regResult = { error: err.graphApiError || { message: err.message } };
+    }
     if (regResult?.error) {
       console.error(`❌ [AUTO-REGISTRATION FAILED] Failed to register phone ${phoneNumberId}:`, JSON.stringify(regResult.error));
     } else {
       console.log(`✅ [AUTO-REGISTRATION SUCCESS] Phone ${phoneNumberId} registered on Cloud API. Retrying send...`);
-      result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+      try {
+        result = await send(phoneNumberId, accessToken, destPhone, messageContent);
+      } catch (err: any) {
+        if (err.graphApiError) result = { error: err.graphApiError };
+        else result = { error: { message: err.message, code: err.code || err.status || 500 } };
+      }
     }
   }
 
@@ -369,38 +385,84 @@ export async function handleWhatsappTemplateSend(payload: any) {
     throw new Error(`Insufficient credits to send template message. Need ${cost} credits.`);
   }
 
-  let result = await sendTemplateMessage(
-    phoneNumberId,
-    accessToken,
-    to,
-    templateName,
-    templateLanguage,
-    componentParams || [],
-    bizOpaqueCallbackData
-  );
+  let result: any;
+  try {
+    result = await sendTemplateMessage(
+      phoneNumberId,
+      accessToken,
+      to,
+      templateName,
+      templateLanguage,
+      componentParams || [],
+      bizOpaqueCallbackData
+    );
+  } catch (err: any) {
+    if (err.graphApiError) result = { error: err.graphApiError };
+    else result = { error: { message: err.message, code: err.code || err.status || 500 } };
+  }
 
   // Auto-recovery for Error 133010 (Account not registered on Cloud API)
   if (result?.error?.code === 133010) {
     console.warn(`⚠️ [AUTO-REGISTERING] Phone ${phoneNumberId} returned Error 133010 (Unregistered). Registering on Cloud API...`);
-    const regResult = await registerNumber(phoneNumberId, accessToken);
+    let regResult: any;
+    try {
+      regResult = await registerNumber(phoneNumberId, accessToken);
+    } catch (err: any) {
+      regResult = { error: err.graphApiError || { message: err.message } };
+    }
     if (regResult?.error) {
       console.error(`❌ [AUTO-REGISTRATION FAILED] Failed to register phone ${phoneNumberId}:`, JSON.stringify(regResult.error));
     } else {
       console.log(`✅ [AUTO-REGISTRATION SUCCESS] Phone ${phoneNumberId} registered on Cloud API. Retrying template send...`);
-      result = await sendTemplateMessage(
-        phoneNumberId,
-        accessToken,
-        to,
-        templateName,
-        templateLanguage,
-        componentParams || [],
-        bizOpaqueCallbackData
-      );
+      try {
+        result = await sendTemplateMessage(
+          phoneNumberId,
+          accessToken,
+          to,
+          templateName,
+          templateLanguage,
+          componentParams || [],
+          bizOpaqueCallbackData
+        );
+      } catch (err: any) {
+        if (err.graphApiError) result = { error: err.graphApiError };
+        else result = { error: { message: err.message, code: err.code || err.status || 500 } };
+      }
     }
   }
 
   if (result?.error) {
     console.error(`❌ [TEMPLATE SEND FAILED] Meta Graph API Error for ${to}:`, JSON.stringify(result.error));
+    
+    // Save failed status to DB so it shows up in dashboard with error details
+    try {
+      const conversation = await findOrCreateConversation(userId, to, undefined, phoneNumberId);
+      const errMsg = `Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`;
+      
+      await saveMessage({
+        conversationId: conversation.id,
+        wabaId: wabaId || undefined,
+        phoneNumberId,
+        messageId: `failed-temp-${Date.now()}`,
+        senderNumber: phoneNumberId,
+        recipientNumber: to,
+        senderType: 'bot',
+        messageType: 'template',
+        body: `template: ${templateName}`,
+        direction: 'outbound',
+        status: 'failed',
+        errorMessage: errMsg,
+      });
+    } catch (dbErr) {
+      console.error('Failed to save template error status to database:', dbErr);
+    }
+
+    const permanentCodes = [131037, 131047, 131026, 131021, 131056, 131009, 131000];
+    if (permanentCodes.includes(result.error.code)) {
+      console.warn(`⚠️ [PERMANENT ERROR] Meta template error ${result.error.code} is un-retryable. Completing job successfully to prevent queue loops.`);
+      return result; // Resolve successfully to stop retries
+    }
+
     throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
   }
 
