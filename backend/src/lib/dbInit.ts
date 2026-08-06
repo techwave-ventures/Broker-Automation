@@ -89,6 +89,27 @@ export async function initDatabase() {
     );
     `,
     `
+    CREATE TABLE IF NOT EXISTS wabas (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      user_id VARCHAR(100) NOT NULL,
+      app_id VARCHAR(100) NOT NULL,
+      waba_id VARCHAR(100) NOT NULL,
+      access_token TEXT NOT NULL,
+      business_id VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, app_id, waba_id)
+    );
+    `,
+    `
+    CREATE TABLE IF NOT EXISTS phones (
+      key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      phone_id VARCHAR(100) UNIQUE NOT NULL,
+      user_id VARCHAR(100) NOT NULL,
+      display_phone_number VARCHAR(100),
+      last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    `,
+    `
     CREATE TABLE IF NOT EXISTS properties (
       key BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
       user_id VARCHAR(100) NOT NULL,
