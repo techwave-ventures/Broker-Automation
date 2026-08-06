@@ -19,8 +19,13 @@ export function getVertexAI() {
 
   if (serviceAccountJson) {
     try {
+      // Clean raw newlines/carriage returns inside string literals (common copy-paste issue in private keys)
+      let cleaned = serviceAccountJson.trim();
+      cleaned = cleaned.replace(/"([^"\\]|\\.)*"/g, (match) => {
+        return match.replace(/[\n\r]/g, '\\n');
+      });
       googleAuthOptions = {
-        credentials: JSON.parse(serviceAccountJson.trim())
+        credentials: JSON.parse(cleaned)
       };
       console.log('🔑 [VERTEX AI] Loaded GCP service account credentials directly from environment variable.');
     } catch (err) {
