@@ -139,6 +139,7 @@ export async function saveMessage(params: {
   imageUrl?: string;
   direction: 'inbound' | 'outbound';
   status?: 'sent' | 'delivered' | 'read' | 'failed';
+  errorMessage?: string;
 }): Promise<Message> {
   const {
     conversationId,
@@ -153,14 +154,15 @@ export async function saveMessage(params: {
     imageUrl,
     direction,
     status = 'sent',
+    errorMessage,
   } = params;
 
   const res = await pool.query(
     `INSERT INTO messages 
-      (conversation_id, waba_id, phone_number_id, message_id, sender_number, recipient_number, sender_type, message_type, body, image_url, direction, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      (conversation_id, waba_id, phone_number_id, message_id, sender_number, recipient_number, sender_type, message_type, body, image_url, direction, status, error_message)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      ON CONFLICT (message_id) DO UPDATE 
-     SET status = EXCLUDED.status, updated_at = CURRENT_TIMESTAMP
+     SET status = EXCLUDED.status, error_message = EXCLUDED.error_message, updated_at = CURRENT_TIMESTAMP
      RETURNING *`,
     [
       conversationId,
@@ -175,6 +177,7 @@ export async function saveMessage(params: {
       imageUrl || null,
       direction,
       status,
+      errorMessage || null,
     ]
   );
 

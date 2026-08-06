@@ -229,6 +229,46 @@ export async function handleWhatsappSend(payload: any) {
 
   if (result?.error) {
     console.error(`❌ [OUTBOUND SEND FAILED] Meta Graph API Error for ${destPhone}:`, JSON.stringify(result.error));
+    
+    // Save failed status and message to DB so it shows up in dashboard with error details
+    try {
+      const conversation = await findOrCreateConversation(userId, destPhone, undefined, phoneNumberId);
+      const errMsg = `Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`;
+      
+      if (dbMessageId) {
+        await pool.query(
+          `UPDATE messages 
+           SET status = $1, error_message = $2, updated_at = CURRENT_TIMESTAMP 
+           WHERE id = $3`,
+          ['failed', errMsg, dbMessageId]
+        );
+      } else {
+        await saveMessage({
+          conversationId: conversation.id,
+          wabaId: wabaId || undefined,
+          phoneNumberId,
+          messageId: `failed-${Date.now()}`,
+          senderNumber: phoneNumberId,
+          recipientNumber: destPhone,
+          senderType,
+          messageType: 'text',
+          body: messageContent,
+          direction: 'outbound',
+          status: 'failed',
+          errorMessage: errMsg,
+        });
+      }
+    } catch (dbErr) {
+      console.error('Failed to save error status to database:', dbErr);
+    }
+
+    // Check if the error code indicates a permanent error that should not be retried
+    const permanentCodes = [131037, 131047, 131026, 131021, 131056, 131009, 131000];
+    if (permanentCodes.includes(result.error.code)) {
+      console.warn(`⚠️ [PERMANENT ERROR] Meta error ${result.error.code} is un-retryable. Completing job successfully to prevent queue loops.`);
+      return result; // Resolve successfully to stop retries
+    }
+
     throw new Error(`Meta API Error (${result.error.code}): ${result.error.message || JSON.stringify(result.error)}`);
   }
 
