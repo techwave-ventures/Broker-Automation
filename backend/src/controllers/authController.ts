@@ -4,7 +4,7 @@ import { env, isAuthBypassed } from '../config/env.js';
 import { signJWT, verifyJWT, type JWTPayload } from '../config/jwt.js';
 import { createUser, findUserByEmail, findUserById } from '../models/userModel.js';
 import { pool } from '../lib/db.js';
-import { getPhoneNumberDetails } from '../services/business.js';
+import { getPhoneNumberDetails, getWabaDetails } from '../services/business.js';
 
 export function parseCookies(cookieHeader: string | undefined): Record<string, string> {
   const cookies: Record<string, string> = {};
@@ -217,9 +217,34 @@ export async function getWabas(req: Request, res: Response) {
     );
 
     const enrichedPhones = [];
+    const enrichedWabas = [];
     const accessToken = wabasRes.rows[0]?.access_token;
 
     if (accessToken) {
+      // Enrich WABAs
+      for (const waba of wabasRes.rows) {
+        try {
+          const details = await getWabaDetails(waba.waba_id, accessToken);
+          enrichedWabas.push({
+            waba_id: waba.waba_id,
+            business_id: waba.business_id,
+            app_id: waba.app_id,
+            last_updated: waba.last_updated,
+            account_review_status: details.account_review_status || 'UNKNOWN',
+          });
+        } catch (err) {
+          console.error(`Failed to fetch Meta details for WABA ${waba.waba_id}:`, err);
+          enrichedWabas.push({
+            waba_id: waba.waba_id,
+            business_id: waba.business_id,
+            app_id: waba.app_id,
+            last_updated: waba.last_updated,
+            account_review_status: 'UNKNOWN',
+          });
+        }
+      }
+
+      // Enrich Phones
       for (const phone of phonesRes.rows) {
         try {
           const details = await getPhoneNumberDetails(phone.phone_id, accessToken);
@@ -229,6 +254,7 @@ export async function getWabas(req: Request, res: Response) {
             quality_rating: details.quality_rating || 'UNKNOWN',
             status: details.status || 'UNKNOWN',
             messaging_limit: details.whatsapp_business_manager_messaging_limit || 'UNKNOWN',
+            name_status: details.name_status || 'UNKNOWN',
           });
         } catch (err) {
           console.error(`Failed to fetch Meta details for phone ${phone.phone_id}:`, err);
@@ -238,10 +264,20 @@ export async function getWabas(req: Request, res: Response) {
             quality_rating: 'UNKNOWN',
             status: 'UNKNOWN',
             messaging_limit: 'UNKNOWN',
+            name_status: 'UNKNOWN',
           });
         }
       }
     } else {
+      for (const waba of wabasRes.rows) {
+        enrichedWabas.push({
+          waba_id: waba.waba_id,
+          business_id: waba.business_id,
+          app_id: waba.app_id,
+          last_updated: waba.last_updated,
+          account_review_status: 'UNKNOWN',
+        });
+      }
       for (const phone of phonesRes.rows) {
         enrichedPhones.push({
           phone_id: phone.phone_id,
@@ -249,14 +285,13 @@ export async function getWabas(req: Request, res: Response) {
           quality_rating: 'UNKNOWN',
           status: 'UNKNOWN',
           messaging_limit: 'UNKNOWN',
+          name_status: 'UNKNOWN',
         });
       }
     }
 
-    const wabasClean = wabasRes.rows.map(({ access_token, ...rest }) => rest);
-
     return res.json({
-      wabas: wabasClean,
+      wabas: enrichedWabas,
       phones: enrichedPhones,
     });
   } catch (err) {

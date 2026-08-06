@@ -183,6 +183,59 @@ export default function SettingsPage() {
                                 </div>
                             )}
 
+                            {primaryPhone?.name_status && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Check className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">Display Name Approval</p>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                            primaryPhone.name_status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' :
+                                            primaryPhone.name_status === 'PENDING_REVIEW' || primaryPhone.name_status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-500' :
+                                            'bg-rose-500/10 text-rose-500'
+                                        }`}>
+                                            {primaryPhone.name_status.replace(/_/g, ' ')}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {primaryWaba?.account_review_status && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Shield className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">WABA Review Status</p>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                            primaryWaba.account_review_status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-500' :
+                                            primaryWaba.account_review_status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' :
+                                            'bg-rose-500/10 text-rose-500'
+                                        }`}>
+                                            {primaryWaba.account_review_status}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {primaryPhone?.status && (
+                                <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
+                                    <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                        <Info className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] font-bold text-foreground/40 uppercase tracking-wider">Number Status</p>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full inline-block mt-0.5 ${
+                                            primaryPhone.status === 'CONNECTED' ? 'bg-emerald-500/10 text-emerald-500' :
+                                            'bg-amber-500/10 text-amber-500'
+                                        }`}>
+                                            {primaryPhone.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
                             {primaryWaba?.last_updated && (
                                 <div className="p-4 rounded-2xl bg-muted/40 border border-border/60 flex items-center gap-3">
                                     <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">

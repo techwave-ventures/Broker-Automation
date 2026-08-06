@@ -303,7 +303,14 @@ export async function graphApiCallAction(
 
 export async function getPhoneNumberDetails(phoneNumberId: string, accessToken: string) {
   return await graphApiWrapperGet(
-    `/${phoneNumberId}?fields=quality_rating,status,whatsapp_business_manager_messaging_limit,display_phone_number`,
+    `/${phoneNumberId}?fields=quality_rating,status,whatsapp_business_manager_messaging_limit,display_phone_number,name_status`,
+    accessToken
+  );
+}
+
+export async function getWabaDetails(wabaId: string, accessToken: string) {
+  return await graphApiWrapperGet(
+    `/${wabaId}?fields=id,name,timezone_id,account_review_status`,
     accessToken
   );
 }
