@@ -775,6 +775,15 @@ export async function handleWebhookProcess(payload: any) {
               const botConfig = botConfigResult.rows[0];
               const isAutoReplyEnabled = botConfig ? (botConfig.is_auto_reply_enabled === true) : true;
               if (isAutoReplyEnabled) {
+                // If the conversation is already in COMPLETED stage, skip replying unless they ask a new query/intent
+                if (conversation.ai_state?.stage === 'COMPLETED') {
+                  const activeIntents = ['PROPERTY_DETAILS', 'SITE_VISIT', 'CHANGE_PREFERENCES', 'BUY_OR_RENT'];
+                  if (!activeIntents.includes(intentResult.intent)) {
+                    console.log(`ℹ️ [WEBHOOK] Conversation ${conversation.id} is COMPLETED and intent is ${intentResult.intent}. Skipping auto-reply.`);
+                    continue;
+                  }
+                }
+
                 await enqueueGeminiReplyJob({
                   conversationId: conversation.id,
                   phoneNumberId,
@@ -783,6 +792,7 @@ export async function handleWebhookProcess(payload: any) {
                   userId,
                   body,
                   intentResult,
+                  messageId,
                 });
               }
             }
@@ -805,7 +815,7 @@ export async function handleWebhookProcess(payload: any) {
 }
 
 export async function handleGeminiReply(payload: any) {
-  const { conversationId, phoneNumberId, wabaId, senderNumber, userId, body, intentResult } = payload;
+  const { conversationId, phoneNumberId, wabaId, senderNumber, userId, body, intentResult, messageId } = payload;
   console.log(`📥 [GEMINI PROCESS] Starting reply generation for Conversation ID: ${conversationId}, Customer: ${senderNumber}, Input Message: "${body}"`);
 
   const lockKey = `lock:gemini:${conversationId}`;
@@ -864,7 +874,21 @@ export async function handleGeminiReply(payload: any) {
 
     // C. Generate AI reply
     let messagesToSend: OutboundMessage[] = [];
-    try {
+
+    // If the conversation is already in COMPLETED stage, skip replying and send reaction instead
+    if (conversation.ai_state?.stage === 'COMPLETED') {
+      const activeIntents = ['PROPERTY_DETAILS', 'SITE_VISIT', 'CHANGE_PREFERENCES', 'BUY_OR_RENT'];
+      if (!activeIntents.includes(intentResult.intent)) {
+        console.log(`ℹ️ [GEMINI PROCESS] Conversation is COMPLETED and user intent is ${intentResult.intent}. Sending 👍 reaction to message ${messageId}.`);
+        if (messageId) {
+          messagesToSend = [{ text: '', reactionEmoji: '👍', reactToMessageId: messageId }];
+        } else {
+          return;
+        }
+      }
+    }
+
+    if (messagesToSend.length === 0) {
       const { generateAutoReply } = await import('../services/gemini.js');
       const structuredRes = await generateAutoReply(
         instructions,
@@ -896,6 +920,49 @@ export async function handleGeminiReply(payload: any) {
               slotsToMerge[key] = typeof value === 'string' ? parseInt(value, 10) : value;
             } else {
               slotsToMerge[key] = value;
+            }
+          }
+        }
+      }
+
+      // Resolve property details to auto-fill missing slots if booking a site visit
+      const targetPropertyIds = Array.isArray(conversation.ai_state.interested_property_ids) && conversation.ai_state.interested_property_ids.length > 0
+        ? conversation.ai_state.interested_property_ids
+        : (Array.isArray(conversation.ai_state.recommended_property_ids) ? conversation.ai_state.recommended_property_ids : []);
+      if (targetPropertyIds.length > 0 && (intentResult.intent === 'SITE_VISIT' || structuredRes.appointmentDate)) {
+        const propId = targetPropertyIds[0];
+        const propRes = await pool.query('SELECT * FROM properties WHERE key = $1 LIMIT 1', [propId]);
+        const prop = propRes.rows[0];
+        if (prop) {
+          if (conversation.ai_state.category === null) {
+            conversation.ai_state.category = prop.category;
+            slotsToMerge.category = prop.category;
+          }
+          if (conversation.ai_state.property_type === null) {
+            conversation.ai_state.property_type = prop.type;
+            slotsToMerge.property_type = prop.type;
+          }
+          if (conversation.ai_state.beds === null) {
+            conversation.ai_state.beds = prop.beds;
+            slotsToMerge.beds = prop.beds;
+          }
+          if (conversation.ai_state.locality === null) {
+            conversation.ai_state.locality = prop.locality;
+            slotsToMerge.locality = prop.locality;
+          }
+          if (conversation.ai_state.transaction_type === null) {
+            conversation.ai_state.transaction_type = prop.transaction_type;
+            slotsToMerge.transaction_type = prop.transaction_type;
+          }
+          if (prop.transaction_type === 'Sell') {
+            if (conversation.ai_state.buy_budget === null) {
+              conversation.ai_state.buy_budget = String(prop.expected_price);
+              slotsToMerge.buy_budget = String(prop.expected_price);
+            }
+          } else {
+            if (conversation.ai_state.rent_budget === null) {
+              conversation.ai_state.rent_budget = String(prop.monthly_rent);
+              slotsToMerge.rent_budget = String(prop.monthly_rent);
             }
           }
         }
@@ -1023,6 +1090,7 @@ export async function handleGeminiReply(payload: any) {
       console.error('❌ Failed to generate AI reply via Gemini API:', aiErr);
       messagesToSend = [{ text: 'Thank you for reaching out! One of our agents will contact you shortly.' }];
     }
+    }
 
     // Get WABA token for auto-reply
     const accessTokenResult = await pool.query(
@@ -1037,7 +1105,36 @@ export async function handleGeminiReply(payload: any) {
       const msg: OutboundMessage = messagesToSend[i];
       console.log(`[GEMINI PROCESS] Sending outbound message ${i + 1}/${messagesToSend.length} to ${senderNumber} sequentially...`);
 
-      if (msg.imageUrl) {
+      if (msg.reactionEmoji && msg.reactToMessageId) {
+        try {
+          console.log(`[GEMINI PROCESS] Transmitting emoji reaction message to Meta Graph API...`);
+          const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              recipient_type: 'individual',
+              to: senderNumber,
+              type: 'reaction',
+              reaction: {
+                message_id: msg.reactToMessageId,
+                emoji: msg.reactionEmoji
+              }
+            })
+          });
+          const resJson = await response.json();
+          if (resJson.error) {
+            throw new Error(`Meta API Reaction Error: ${resJson.error.message}`);
+          }
+          console.log(`[GEMINI PROCESS] Successfully sent emoji reaction ${msg.reactionEmoji} to user message ${msg.reactToMessageId}`);
+        } catch (reactErr) {
+          console.error(`❌ [GEMINI PROCESS] Failed to send emoji reaction:`, reactErr);
+        }
+      } else if (msg.imageUrl) {
         try {
           console.log(`[GEMINI PROCESS] Transmitting image message with caption to Meta Graph API...`);
           const result = await sendImageMessage(phoneNumberId, accessToken, senderNumber, msg.imageUrl, msg.text);

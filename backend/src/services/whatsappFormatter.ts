@@ -4,6 +4,8 @@ import { GeminiStructuredResponse } from './gemini.js';
 export interface OutboundMessage {
   text: string;
   imageUrl?: string; // If set, send this image before the text card
+  reactionEmoji?: string; // If set, react with this emoji
+  reactToMessageId?: string; // ID of the message to react to
 }
 
 function safeTruncateCaption(text: string, linkStr?: string, maxLength: number = 1000): string {
