@@ -117,23 +117,6 @@ export default function PublicPropertyPage() {
     const submitBooking = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch("/api/leads", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    customerName: "Anonymous",
-                    customerPhone: "Not Provided",
-                    interestedPropertyId: property.id,
-                    appointmentDate: bookingDate ? new Date(bookingDate).toISOString() : null,
-                    status: "Upcoming Visit",
-                    leadScore: "High",
-                    requestedLocality: property.locality,
-                    otherReqs: `Tour booked for: ${property.title}`
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to submit request");
-
             setToast("Appointment Request Sent! Redirecting to WhatsApp...");
             setBookingOpen(false);
 
@@ -613,46 +596,36 @@ export default function PublicPropertyPage() {
 
                     {/* Right Column (Action Sidebar) */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-24 bg-card border border-border shadow-2xl rounded-[2.5rem] p-8 overflow-hidden relative">
+                        <div className="sticky top-24 bg-card border border-border shadow-2xl rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 overflow-hidden relative">
                             {/* Decorative blur */}
                             <div className="absolute -top-12 -right-12 w-40 h-40 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
 
-                            <h3 className="text-2xl font-black tracking-tight mb-2 relative z-10">Interested in this property?</h3>
-                            <p className="text-sm font-semibold text-foreground/60 mb-8 relative z-10 leading-relaxed">Our AI agent is online 24/7. Ask questions or secure this viewing immediately.</p>
+                            <h3 className="text-xl sm:text-2xl font-black tracking-tight mb-1 sm:mb-2 relative z-10">Interested in this property?</h3>
+                            <p className="text-xs sm:text-sm font-semibold text-foreground/60 mb-5 sm:mb-8 relative z-10 leading-relaxed">Our AI agent is online 24/7. Ask questions or secure this viewing immediately.</p>
 
-                            <div className="space-y-4 relative z-10">
-                                <button onClick={handleWhatsAppChat} className="w-full h-14 bg-[#25D366] hover:bg-[#20BE5A] text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 text-lg tracking-wide">
-                                    <MessageSquare className="h-6 w-6" />
+                            <div className="space-y-3 sm:space-y-4 relative z-10">
+                                <button onClick={handleWhatsAppChat} className="w-full h-12 sm:h-14 bg-[#25D366] hover:bg-[#20BE5A] text-white font-black rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 shadow-[0_4px_20px_rgba(37,211,102,0.3)] transition-all hover:-translate-y-0.5 active:translate-y-0 text-base sm:text-lg tracking-wide">
+                                    <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
                                     Chat on WhatsApp
                                 </button>
-                                <button onClick={() => setBookingOpen(true)} className="w-full h-14 bg-background border-2 border-border text-foreground font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted hover:border-foreground/20 transition-all text-base">
-                                    <Calendar className="h-5 w-5 text-foreground/60" />
+                                <button onClick={() => setBookingOpen(true)} className="w-full h-12 sm:h-14 bg-background border-2 border-border text-foreground font-bold rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 hover:bg-muted hover:border-foreground/20 transition-all text-sm sm:text-base">
+                                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-foreground/60" />
                                     Schedule Viewing
                                 </button>
-                                {property.agent_phone ? (
-                                    <a href={`tel:${property.agent_phone}`} className="w-full h-14 text-foreground/60 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors border border-border">
-                                        <Phone className="h-5 w-5" />
-                                        Call ({property.agent_phone})
-                                    </a>
-                                ) : (
-                                    <button className="w-full h-14 text-foreground/60 font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-muted/50 transition-colors">
-                                        <Phone className="h-5 w-5" />
-                                        Request Callback
-                                    </button>
-                                )}
+
                             </div>
 
                             {property.agent_name && (
-                                <div className="mt-10 pt-8 border-t border-border/50 relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 p-0.5 flex-shrink-0 shadow-lg">
-                                            <div className="h-full w-full rounded-full bg-card border-[3px] border-background flex items-center justify-center text-foreground font-black text-xl">
+                                <div className="mt-6 pt-5 sm:mt-10 sm:pt-8 border-t border-border/50 relative z-10">
+                                    <div className="flex items-center gap-3 sm:gap-4">
+                                        <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 p-0.5 flex-shrink-0 shadow-lg">
+                                            <div className="h-full w-full rounded-full bg-card border-[3px] border-background flex items-center justify-center text-foreground font-black text-lg sm:text-xl">
                                                 {property.agent_name.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase()}
                                             </div>
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black uppercase tracking-widest text-foreground/40 mb-1">Listed By Expert</p>
-                                            <p className="font-black text-lg tracking-tight text-foreground">{property.agent_name}</p>
+                                            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-foreground/40 mb-0.5 sm:mb-1">Listed By Expert</p>
+                                            <p className="font-black text-base sm:text-lg tracking-tight text-foreground">{property.agent_name}</p>
                                             {property.agent_phone && (
                                                 <p className="text-sm font-semibold text-foreground/70 flex items-center gap-1 mt-0.5">
                                                     <Phone className="h-3.5 w-3.5 text-primary" /> {property.agent_phone}
