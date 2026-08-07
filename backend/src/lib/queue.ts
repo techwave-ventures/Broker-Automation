@@ -197,7 +197,10 @@ export async function handleWhatsappSend(payload: any) {
   // Find owner user_id
   let userId = 'local-dev';
   if (wabaId) {
-    const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+    const wabaRes = await pool.query(
+      'SELECT w.user_id FROM wabas w JOIN users u ON w.user_id = u.user_id WHERE w.waba_id = $1 LIMIT 1',
+      [wabaId]
+    );
     if (wabaRes.rows[0]?.user_id) {
       userId = wabaRes.rows[0].user_id;
       console.log(`👤 [QUEUE WORKER] Resolved owner user_id to: ${userId}`);
@@ -642,7 +645,10 @@ export async function handleWebhookProcess(payload: any) {
 
           // Find owner user_id from WABA
           let userId = 'local-dev';
-          const wabaRes = await pool.query('SELECT user_id FROM wabas WHERE waba_id = $1 LIMIT 1', [wabaId]);
+          const wabaRes = await pool.query(
+            'SELECT w.user_id FROM wabas w JOIN users u ON w.user_id = u.user_id WHERE w.waba_id = $1 LIMIT 1',
+            [wabaId]
+          );
           if (wabaRes.rows[0]?.user_id) {
             userId = wabaRes.rows[0].user_id;
           }

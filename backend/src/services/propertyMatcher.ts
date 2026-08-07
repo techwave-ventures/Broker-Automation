@@ -11,38 +11,33 @@ export function parseBudgetString(budgetStr: string): number | null {
 export async function getBrokerInventoryProfile(userId: string): Promise<string> {
   try {
     const res = await pool.query(
-      `SELECT DISTINCT category, transaction_type FROM properties WHERE user_id = $1 AND status = 'Available'`,
+      `SELECT category, transaction_type, type, locality, COUNT(*) as count 
+       FROM properties 
+       WHERE user_id = $1 AND status = 'Available'
+       GROUP BY category, transaction_type, type, locality
+       ORDER BY category, transaction_type`,
       [userId]
     );
     if (res.rows.length === 0) {
       return "This broker currently has no active listings in inventory.";
     }
 
-    const categories = ['Residential', 'Commercial', 'Land'];
-    const groups: { [cat: string]: string[] } = {
-      Residential: [],
-      Commercial: [],
-      Land: [],
-    };
+    const categoriesMap: { [cat: string]: string[] } = {};
 
     for (const row of res.rows) {
-      if (row.category && groups[row.category]) {
-        groups[row.category].push(row.transaction_type);
+      const cat = row.category || 'Other';
+      if (!categoriesMap[cat]) {
+        categoriesMap[cat] = [];
       }
+      const itemStr = `${row.type} for ${row.transaction_type} in ${row.locality} (Qty: ${row.count})`;
+      categoriesMap[cat].push(itemStr);
     }
 
-    const summaryParts: string[] = [];
-    for (const cat of categories) {
-      const txs = groups[cat];
-      const uniqueTxs = Array.from(new Set(txs));
-      if (uniqueTxs.length > 0) {
-        summaryParts.push(`${cat} (${uniqueTxs.join(', ')})`);
-      } else {
-        summaryParts.push(`NO ${cat} listings`);
-      }
-    }
+    const summaryParts = Object.entries(categoriesMap).map(([cat, items]) => {
+      return `${cat}: ${items.join(', ')}`;
+    });
 
-    return `This broker currently has: ${summaryParts.join(', ')}.`;
+    return `The broker has the following active listings in inventory:\n` + summaryParts.map(line => `- ${line}`).join('\n');
   } catch (err) {
     console.error('Error fetching broker inventory profile:', err);
     return "This broker currently has some active listings in inventory.";
@@ -53,7 +48,7 @@ export async function findMatchingProperties(
   userId: string,
   state: ConversationAIState
 ): Promise<{ properties: any[]; contextString: string }> {
-  // Base query: strictly filter ONLY by user_id, status = 'Available', city (if known), and transaction_type (if known)
+  // Base query: filter strictly by user_id, status = 'Available', and city / transaction_type / category if known
   let query = `
     SELECT key, title, description, transaction_type, expected_price, monthly_rent, category, type, city, locality, full_address, beds, baths, status, slug, short_code, image 
     FROM properties 
@@ -71,6 +66,11 @@ export async function findMatchingProperties(
     params.push(state.transaction_type);
   }
 
+  if (state.category) {
+    query += ` AND category ILIKE $${params.length + 1}`;
+    params.push(state.category);
+  }
+
   const res = await pool.query(query, params);
   const matchedRows = res.rows;
 
@@ -83,17 +83,17 @@ export async function findMatchingProperties(
     .map(p => {
       let score = 0;
 
-      // 1. Category match (+35 points)
+      // 1. Category match (+35 points) - already filtered in query if known, but good for scoring fallback
       if (state.category && p.category && state.category.toLowerCase() === p.category.toLowerCase()) {
         score += 35;
       }
 
-      // 2. Locality match (+30 points)
+      // 2. Locality match (+50 points for matching locality)
       if (state.locality && p.locality) {
         const locState = state.locality.toLowerCase().trim();
         const locProp = p.locality.toLowerCase().trim();
         if (locProp.includes(locState) || locState.includes(locProp)) {
-          score += 30;
+          score += 50;
         }
       }
 
@@ -156,8 +156,8 @@ export async function findMatchingProperties(
   // Sort ranked properties by score descending
   scoredProperties.sort((a, b) => b.score - a.score);
 
-  // Take top 5 ranked matches
-  const topListings = scoredProperties.slice(0, 5).map(r => r.property);
+  // Take top 15 ranked matches
+  const topListings = scoredProperties.slice(0, 15).map(r => r.property);
 
   // Format context string to feed to Prompt Builder
   const contextString = topListings.map((p: any, index: number) => {

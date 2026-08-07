@@ -33,65 +33,75 @@ export async function checkAndConsumeTokens(
 
   const redisKey = `ratelimit:${key}`;
 
-  // 1. Remove elements outside the current window
-  await redisConnection.zremrangebyscore(redisKey, 0, clearBefore);
+  try {
+    // 1. Remove elements outside the current window
+    await redisConnection.zremrangebyscore(redisKey, 0, clearBefore);
 
-  // 2. Fetch all elements within the window
-  const elements = await redisConnection.zrangebyscore(redisKey, clearBefore, '+inf');
+    // 2. Fetch all elements within the window
+    const elements = await redisConnection.zrangebyscore(redisKey, clearBefore, '+inf');
 
-  let currentRequests = 0;
-  let currentTokens = 0;
+    let currentRequests = 0;
+    let currentTokens = 0;
 
-  // Track oldest element timestamp to calculate exact retry interval
-  let oldestTimestamp = now;
+    // Track oldest element timestamp to calculate exact retry interval
+    let oldestTimestamp = now;
 
-  for (const element of elements) {
-    // Member format: "tokens:timestamp:random"
-    const parts = element.split(':');
-    if (parts.length >= 2) {
-      const tokens = parseInt(parts[0], 10);
-      const timestamp = parseInt(parts[1], 10);
-      if (!isNaN(tokens) && !isNaN(timestamp)) {
-        currentRequests++;
-        currentTokens += tokens;
-        if (timestamp < oldestTimestamp) {
-          oldestTimestamp = timestamp;
+    for (const element of elements) {
+      // Member format: "tokens:timestamp:random"
+      const parts = element.split(':');
+      if (parts.length >= 2) {
+        const tokens = parseInt(parts[0], 10);
+        const timestamp = parseInt(parts[1], 10);
+        if (!isNaN(tokens) && !isNaN(timestamp)) {
+          currentRequests++;
+          currentTokens += tokens;
+          if (timestamp < oldestTimestamp) {
+            oldestTimestamp = timestamp;
+          }
         }
       }
     }
-  }
 
-  // Check limits
-  const isRequestLimitBreached = currentRequests + 1 > maxRpm;
-  const isTokenLimitBreached = currentTokens + tokensRequested > maxTpm;
+    // Check limits
+    const isRequestLimitBreached = currentRequests + 1 > maxRpm;
+    const isTokenLimitBreached = currentTokens + tokensRequested > maxTpm;
 
-  if (isRequestLimitBreached || isTokenLimitBreached) {
-    // Calculate backoff time based on the oldest request in the window sliding out
-    const timeElapsedSinceOldest = now - oldestTimestamp;
-    const retryAfterMs = Math.max(0, windowMs - timeElapsedSinceOldest);
+    if (isRequestLimitBreached || isTokenLimitBreached) {
+      // Calculate backoff time based on the oldest request in the window sliding out
+      const timeElapsedSinceOldest = now - oldestTimestamp;
+      const retryAfterMs = Math.max(0, windowMs - timeElapsedSinceOldest);
+
+      return {
+        allowed: false,
+        currentRequests,
+        currentTokens,
+        retryAfterMs: retryAfterMs || 1000, // minimum 1s wait
+      };
+    }
+
+    // Add the new request/token usage to the window
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const member = `${tokensRequested}:${now}:${randomSuffix}`;
+    await redisConnection.zadd(redisKey, now, member);
+
+    // Set TTL on key to avoid leaking space if idle
+    await redisConnection.expire(redisKey, 120);
 
     return {
-      allowed: false,
-      currentRequests,
-      currentTokens,
-      retryAfterMs: retryAfterMs || 1000, // minimum 1s wait
+      allowed: true,
+      currentRequests: currentRequests + 1,
+      currentTokens: currentTokens + tokensRequested,
+      retryAfterMs: 0,
+    };
+  } catch (redisErr) {
+    console.warn(`⚠️ [RATE LIMITER] Redis connection offline or failed. Bypassing rate limiter check.`, redisErr);
+    return {
+      allowed: true,
+      currentRequests: 1,
+      currentTokens: tokensRequested,
+      retryAfterMs: 0,
     };
   }
-
-  // Add the new request/token usage to the window
-  const randomSuffix = Math.random().toString(36).substring(2, 7);
-  const member = `${tokensRequested}:${now}:${randomSuffix}`;
-  await redisConnection.zadd(redisKey, now, member);
-
-  // Set TTL on key to avoid leaking space if idle
-  await redisConnection.expire(redisKey, 120);
-
-  return {
-    allowed: true,
-    currentRequests: currentRequests + 1,
-    currentTokens: currentTokens + tokensRequested,
-    retryAfterMs: 0,
-  };
 }
 
 class RateLimiter {
