@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getPropertyBySlug, Property, getPropertyShareUrl } from "@/lib/properties";
 
 const formatPrice = (p: number | undefined) => {
@@ -48,6 +48,32 @@ export default function PublicPropertyPage() {
     const [bookingDate, setBookingDate] = useState("");
     const [toast, setToast] = useState<string | null>(null);
 
+    // Touch event refs
+    const touchStartX = useRef<number>(0);
+    const touchEndX = useRef<number>(0);
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.changedTouches[0].screenX;
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        touchEndX.current = e.changedTouches[0].screenX;
+        handleSwipe();
+    };
+
+    const handleSwipe = () => {
+        if (!property) return;
+        const fullGallery = [property.image, ...(property.images || [])].filter(Boolean);
+        if (fullGallery.length === 0) return;
+
+        if (touchEndX.current < touchStartX.current - 50) {
+            setCurrentIndex((prev) => (prev + 1) % fullGallery.length);
+        }
+        if (touchEndX.current > touchStartX.current + 50) {
+            setCurrentIndex((prev) => (prev - 1 + fullGallery.length) % fullGallery.length);
+        }
+    };
+
     useEffect(() => {
         if (!id) return;
         const load = async () => {
@@ -59,11 +85,14 @@ export default function PublicPropertyPage() {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (!lightboxOpen) return;
+            if (!lightboxOpen || !property) return;
             if (e.key === "Escape") setLightboxOpen(false);
-            // gallery length mock hardcoded to 6 based on below
-            if (e.key === "ArrowLeft") setCurrentIndex(prev => prev > 0 ? prev - 1 : 5);
-            if (e.key === "ArrowRight") setCurrentIndex(prev => prev < 5 ? prev + 1 : 0);
+
+            const fullGallery = [property.image, ...(property.images || [])].filter(Boolean);
+            const maxIdx = fullGallery.length - 1;
+
+            if (e.key === "ArrowLeft") setCurrentIndex(prev => prev > 0 ? prev - 1 : maxIdx);
+            if (e.key === "ArrowRight") setCurrentIndex(prev => prev < maxIdx ? prev + 1 : 0);
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
@@ -296,6 +325,8 @@ export default function PublicPropertyPage() {
                         <div
                             className="relative h-[300px] sm:h-[450px] lg:h-[550px] w-full rounded-[2rem] overflow-hidden cursor-pointer group shadow-sm bg-muted"
                             onClick={() => setLightboxOpen(true)}
+                            onTouchStart={handleTouchStart}
+                            onTouchEnd={handleTouchEnd}
                         >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
