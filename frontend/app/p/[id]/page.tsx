@@ -689,7 +689,12 @@ export default function PublicPropertyPage() {
                         <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
                     </button>
 
-                    <div className="w-full max-w-6xl h-full p-4 flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
+                    <div
+                        className="w-full max-w-6xl h-full p-4 flex items-center justify-center"
+                        onClick={() => setLightboxOpen(false)}
+                        onTouchStart={handleTouchStart}
+                        onTouchEnd={handleTouchEnd}
+                    >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src={gallery[currentIndex]}
