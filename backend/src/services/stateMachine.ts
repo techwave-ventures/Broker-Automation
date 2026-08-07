@@ -49,7 +49,7 @@ export function resolveNextState(
   if (intentResult.intent === 'GREETING' && currentState.stage === 'GREETING') {
     nextStage = 'GREETING';
   } else if (intentResult.intent === 'SITE_VISIT') {
-    nextStage = 'SITE_VISIT';
+    nextStage = geminiResponse.appointmentDate ? 'FOLLOW_UP' : 'SITE_VISIT';
   } else if (intentResult.intent === 'NEGOTIATION') {
     // Hold in recommending stage for negotiations
     nextStage = 'RECOMMENDING';
