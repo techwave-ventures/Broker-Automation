@@ -234,12 +234,85 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
             <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
               <Calendar className="h-3 w-3" /> Appointment Date &amp; Time
             </label>
-            <input
-              type="datetime-local"
-              value={form.appointmentDate}
-              onChange={(e) => set("appointmentDate", e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-            />
+            {(() => {
+              let dStr = "";
+              let hStr = "12";
+              let mStr = "00";
+              let ap = "PM";
+
+              if (form.appointmentDate) {
+                const dt = new Date(form.appointmentDate);
+                if (!isNaN(dt.getTime())) {
+                  // Keep as local date string to match user's local timezone picking
+                  dStr = form.appointmentDate.split("T")[0];
+                  if (!dStr.includes("-")) {
+                    dStr = dt.toISOString().split("T")[0];
+                  }
+
+                  const h = dt.getHours();
+                  const m = dt.getMinutes();
+                  mStr = m === 0 ? "00" : (m < 15 ? "00" : (m < 30 ? "15" : (m < 45 ? "30" : "45"))); // rough align to options
+                  ap = h >= 12 ? "PM" : "AM";
+                  const h12 = h % 12 || 12;
+                  hStr = h12.toString().padStart(2, "0");
+                }
+              }
+
+              const handleChange = (part: "date" | "hour" | "minute" | "ampm", val: string) => {
+                let newD = part === "date" ? val : dStr;
+                if (!newD) {
+                  set("appointmentDate", "");
+                  return;
+                }
+
+                let newH = part === "hour" ? val : hStr;
+                let newM = part === "minute" ? val : mStr;
+                let newAp = part === "ampm" ? val : ap;
+
+                const dateObj = new Date(newD);
+                if (isNaN(dateObj.getTime())) return;
+
+                let h24 = parseInt(newH, 10);
+                if (newAp === "PM" && h24 !== 12) h24 += 12;
+                if (newAp === "AM" && h24 === 12) h24 = 0;
+
+                dateObj.setHours(h24, parseInt(newM, 10), 0, 0);
+                set("appointmentDate", dateObj.toISOString());
+              };
+
+              return (
+                <div className="flex flex-col gap-3">
+                  <input
+                    type="date"
+                    value={dStr}
+                    onChange={(e) => handleChange("date", e.target.value)}
+                    className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                  />
+                  <div className="flex gap-1.5 flex-1 items-center">
+                    <div className="relative flex-1 min-w-[70px]">
+                      <select value={hStr} onChange={(e) => handleChange("hour", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
+                    </div>
+                    <span className="font-black text-foreground/40">:</span>
+                    <div className="relative flex-1 min-w-[70px]">
+                      <select value={mStr} onChange={(e) => handleChange("minute", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
+                        {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
+                    </div>
+                    <div className="relative flex-1 min-w-[70px]">
+                      <select value={ap} onChange={(e) => handleChange("ampm", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-bold">
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/60" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Status + Lead Score */}

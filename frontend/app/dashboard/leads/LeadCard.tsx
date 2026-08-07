@@ -88,7 +88,7 @@ function formatAppointment(isoStr: string) {
   const todayStr = new Date().toDateString();
   const tomorrowStr = new Date(Date.now() + 86400000).toDateString();
   const dStr = d.toDateString();
-  const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
   if (dStr === todayStr) return `Today, ${timeStr}`;
   if (dStr === tomorrowStr) return `Tomorrow, ${timeStr}`;
   return d.toLocaleDateString([], { month: "short", day: "numeric" }) + ", " + timeStr;
@@ -405,7 +405,7 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
           <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-3">
             {lead.created_at ? (
               <p className="text-[10px] text-foreground/40 font-medium">
-                Added {new Date(lead.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} at {new Date(lead.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                Added {new Date(lead.created_at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })} at {new Date(lead.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })}
               </p>
             ) : (
               <span />

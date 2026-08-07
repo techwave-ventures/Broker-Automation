@@ -20,7 +20,8 @@ import {
     X,
     ChevronLeft,
     ChevronRight,
-    BotMessageSquare
+    BotMessageSquare,
+    ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -116,16 +117,12 @@ export default function PublicPropertyPage() {
     const submitBooking = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const target = e.target as HTMLFormElement;
-            const name = (target.elements.namedItem("name") as HTMLInputElement).value;
-            const phone = (target.elements.namedItem("phone") as HTMLInputElement).value;
-
             const res = await fetch("/api/leads", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    customerName: name,
-                    customerPhone: phone,
+                    customerName: "Anonymous",
+                    customerPhone: "Not Provided",
                     interestedPropertyId: property.id,
                     appointmentDate: bookingDate ? new Date(bookingDate).toISOString() : null,
                     status: "Upcoming Visit",
@@ -137,8 +134,26 @@ export default function PublicPropertyPage() {
 
             if (!res.ok) throw new Error("Failed to submit request");
 
-            setToast("Appointment Request Sent! Our agent will contact you shortly.");
+            setToast("Appointment Request Sent! Redirecting to WhatsApp...");
             setBookingOpen(false);
+
+            // Navigate to WhatsApp
+            let dateMsg = "";
+            if (bookingDate) {
+                const d = new Date(bookingDate);
+                if (!isNaN(d.getTime())) {
+                    dateMsg = `\n\nI would like to schedule a viewing on: ${d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", hour12: true })}`;
+                }
+            }
+
+            const agentPhone = property.agent_phone || "";
+            const shareUrl = getPropertyShareUrl(property);
+            const whatsappMsg = encodeURIComponent(`Hi, I'm interested in scheduling a tour for your property: "${property.title}" in ${property.locality}, ${property.city}.${dateMsg}\n\nLink: ${shareUrl}`);
+
+            // Delay slightly to let the modal close and toast show for a second
+            setTimeout(() => {
+                window.open(`https://wa.me/${agentPhone.replace(/[^0-9]/g, "")}?text=${whatsappMsg}`, "_blank");
+            }, 600);
         } catch (err) {
             console.error("Booking error:", err);
             setToast("Failed to book viewing. Please try again.");
@@ -173,15 +188,85 @@ export default function PublicPropertyPage() {
                         <form onSubmit={submitBooking} className="space-y-4">
                             <div>
                                 <label className="text-sm font-bold block mb-2">Preferred Date & Time</label>
-                                <input required type="datetime-local" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="text-sm font-bold block mb-2">Your Name</label>
-                                <input required type="text" name="name" placeholder="John Doe" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
-                            </div>
-                            <div>
-                                <label className="text-sm font-bold block mb-2">Phone Number</label>
-                                <input required type="tel" name="phone" placeholder="+91 98765 43210" className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50" />
+                                {(() => {
+                                    let dStr = "";
+                                    let hStr = "12";
+                                    let mStr = "00";
+                                    let ap = "PM";
+
+                                    if (bookingDate) {
+                                        const dt = new Date(bookingDate);
+                                        if (!isNaN(dt.getTime())) {
+                                            dStr = bookingDate.split("T")[0];
+                                            if (!dStr.includes("-")) {
+                                                dStr = dt.toISOString().split("T")[0];
+                                            }
+
+                                            const h = dt.getHours();
+                                            const m = dt.getMinutes();
+                                            mStr = m === 0 ? "00" : (m < 15 ? "00" : (m < 30 ? "15" : (m < 45 ? "30" : "45")));
+                                            ap = h >= 12 ? "PM" : "AM";
+                                            const h12 = h % 12 || 12;
+                                            hStr = h12.toString().padStart(2, "0");
+                                        }
+                                    }
+
+                                    const handleChange = (part: "date" | "hour" | "minute" | "ampm", val: string) => {
+                                        let newD = part === "date" ? val : dStr;
+                                        if (!newD) {
+                                            setBookingDate("");
+                                            return;
+                                        }
+
+                                        let newH = part === "hour" ? val : hStr;
+                                        let newM = part === "minute" ? val : mStr;
+                                        let newAp = part === "ampm" ? val : ap;
+
+                                        const dateObj = new Date(newD);
+                                        if (isNaN(dateObj.getTime())) return;
+
+                                        let h24 = parseInt(newH, 10);
+                                        if (newAp === "PM" && h24 !== 12) h24 += 12;
+                                        if (newAp === "AM" && h24 === 12) h24 = 0;
+
+                                        dateObj.setHours(h24, parseInt(newM, 10), 0, 0);
+                                        setBookingDate(dateObj.toISOString());
+                                    };
+
+                                    return (
+                                        <div className="flex flex-col gap-3">
+                                            <input
+                                                required={!bookingDate}
+                                                type="date"
+                                                value={dStr}
+                                                onChange={(e) => handleChange("date", e.target.value)}
+                                                className="flex-1 px-4 py-3 rounded-xl bg-background border border-border focus:ring-2 focus:ring-primary/50"
+                                            />
+                                            <div className="flex gap-1.5 flex-1 items-center">
+                                                <div className="relative flex-1 min-w-[70px]">
+                                                    <select value={hStr} onChange={(e) => handleChange("hour", e.target.value)} className="w-full pl-3 pr-7 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-base appearance-none font-medium">
+                                                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                                                    </select>
+                                                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
+                                                </div>
+                                                <span className="font-black text-foreground/40">:</span>
+                                                <div className="relative flex-1 min-w-[70px]">
+                                                    <select value={mStr} onChange={(e) => handleChange("minute", e.target.value)} className="w-full pl-3 pr-7 py-3 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-base appearance-none font-medium">
+                                                        {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
+                                                    </select>
+                                                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/50" />
+                                                </div>
+                                                <div className="relative flex-1 min-w-[70px]">
+                                                    <select value={ap} onChange={(e) => handleChange("ampm", e.target.value)} className="w-full pl-3 pr-7 py-3 rounded-xl bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-base appearance-none font-bold">
+                                                        <option value="AM">AM</option>
+                                                        <option value="PM">PM</option>
+                                                    </select>
+                                                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/60" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                             <button type="submit" className="w-full mt-4 h-14 bg-primary text-white font-bold rounded-xl flex items-center justify-center hover:bg-primary/90 transition-transform active:scale-95 text-lg">
                                 Confirm Request
