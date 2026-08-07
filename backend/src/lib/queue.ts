@@ -1193,9 +1193,9 @@ export async function handleGeminiReply(payload: any) {
         console.log(`[GEMINI PROCESS] Successfully sent text message ${i + 1}`);
       }
 
-      // Add a tiny sleep of 1 second between consecutive messages to ensure strict delivery order
+      // Add a tiny sleep of 2 seconds between consecutive messages to ensure strict delivery order
       if (i < messagesToSend.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
 
