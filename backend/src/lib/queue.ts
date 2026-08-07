@@ -889,7 +889,8 @@ export async function handleGeminiReply(payload: any) {
     }
 
     if (messagesToSend.length === 0) {
-      const { generateAutoReply } = await import('../services/gemini.js');
+      try {
+        const { generateAutoReply } = await import('../services/gemini.js');
       const structuredRes = await generateAutoReply(
         instructions,
         history,
