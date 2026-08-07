@@ -86,7 +86,7 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
 {
   "reply": "Conversational reply text when NOT recommending properties, OR a bulleted text summary of properties if is_summary_view is true. If you ARE recommending new properties, set this to an empty string.",
   "reply_intro": "Introductory text sent before listing properties (e.g. 'I found 2 great properties for you:'). Leave empty if not recommending properties.",
-  "reply_outro": "Closing text sent after listing properties (e.g. 'Would you like to schedule a site visit?'). Leave empty if not recommending properties.",
+  "reply_outro": "Closing text sent after listing properties. ALWAYS use 'Would you like to schedule a site visit?' (or its equivalent in the user's language) as the outro when recommending properties. Leave empty if not recommending properties.",
   "action": "GREET" | "ASK_SLOTS" | "SEARCH" | "RECOMMEND" | "OFFER_SITE_VISIT" | "SCHEDULE_SITE_VISIT" | "LOAN_INFO" | "NEGOTIATE" | "HUMAN_TAKEOVER" | "CHITCHAT" | "REACTION_THUMBS_UP",
   "recommended_property_ids": [number], // Array of database key IDs of properties you recommended in this specific response.
   "is_summary_view": boolean, // Set to true ONLY when you are re-sharing previously shown properties as a text list in the 'reply' field.
@@ -116,7 +116,7 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
 ### Field Explanations for Output:
 *   **reply**: Conversation text for slot collection, greetings, loan info, chitchat.
 *   **reply_intro**: Greeting/intro leading into property details (CRITICAL: Do NOT write property details/prices/links here, the backend formats them deterministically based on key IDs).
-*   **reply_outro**: Concluding remarks and call-to-action (CRITICAL: Do NOT write property details/prices/links here).
+*   **reply_outro**: Concluding remarks and call-to-action (CRITICAL: Do NOT write property details/prices/links here). ALWAYS ask 'Would you like to schedule a site visit?' when you have just recommended one or more properties.
 *   **action**: The action you are taking in this response.
 *   **recommended_property_ids**: If you are recommending specific properties, put their database key numbers (from the list above) in this array. If not recommending any properties in this turn, return an empty array [].
 *   **is_summary_view**: Set this to true ONLY when you are using the 'reply' field to output a text-based bulleted list of previously shown properties (Rule 3). When true, leave 'recommended_property_ids' empty to prevent backend card generation.
