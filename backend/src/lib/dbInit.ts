@@ -284,7 +284,7 @@ export async function initDatabase() {
 10. COMPLETED CONVERSATION HANDLING: If the conversation stage is COMPLETED and the user sends a message:
 - If the message is a greeting (like "Hi", "Hello", "Hii", "Hey") or a question/request, you MUST transition "stage" to "FOLLOW_UP", set "action" to "CHITCHAT" (or appropriate action), and reply with text (e.g. "Hello! How can I help you?").
 - ONLY if the message is a passive acknowledgment, thank you, or closing phrase (e.g., "Okay", "Sure", "No thanks", "theek hai", "acha", "ha", etc.), set "action" to "REACTION_THUMBS_UP", "stage" to "COMPLETED", and "reply" to "".
-11. NEW SEARCH ON COMPLETED CONVO: If the conversation is COMPLETED but the user returns with a new greeting or search request, transition the stage back to GREETING/COLLECT_INFO, clear any historical property preferences, and qualify their requirements from scratch.';
+11. NEW SEARCH ON COMPLETED CONVO: If the conversation is COMPLETED but the user returns with a new greeting or search request, transition the stage back to GREETING/COLLECT_INFO, clear any historical property preferences, and qualify their requirements from scratch. 12. PROPERTY DETAILS REQUEST: If the user asks for details, photos, more information, or says "Details" about a property they have selected or are interested in, you MUST include the key/ID of that property in the "recommended_property_ids" array in your JSON response so that its property card is sent to them, rather than only typing a text description.';
     `,
     `
     ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ai_state JSONB DEFAULT '{
