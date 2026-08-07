@@ -691,16 +691,16 @@ export async function handleWebhookProcess(payload: any) {
             }
             lockAcquired = true;
 
-            // FIX 2: Skip if the bot already replied to this conversation in the last 5 seconds
+            // FIX 2: Skip if the bot already replied to this specific customer message to prevent duplicate replies from duplicate webhooks
             const recentBotReply = await client.query(
               `SELECT id FROM messages
                WHERE conversation_id = $1 AND sender_type = 'bot' AND direction = 'outbound'
-               AND created_at > NOW() - INTERVAL '5 seconds'
+               AND created_at > (SELECT created_at FROM messages WHERE message_id = $2 LIMIT 1)
                LIMIT 1`,
-              [conversation.id]
+              [conversation.id, messageId]
             );
             if (recentBotReply.rows.length > 0) {
-              console.warn(`⚠️ [DEDUP] Skipping AI reply — bot already replied to conversation ${conversation.id} within the last 5 seconds.`);
+              console.warn(`⚠️ [DEDUP] Skipping AI reply — bot already replied to customer message ID ${messageId} in conversation ${conversation.id}.`);
               continue;
             }
 
