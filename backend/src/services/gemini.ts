@@ -64,7 +64,7 @@ export interface GeminiStructuredResponse {
   reply: string;
   reply_intro?: string;
   reply_outro?: string;
-  action: 'GREET' | 'ASK_SLOTS' | 'SEARCH' | 'RECOMMEND' | 'OFFER_SITE_VISIT' | 'SCHEDULE_SITE_VISIT' | 'LOAN_INFO' | 'NEGOTIATE' | 'HUMAN_TAKEOVER' | 'CHITCHAT';
+  action: 'GREET' | 'ASK_SLOTS' | 'SEARCH' | 'RECOMMEND' | 'OFFER_SITE_VISIT' | 'SCHEDULE_SITE_VISIT' | 'LOAN_INFO' | 'NEGOTIATE' | 'HUMAN_TAKEOVER' | 'CHITCHAT' | 'REACTION_THUMBS_UP';
   recommended_property_ids: number[];
   interested_property_ids?: number[];
   missing_fields: string[];
