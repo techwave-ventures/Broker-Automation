@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { Upload, X, ImagePlus, Loader2, AlertCircle, Star } from "lucide-react";
+import { Upload, X, ImagePlus, Loader2, AlertCircle, Star, ChevronLeft, ChevronRight } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +95,33 @@ export default function ImageUploader({
     );
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Thumbnail drag-and-drop refs
+    const dragItem = useRef<number | null>(null);
+    const dragOverItem = useRef<number | null>(null);
+
+    const handleImgDragStart = (e: React.DragEvent, position: number) => {
+        dragItem.current = position;
+        e.dataTransfer.effectAllowed = "move";
+    };
+
+    const handleImgDragEnter = (e: React.DragEvent, position: number) => {
+        dragOverItem.current = position;
+    };
+
+    const handleImgDragEnd = () => {
+        if (dragItem.current !== null && dragOverItem.current !== null && dragItem.current !== dragOverItem.current) {
+            setImages((prev) => {
+                const next = [...prev];
+                const draggedItemContent = next[dragItem.current!];
+                next.splice(dragItem.current!, 1);
+                next.splice(dragOverItem.current!, 0, draggedItemContent);
+                return next;
+            });
+        }
+        dragItem.current = null;
+        dragOverItem.current = null;
+    };
 
     // Keep ref to onImagesChange callback so effect always calls latest version
     const onImagesChangeRef = useRef(onImagesChange);
@@ -199,6 +226,28 @@ export default function ImageUploader({
         });
     };
 
+    const moveLeft = (idx: number) => {
+        if (idx === 0) return;
+        setImages((prev) => {
+            const next = [...prev];
+            const item = next[idx];
+            next[idx] = next[idx - 1];
+            next[idx - 1] = item;
+            return next;
+        });
+    };
+
+    const moveRight = (idx: number) => {
+        if (idx === images.length - 1) return;
+        setImages((prev) => {
+            const next = [...prev];
+            const item = next[idx];
+            next[idx] = next[idx + 1];
+            next[idx + 1] = item;
+            return next;
+        });
+    };
+
     // Drag-and-drop handlers
     const onDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
     const onDragLeave = () => setIsDragging(false);
@@ -264,7 +313,12 @@ export default function ImageUploader({
                     {images.map((img, idx) => (
                         <div
                             key={`${img.preview}-${idx}`}
-                            className="relative group aspect-square rounded-xl overflow-hidden bg-muted border border-border"
+                            draggable={!img.uploading}
+                            onDragStart={(e) => handleImgDragStart(e, idx)}
+                            onDragEnter={(e) => handleImgDragEnter(e, idx)}
+                            onDragEnd={handleImgDragEnd}
+                            onDragOver={(e) => e.preventDefault()}
+                            className="relative group aspect-square rounded-xl overflow-hidden bg-muted border border-border cursor-grab active:cursor-grabbing"
                         >
                             {/* Cover badge */}
                             {idx === 0 && !img.uploading && !img.error && (
@@ -299,25 +353,47 @@ export default function ImageUploader({
 
                             {/* Hover actions */}
                             {!img.uploading && !img.error && (
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    {idx !== 0 && (
+                                <div className="absolute inset-0 bg-black/40 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 gap-2">
+                                    <div className="flex items-center gap-2">
+                                        {idx !== 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => moveToFirst(idx)}
+                                                title="Set as cover"
+                                                className="h-8 w-8 rounded-full bg-white/20 hover:bg-primary/80 text-white flex items-center justify-center transition-colors"
+                                            >
+                                                <Star className="h-4 w-4 fill-current" />
+                                            </button>
+                                        )}
                                         <button
                                             type="button"
-                                            onClick={() => moveToFirst(idx)}
-                                            title="Set as cover"
-                                            className="h-8 w-8 rounded-full bg-white/20 hover:bg-primary/80 text-white flex items-center justify-center transition-colors"
+                                            onClick={() => removeImage(idx)}
+                                            title="Remove image"
+                                            className="h-8 w-8 rounded-full bg-white/20 hover:bg-destructive/80 text-white flex items-center justify-center transition-colors"
                                         >
-                                            <Star className="h-3.5 w-3.5 fill-current" />
+                                            <X className="h-4 w-4" />
                                         </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeImage(idx)}
-                                        title="Remove image"
-                                        className="h-8 w-8 rounded-full bg-white/20 hover:bg-destructive/80 text-white flex items-center justify-center transition-colors"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {idx > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => moveLeft(idx)}
+                                                className="h-7 w-7 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors"
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                        {idx < images.length - 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => moveRight(idx)}
+                                                className="h-7 w-7 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-colors"
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 
