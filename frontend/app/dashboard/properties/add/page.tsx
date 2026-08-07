@@ -222,48 +222,60 @@ export default function AddPropertyPage() {
         </div>
     );
 
-    const renderStep2 = () => (
-        <div className="space-y-8 animate-fade-in-up">
-            <div>
-                <h2 className="text-lg font-semibold mb-1">Basic Information</h2>
-                <p className="text-sm text-foreground/50 mb-6">These details will be immediately visible to buyers.</p>
+    const renderStep2 = () => {
+        const titlePlaceholder =
+            form.category === "Land" ? "e.g. Premium 2000 sqft Corner Plot in Baner" :
+                form.category === "Commercial" ? "e.g. Fully Furnished 5000 sqft Office Space" :
+                    "e.g. Spacious 3BHK with City View";
 
-                <div className="space-y-5">
+        const descPlaceholder =
+            form.category === "Land" ? "Describe plot orientation, frontage, nearby highways..." :
+                form.category === "Commercial" ? "Describe ceiling height, parking limitations, nearby transit..." :
+                    "Describe the key highlights, views, and nearby amenities...";
+
+        return (
+            <div className="space-y-8 animate-fade-in-up">
+                <div>
+                    <h2 className="text-lg font-semibold mb-1">Basic Information</h2>
+                    <p className="text-sm text-foreground/50 mb-6">These details will be immediately visible to buyers.</p>
+
+                    <div className="space-y-5">
+                        <div>
+                            <label className="text-sm font-medium text-foreground/70 block mb-1.5">Property Title *</label>
+                            <input required type="text" name="title" value={form.title} onChange={handleChange} placeholder={titlePlaceholder} className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-foreground/70 block mb-1.5">Description *</label>
+                            <textarea required rows={4} name="description" value={form.description} onChange={handleChange} placeholder={descPlaceholder} className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm resize-none" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-5">
                     <div>
-                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">Property Title *</label>
-                        <input required type="text" name="title" value={form.title} onChange={handleChange} placeholder="e.g. Spacious 3BHK with City View" className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
+                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">City *</label>
+                        <input required type="text" name="city" value={form.city} onChange={handleChange} placeholder="Pune" className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">Description *</label>
-                        <textarea required rows={4} name="description" value={form.description} onChange={handleChange} placeholder="Describe the key highlights..." className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm resize-none" />
+                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">Locality / Area *</label>
+                        <input required type="text" name="locality" value={form.locality} onChange={handleChange} placeholder="Baner" className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
+                    </div>
+                    <div className="sm:col-span-2">
+                        <label className="text-sm font-medium text-foreground/70 block mb-1.5">Full Address *</label>
+                        <input required type="text" name="fullAddress" value={form.fullAddress} onChange={handleChange} placeholder="Complete street address..." className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
                     </div>
                 </div>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                    <label className="text-sm font-medium text-foreground/70 block mb-1.5">City *</label>
-                    <input required type="text" name="city" value={form.city} onChange={handleChange} placeholder="Pune" className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
-                </div>
-                <div>
-                    <label className="text-sm font-medium text-foreground/70 block mb-1.5">Locality / Area *</label>
-                    <input required type="text" name="locality" value={form.locality} onChange={handleChange} placeholder="Baner" className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
-                </div>
-                <div className="sm:col-span-2">
-                    <label className="text-sm font-medium text-foreground/70 block mb-1.5">Full Address *</label>
-                    <input required type="text" name="fullAddress" value={form.fullAddress} onChange={handleChange} placeholder="Complete street address..." className="w-full px-4 py-3 rounded-xl bg-card border border-border focus:ring-2 focus:ring-primary/50 text-sm" />
+                    <label className="text-sm font-medium text-foreground/70 block mb-1.5">Photos</label>
+                    <ImageUploader
+                        maxImages={10}
+                        onImagesChange={handleImagesChange}
+                    />
                 </div>
             </div>
-
-            <div>
-                <label className="text-sm font-medium text-foreground/70 block mb-1.5">Photos</label>
-                <ImageUploader
-                    maxImages={10}
-                    onImagesChange={handleImagesChange}
-                />
-            </div>
-        </div>
-    );
+        );
+    };
 
     const renderStep3 = () => (
         <div className="space-y-8 animate-fade-in-up">
@@ -378,31 +390,33 @@ export default function AddPropertyPage() {
             </div>
 
             {/* AMENITIES */}
-            {form.category !== "Land" && (
-                <div className="mt-8 pt-8 border-t border-border">
-                    <h2 className="text-lg font-semibold mb-4">Amenities</h2>
-                    <div className="flex flex-wrap gap-2 text-sm">
-                        {AMENITIES_LIST.map((am) => (
-                            <button
-                                key={am}
-                                type="button"
-                                onClick={() => toggleAmenity(am)}
-                                className={`py-2 px-4 rounded-full border transition-all ${form.amenities.includes(am)
-                                    ? "border-primary bg-primary text-primary-foreground"
-                                    : "border-border bg-card text-foreground/70 hover:border-foreground/30"
-                                    }`}
-                            >
-                                {am}
-                            </button>
-                        ))}
+            {
+                form.category !== "Land" && (
+                    <div className="mt-8 pt-8 border-t border-border">
+                        <h2 className="text-lg font-semibold mb-4">Amenities</h2>
+                        <div className="flex flex-wrap gap-2 text-sm">
+                            {AMENITIES_LIST.map((am) => (
+                                <button
+                                    key={am}
+                                    type="button"
+                                    onClick={() => toggleAmenity(am)}
+                                    className={`py-2 px-4 rounded-full border transition-all ${form.amenities.includes(am)
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border bg-card text-foreground/70 hover:border-foreground/30"
+                                        }`}
+                                >
+                                    {am}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="mt-4">
+                            <label className="text-xs font-medium text-foreground/50 block mb-1.5">Other Amenities (comma separated)</label>
+                            <input type="text" name="otherAmenities" value={form.otherAmenities} onChange={handleChange} placeholder="e.g. CCTV, Automation, Theater" className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:ring-1 focus:ring-primary/50 text-sm" />
+                        </div>
                     </div>
-                    <div className="mt-4">
-                        <label className="text-xs font-medium text-foreground/50 block mb-1.5">Other Amenities (comma separated)</label>
-                        <input type="text" name="otherAmenities" value={form.otherAmenities} onChange={handleChange} placeholder="e.g. CCTV, Automation, Theater" className="w-full px-4 py-2.5 rounded-xl bg-card border border-border focus:ring-1 focus:ring-primary/50 text-sm" />
-                    </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 
     const renderStep4 = () => (
