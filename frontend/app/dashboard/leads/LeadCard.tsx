@@ -135,6 +135,8 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
   // Find next upcoming scheduled visit, otherwise fallback to the most recent one
   const sortedVisits = lead.visits ? [...lead.visits].sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()) : [];
   const upcomingVisit = sortedVisits.find(v => v.status === "Scheduled" && new Date(v.appointment_date) >= new Date()) || sortedVisits[0];
+  const upcomingScheduledVisits = sortedVisits.filter(v => v.status === "Scheduled");
+  const targetVisits = upcomingScheduledVisits.length > 0 ? upcomingScheduledVisits : (sortedVisits.length > 0 ? [sortedVisits[0]] : []);
 
   return (
     <div
@@ -319,24 +321,39 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               </p>
 
               {/* Mobile View (Small Card) */}
-              <div className="md:hidden">
-                {upcomingVisit?.property_id && upcomingVisit?.property_title ? (
-                  <Link
-                    href={`/dashboard/properties/${upcomingVisit.property_id}`}
-                    className="group flex items-start gap-3 bg-secondary/10 hover:bg-secondary/20 p-3 rounded-xl transition-colors border border-transparent hover:border-secondary/30"
-                  >
-                    <div className="h-9 w-9 bg-primary/15 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <Building2 className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold group-hover:text-primary transition-colors truncate">
-                        {upcomingVisit.property_title}
-                      </p>
-                      <span className="text-xs text-primary flex items-center gap-1 mt-1">
-                        View Listing <ExternalLink className="h-3 w-3" />
-                      </span>
-                    </div>
-                  </Link>
+              <div className="md:hidden space-y-2">
+                {targetVisits.length > 0 ? (
+                  targetVisits.map((visit) => (
+                    visit.property_id && visit.property_title ? (
+                      <Link
+                        key={visit.key || visit.property_id}
+                        href={`/dashboard/properties/${visit.property_id}`}
+                        className="group flex items-start gap-3 bg-secondary/10 hover:bg-secondary/20 p-3 rounded-xl transition-colors border border-transparent hover:border-secondary/30"
+                      >
+                        <div className="h-9 w-9 bg-primary/15 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Building2 className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold group-hover:text-primary transition-colors truncate">
+                            {visit.property_title}
+                          </p>
+                          <span className="text-xs text-primary flex items-center gap-1 mt-1 font-semibold">
+                            {formatAppointment(visit.appointment_date)} • View Listing <ExternalLink className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div key={visit.key} className="flex items-center gap-3 bg-muted/40 p-3 rounded-xl border border-dashed border-border/50">
+                        <div className="h-9 w-9 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
+                          <Building2 className="h-4 w-4 text-foreground/30" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground/60">General Site Visit</p>
+                          <span className="text-xs text-foreground/45 mt-0.5 block">{formatAppointment(visit.appointment_date)}</span>
+                        </div>
+                      </div>
+                    )
+                  ))
                 ) : (
                   <div className="flex items-center gap-3 bg-muted/40 p-3 rounded-xl border border-dashed border-border/50">
                     <div className="h-9 w-9 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
@@ -351,61 +368,75 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               </div>
 
               {/* Desktop View (Full Property Card) */}
-              <div className="hidden md:block">
-                {(() => {
-                  const matchedProperty = upcomingVisit?.property_id && properties ? properties.find(p => p.id === upcomingVisit.property_id) : null;
-                  if (!matchedProperty) {
+              <div className="hidden md:block space-y-3">
+                {targetVisits.length > 0 ? (
+                  targetVisits.map((visit) => {
+                    const matchedProperty = visit.property_id && properties ? properties.find(p => p.id === visit.property_id) : null;
+                    if (!matchedProperty) return null;
+
+                    const price = matchedProperty.transactionType === "Sell" ? matchedProperty.expectedPrice : matchedProperty.monthlyRent;
+                    const priceStr = price ? (price >= 10000000 ? `${(price / 10000000).toFixed(2)} Cr` : price >= 100000 ? `${(price / 100000).toFixed(2)} L` : price.toLocaleString()) : "Price on Request";
+
                     return (
-                      <div className="h-[180px] flex flex-col items-center justify-center gap-3 bg-muted/40 rounded-2xl border border-dashed border-border/50">
-                        <div className="h-10 w-10 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
-                          <Building2 className="h-5 w-5 text-foreground/30" />
+                      <Link key={visit.key || visit.property_id} href={`/dashboard/properties/${matchedProperty.id}`} className="group block bg-card border border-border rounded-2xl hover:border-primary/40 hover:shadow-lg transition-all overflow-hidden relative">
+                        <div className="relative h-32 w-full overflow-hidden bg-muted">
+                          <img src={matchedProperty.image || ""} alt={matchedProperty.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/70 text-white backdrop-blur-md shadow-sm border border-white/20">
+                              {matchedProperty.transactionType}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary text-primary-foreground shadow-sm">
+                              {formatAppointment(visit.appointment_date)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium text-foreground/60">Still Searching</p>
-                          <span className="text-xs text-foreground/45 mt-0.5 block">Bot is recommending options</span>
+                        <div className="p-3.5 space-y-3">
+                          <div>
+                            <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{matchedProperty.title}</h3>
+                            <p className="text-[11px] text-foreground/60 flex items-center gap-1 mt-0.5 font-medium truncate">
+                              <MapPin className="h-3 w-3 flex-shrink-0" /> {matchedProperty.locality}, {matchedProperty.city}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-foreground/60 font-medium">
+                            {matchedProperty.beds && <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{matchedProperty.beds} Beds</span>}
+                            {matchedProperty.baths && <span className="flex items-center gap-1 border-l border-border pl-3"><Bath className="h-3.5 w-3.5" />{matchedProperty.baths} Baths</span>}
+                          </div>
+                          <div className="flex items-center justify-between pt-2.5 border-t border-border/60">
+                            <span className="font-extrabold text-primary flex items-center gap-0.5 text-sm">
+                              <IndianRupee className="h-3 w-3 -mr-0.5" />
+                              {priceStr}{matchedProperty.transactionType === "Rent" && " / mo"}
+                            </span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-primary group-hover:bg-primary group-hover:text-white transition-all bg-primary/10 px-2 py-1 rounded-md">
+                              View
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      </Link>
                     );
-                  }
-
-                  const price = matchedProperty.transactionType === "Sell" ? matchedProperty.expectedPrice : matchedProperty.monthlyRent;
-                  const priceStr = price ? (price >= 10000000 ? `${(price / 10000000).toFixed(2)} Cr` : price >= 100000 ? `${(price / 100000).toFixed(2)} L` : price.toLocaleString()) : "Price on Request";
-
-                  return (
-                    <Link href={`/dashboard/properties/${matchedProperty.id}`} className="group block bg-card border border-border rounded-2xl hover:border-primary/40 hover:shadow-lg transition-all overflow-hidden relative">
-                      <div className="relative h-32 w-full overflow-hidden bg-muted">
-                        <img src={matchedProperty.image || ""} alt={matchedProperty.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                        <div className="absolute top-2 right-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-black/70 text-white backdrop-blur-md shadow-sm border border-white/20">
-                            {matchedProperty.transactionType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-3.5 space-y-3">
-                        <div>
-                          <h3 className="font-bold text-sm truncate group-hover:text-primary transition-colors">{matchedProperty.title}</h3>
-                          <p className="text-[11px] text-foreground/60 flex items-center gap-1 mt-0.5 font-medium truncate">
-                            <MapPin className="h-3 w-3 flex-shrink-0" /> {matchedProperty.locality}, {matchedProperty.city}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-foreground/60 font-medium">
-                          {matchedProperty.beds && <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" />{matchedProperty.beds} Beds</span>}
-                          {matchedProperty.baths && <span className="flex items-center gap-1 border-l border-border pl-3"><Bath className="h-3.5 w-3.5" />{matchedProperty.baths} Baths</span>}
-                          {(matchedProperty.builtUpArea || matchedProperty.plotArea) && <span className={`flex items-center gap-1 ${(matchedProperty.beds || matchedProperty.baths) ? "border-l border-border pl-3" : ""}`}>{matchedProperty.builtUpArea || matchedProperty.plotArea} sqft</span>}
-                        </div>
-                        <div className="flex items-center justify-between pt-2.5 border-t border-border/60">
-                          <span className="font-extrabold text-primary flex items-center gap-0.5 text-sm">
-                            <IndianRupee className="h-3 w-3 -mr-0.5" />
-                            {priceStr}{matchedProperty.transactionType === "Rent" && " / mo"}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-primary group-hover:bg-primary group-hover:text-white transition-all bg-primary/10 px-2 py-1 rounded-md">
-                            View
-                          </span>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })()}
+                  })
+                ) : (
+                  <div className="h-[180px] flex flex-col items-center justify-center gap-3 bg-muted/40 rounded-2xl border border-dashed border-border/50">
+                    <div className="h-10 w-10 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-5 w-5 text-foreground/30" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground/60">Still Searching</p>
+                      <span className="text-xs text-foreground/45 mt-0.5 block">Bot is recommending options</span>
+                    </div>
+                  </div>
+                )}
+                {/* General visit booking fallback */}
+                {targetVisits.length > 0 && targetVisits.every(v => !v.property_id) && (
+                  <div className="h-[180px] flex flex-col items-center justify-center gap-3 bg-muted/40 rounded-2xl border border-dashed border-border/50">
+                    <div className="h-10 w-10 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
+                      <Building2 className="h-5 w-5 text-foreground/30" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-medium text-foreground/60">General Site Visit</p>
+                      <span className="text-xs text-foreground/45 mt-0.5 block">Scheduled for {formatAppointment(targetVisits[0].appointment_date)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

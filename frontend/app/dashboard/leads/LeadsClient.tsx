@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Search, Filter, PlusCircle, RefreshCw, Users, SlidersHorizontal } from "lucide-react";
+import { Search, Filter, PlusCircle, RefreshCw, Users, SlidersHorizontal, Building2 } from "lucide-react";
 import { HeaderSetter } from "@/components/layout/HeaderContext";
 import { LeadsStats } from "./LeadsStats";
 import { LeadCard, type Lead } from "./LeadCard";
@@ -25,6 +25,13 @@ const STATUSES = [
   "Negotiating",
   "Closed",
   "Lost (Not Interested)",
+] as const;
+
+const CATEGORIES = [
+  "All",
+  "Residential",
+  "Commercial",
+  "Land",
 ] as const;
 
 // Skeleton card shown while loading
@@ -93,6 +100,7 @@ export function LeadsClient({ initialLeads }: Props) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
+  const [categoryFilter, setCategoryFilter] = useState<string>("All");
   const [refreshing, setRefreshing] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
 
@@ -147,7 +155,8 @@ export function LeadsClient({ initialLeads }: Props) {
       l.customerName.toLowerCase().includes(search.toLowerCase()) ||
       l.customerPhone.includes(search);
     const matchStatus = statusFilter === "All" || l.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchCategory = categoryFilter === "All" || l.category === categoryFilter;
+    return matchSearch && matchStatus && matchCategory;
   });
 
   // ── CRUD handlers ─────────────────────────────────────────────────────────
@@ -292,10 +301,27 @@ export function LeadsClient({ initialLeads }: Props) {
               </button>
             ))}
           </div>
+
+          {/* Category chips — always visible on sm+, toggle on mobile */}
+          <div className={`${filterOpen ? "flex" : "hidden"} sm:flex items-center gap-2 flex-wrap mt-1`}>
+            <Building2 className="h-4 w-4 text-foreground/35 flex-shrink-0" />
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => { setCategoryFilter(cat); setFilterOpen(false); }}
+                className={`px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${categoryFilter === cat
+                  ? "bg-secondary text-secondary-foreground shadow-sm"
+                  : "bg-card border border-border text-foreground/60 hover:border-primary/40"
+                  }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Lead count */}
-        {(search || statusFilter !== "All") && (
+        {(search || statusFilter !== "All" || categoryFilter !== "All") && (
           <p className="text-xs text-foreground/45">
             Showing <strong>{filtered.length}</strong> of {leads.length} leads
           </p>

@@ -1088,13 +1088,12 @@ export async function handleGeminiReply(payload: any) {
           if (isCancel && targetLead) {
             const scheduledVisits = targetLead.visits ? targetLead.visits.filter(v => v.status === 'Scheduled') : [];
             if (scheduledVisits.length > 0) {
-              const activeVisit = scheduledVisits[0];
-              await updateSiteVisitStatus(activeVisit.key!, 'Cancelled');
-              console.log(`📅 [SITE VISIT CANCELLED] Cancelled visit ${activeVisit.key} for Lead ${targetLead.key}`);
+              for (const activeVisit of scheduledVisits) {
+                await updateSiteVisitStatus(activeVisit.key!, 'Cancelled');
+                console.log(`📅 [SITE VISIT CANCELLED] Cancelled visit ${activeVisit.key} for Lead ${targetLead.key}`);
+              }
               
-              // If no other scheduled visits remain, revert status
-              const remainingScheduled = scheduledVisits.length - 1;
-              if (remainingScheduled === 0 && targetLead.status === 'Upcoming Visit') {
+              if (targetLead.status === 'Upcoming Visit') {
                 await updateLead(
                   targetLead.key!,
                   { status: 'Browsing (No Visit)', leadScore: 'Low' },
@@ -1107,40 +1106,68 @@ export async function handleGeminiReply(payload: any) {
           // Handle Site Visit Booking / Rescheduling
           if (structuredRes.appointmentDate && targetLead && !isCancel) {
             // 1. Property Availability Check
-            let isAvailable = true;
-            if (primaryPropertyId) {
-              const propCheck = await pool.query('SELECT status FROM properties WHERE key = $1', [Number(primaryPropertyId)]);
-              const propStatus = propCheck.rows[0]?.status;
-              if (propStatus && propStatus !== 'Available') {
-                console.log(`⚠️ [BOOKING BLOCKED] Property ${primaryPropertyId} status is '${propStatus}'. Booking aborted.`);
-                isAvailable = false;
+            const availablePropertyIds: string[] = [];
+            if (updatedPropertyIds.length > 0) {
+              for (const propId of updatedPropertyIds) {
+                const propCheck = await pool.query('SELECT status FROM properties WHERE key = $1', [Number(propId)]);
+                const propStatus = propCheck.rows[0]?.status;
+                if (propStatus === 'Available') {
+                  availablePropertyIds.push(String(propId));
+                } else {
+                  console.log(`⚠️ [BOOKING BLOCKED] Property ${propId} status is '${propStatus}'. Booking skipped for this property.`);
+                }
               }
             }
 
-            if (isAvailable) {
+            // Only proceed if at least one property is available or no property was target
+            if (updatedPropertyIds.length > 0 && availablePropertyIds.length === 0) {
+              console.log('⚠️ [BOOKING ABORTED] None of the target properties are available.');
+            } else {
               const scheduledVisits = targetLead.visits ? targetLead.visits.filter(v => v.status === 'Scheduled') : [];
               
               if (scheduledVisits.length > 0) {
-                // Reschedule: Move the date on the existing scheduled visit
-                const activeVisit = scheduledVisits[0];
-                await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
-                console.log(`📅 [SITE VISIT RESCHEDULED] Moved visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+                // Reschedule: Move the date on all existing scheduled visits
+                for (const activeVisit of scheduledVisits) {
+                  await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
+                  console.log(`📅 [SITE VISIT RESCHEDULED] Moved visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+                }
               } else {
-                // Book new: Check duplicate first
-                const alreadyExists = await checkSiteVisitExists(
-                  targetLead.key!,
-                  primaryPropertyId || null,
-                  structuredRes.appointmentDate
-                );
+                // Book new visits
+                if (availablePropertyIds.length > 0) {
+                  for (const propId of availablePropertyIds) {
+                    const alreadyExists = await checkSiteVisitExists(
+                      targetLead.key!,
+                      propId,
+                      structuredRes.appointmentDate
+                    );
 
-                if (!alreadyExists) {
-                  await createSiteVisit({
-                    lead_id: targetLead.key!,
-                    property_id: primaryPropertyId || null,
-                    appointment_date: structuredRes.appointmentDate,
-                    status: 'Scheduled'
-                  });
-                  console.log(`📅 [SITE VISIT CREATED] Linked visit for Lead ${targetLead.key} on ${structuredRes.appointmentDate}`);
+                    if (!alreadyExists) {
+                      await createSiteVisit({
+                        lead_id: targetLead.key!,
+                        property_id: propId,
+                        appointment_date: structuredRes.appointmentDate,
+                        status: 'Scheduled'
+                      });
+                      console.log(`📅 [SITE VISIT CREATED] Linked visit for Lead ${targetLead.key} (Property ${propId}) on ${structuredRes.appointmentDate}`);
+                    }
+                  }
+                } else {
+                  // General visit booking
+                  const alreadyExists = await checkSiteVisitExists(
+                    targetLead.key!,
+                    null,
+                    structuredRes.appointmentDate
+                  );
+
+                  if (!alreadyExists) {
+                    await createSiteVisit({
+                      lead_id: targetLead.key!,
+                      property_id: null,
+                      appointment_date: structuredRes.appointmentDate,
+                      status: 'Scheduled'
+                    });
+                    console.log(`📅 [SITE VISIT CREATED] Linked general visit for Lead ${targetLead.key} on ${structuredRes.appointmentDate}`);
+                  }
                 }
               }
 

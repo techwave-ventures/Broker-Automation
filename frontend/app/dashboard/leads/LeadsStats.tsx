@@ -1,11 +1,12 @@
 "use client";
 
 import { Users, TrendingUp, Calendar, Flame } from "lucide-react";
+import type { SiteVisit } from "@/lib/api";
 
 interface Lead {
   status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
-  appointmentDate?: string | null;
+  visits?: SiteVisit[];
 }
 
 interface Props {
@@ -21,8 +22,11 @@ export function LeadsStats({ leads }: Props) {
   // Visits today: appointment date within today
   const todayStr = new Date().toDateString();
   const visitsToday = leads.filter((l) => {
-    if (!l.appointmentDate) return false;
-    return new Date(l.appointmentDate).toDateString() === todayStr;
+    if (!l.visits) return false;
+    return l.visits.some(v => 
+      v.status === "Scheduled" && 
+      new Date(v.appointment_date).toDateString() === todayStr
+    );
   }).length;
 
   const stats = [
