@@ -12,14 +12,14 @@ export default async function LeadsPage() {
     key: String(l.key),
     customerName: l.customerName,
     customerPhone: l.customerPhone,
+    category: l.category || undefined,
     requestedLocality: l.requestedLocality || undefined,
     budget: l.budget || undefined,
     otherReqs: l.otherReqs || undefined,
-    interestedPropertyId: l.interestedPropertyId || undefined,
-    interestedPropertyTitle: l.interestedPropertyTitle || null,
-    appointmentDate: l.appointmentDate || null,
     status: l.status,
     leadScore: l.leadScore,
+    visits: l.visits || [],
+    created_at: l.created_at,
   }));
 
   return <LeadsClient initialLeads={leads} />;

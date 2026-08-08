@@ -5,7 +5,9 @@ import {
   getLead,
   createLead,
   updateLead,
-  deleteLead
+  deleteLead,
+  addSiteVisit,
+  updateSiteVisit
 } from '../controllers/leadsController.js';
 
 export const leadsRouter = Router();
@@ -15,3 +17,6 @@ leadsRouter.get('/:id', requireAuth, getLead);
 leadsRouter.post('/', requireAuth, createLead);
 leadsRouter.put('/:id', requireAuth, updateLead);
 leadsRouter.delete('/:id', requireAuth, deleteLead);
+
+leadsRouter.post('/:id/visits', requireAuth, addSiteVisit);
+leadsRouter.patch('/visits/:visitId', requireAuth, updateSiteVisit);

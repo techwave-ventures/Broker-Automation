@@ -109,7 +109,7 @@ export default async function DashboardPage() {
 
         return {
             name: lead.customerName,
-            query: lead.interestedPropertyTitle || lead.requestedLocality || 'Browsing Properties',
+            query: lead.visits?.[0]?.property_title || lead.requestedLocality || 'Browsing Properties',
             time: displayTime,
             status: statusKey
         };

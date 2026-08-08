@@ -209,17 +209,12 @@ export function LeadsClient({ initialLeads }: Props) {
     ? {
       customerName: editingLead.customerName,
       customerPhone: editingLead.customerPhone,
+      category: editingLead.category || "",
       requestedLocality: editingLead.requestedLocality || "",
       budget: editingLead.budget || "",
       otherReqs: editingLead.otherReqs || "",
-      interestedPropertyId: editingLead.interestedPropertyId || "",
-      appointmentDate: editingLead.appointmentDate
-        ? (() => {
-          const d = new Date(editingLead.appointmentDate);
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        })()
-        : "",
+      interestedPropertyId: "",
+      appointmentDate: "",
       status: editingLead.status,
       leadScore: editingLead.leadScore,
     }

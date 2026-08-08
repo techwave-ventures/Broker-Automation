@@ -18,21 +18,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Property } from "@/lib/properties";
+import type { SiteVisit } from "@/lib/api";
 import { useState, useRef, useEffect } from "react";
 
 export interface Lead {
   key: string;
   customerName: string;
   customerPhone: string;
+  category?: "Residential" | "Commercial" | "Land" | null;
   requestedLocality?: string;
   budget?: string;
   otherReqs?: string;
-  interestedPropertyId?: string;
-  interestedPropertyTitle?: string | null;
-  appointmentDate?: string | null;
   status: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore: "High" | "Medium" | "Low";
   created_at?: string;
+  visits?: SiteVisit[];
 }
 
 interface Props {
@@ -132,6 +132,10 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
     .join("")
     .toUpperCase();
 
+  // Find next upcoming scheduled visit, otherwise fallback to the most recent one
+  const sortedVisits = lead.visits ? [...lead.visits].sort((a, b) => new Date(a.appointment_date).getTime() - new Date(b.appointment_date).getTime()) : [];
+  const upcomingVisit = sortedVisits.find(v => v.status === "Scheduled" && new Date(v.appointment_date) >= new Date()) || sortedVisits[0];
+
   return (
     <div
       className="bg-card border border-border rounded-2xl p-4 sm:p-5 hover:shadow-lg hover:border-primary/30 transition-all animate-fade-in-up flex flex-col gap-3 cursor-pointer"
@@ -156,6 +160,11 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
                 <Phone className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">{lead.customerPhone}</span>
               </p>
+              {lead.category && (
+                <span className="text-[10px] bg-secondary/15 text-secondary-foreground border border-secondary/20 font-bold px-1.5 py-0.5 rounded-md flex-shrink-0">
+                  {lead.category}
+                </span>
+              )}
               <span className={`inline-flex text-[10px] uppercase tracking-wide font-bold px-2 py-0.5 rounded-full border flex-shrink-0 ${scoreStyle[lead.leadScore]}`}>
                 {lead.leadScore}
               </span>
@@ -285,12 +294,12 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               {/* Appointment */}
               <div className="mt-4 md:mt-auto md:border-t-0 pt-4 border-t border-border/50 md:pt-0 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0">
-                  {lead.appointmentDate ? (
+                  {upcomingVisit ? (
                     <>
                       <Clock className="h-4 w-4 text-orange-500 flex-shrink-0" />
                       <div className="min-w-0">
                         <p className="text-[10px] uppercase font-bold text-foreground/40 leading-none mb-0.5">Appt</p>
-                        <p className="text-sm font-bold truncate">{formatAppointment(lead.appointmentDate)}</p>
+                        <p className="text-sm font-bold truncate">{formatAppointment(upcomingVisit.appointment_date)}</p>
                       </div>
                     </>
                   ) : (
@@ -311,9 +320,9 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
 
               {/* Mobile View (Small Card) */}
               <div className="md:hidden">
-                {lead.interestedPropertyId && lead.interestedPropertyTitle ? (
+                {upcomingVisit?.property_id && upcomingVisit?.property_title ? (
                   <Link
-                    href={`/dashboard/properties/${lead.interestedPropertyId}`}
+                    href={`/dashboard/properties/${upcomingVisit.property_id}`}
                     className="group flex items-start gap-3 bg-secondary/10 hover:bg-secondary/20 p-3 rounded-xl transition-colors border border-transparent hover:border-secondary/30"
                   >
                     <div className="h-9 w-9 bg-primary/15 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -321,7 +330,7 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-bold group-hover:text-primary transition-colors truncate">
-                        {lead.interestedPropertyTitle}
+                        {upcomingVisit.property_title}
                       </p>
                       <span className="text-xs text-primary flex items-center gap-1 mt-1">
                         View Listing <ExternalLink className="h-3 w-3" />
@@ -344,7 +353,7 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               {/* Desktop View (Full Property Card) */}
               <div className="hidden md:block">
                 {(() => {
-                  const matchedProperty = lead.interestedPropertyId && properties ? properties.find(p => p.id === lead.interestedPropertyId) : null;
+                  const matchedProperty = upcomingVisit?.property_id && properties ? properties.find(p => p.id === upcomingVisit.property_id) : null;
                   if (!matchedProperty) {
                     return (
                       <div className="h-[180px] flex flex-col items-center justify-center gap-3 bg-muted/40 rounded-2xl border border-dashed border-border/50">
@@ -401,6 +410,36 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
             </div>
           </div>
 
+          {/* Visits History list */}
+          {lead.visits && lead.visits.length > 0 && (
+            <div className="border-t border-border/40 pt-3">
+              <p className="text-xs font-bold text-foreground/45 uppercase tracking-widest mb-2 flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" /> Site Visits History ({lead.visits.length})
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-36 overflow-y-auto">
+                {lead.visits.map((v) => (
+                  <div key={v.key} className="flex items-center justify-between bg-muted/30 p-2.5 rounded-xl border border-border/50 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="min-w-0">
+                        <span className="font-bold block sm:inline">{formatAppointment(v.appointment_date)}</span>
+                        {v.property_title && (
+                          <span className="text-foreground/50 ml-0 sm:ml-1.5 block sm:inline truncate">— {v.property_title}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] uppercase border flex-shrink-0 ${
+                      v.status === "Completed" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
+                      v.status === "Cancelled" ? "bg-red-500/10 text-red-600 border-red-500/20" :
+                      "bg-orange-500/10 text-orange-600 border-orange-500/20"
+                    }`}>
+                      {v.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Footer - Actions & Date Added (Full Width) */}
           <div className="pt-3 border-t border-border/40 flex items-center justify-between gap-3">
             {lead.created_at ? (
@@ -414,7 +453,7 @@ export function LeadCard({ lead, onEdit, onDelete, onStatusChange, animIndex = 0
               <button
                 onClick={() => onEdit(lead)}
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-muted hover:bg-primary/10 hover:text-primary transition-colors flex items-center justify-center text-foreground/50"
-                title="Edit lead"
+                title="Edit lead profile"
               >
                 <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>

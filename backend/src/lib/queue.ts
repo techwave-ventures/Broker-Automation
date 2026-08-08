@@ -14,6 +14,7 @@ import {
 import { sendImageMessage } from './meta.js';
 import { publishToChannel } from './websocket.js';
 import { createLead, getLeadsByUser, updateLead } from '../models/Lead.js';
+import { createSiteVisit, checkSiteVisitExists } from '../models/SiteVisit.js';
 import {
   findOrCreateConversation,
   saveMessage,
@@ -1005,70 +1006,106 @@ export async function handleGeminiReply(payload: any) {
       conversation.ai_state = await updateConversationAIState(conversationId, mergedUpdates);
 
       // ── Auto Lead Promotion & Updating ────────────────────────────
-      if (mergedUpdates.stage === 'SITE_VISIT' || structuredRes.appointmentDate) {
+      const aiState = conversation.ai_state;
+      const budget = (aiState.transaction_type === 'Rent' ? aiState.rent_budget : aiState.buy_budget) || undefined;
+      const updatedPropertyIds = Array.isArray(aiState.interested_property_ids) && aiState.interested_property_ids.length > 0
+        ? aiState.interested_property_ids
+        : (Array.isArray(aiState.recommended_property_ids) ? aiState.recommended_property_ids : []);
+
+      const primaryPropertyId = updatedPropertyIds.length > 0
+        ? String(updatedPropertyIds[0])
+        : undefined;
+
+      const propertyListString = updatedPropertyIds.length > 0
+        ? `Target Property IDs: ${updatedPropertyIds.join(', ')}`
+        : '';
+
+      const otherReqs = [
+        aiState.property_type,
+        aiState.beds ? `${aiState.beds} BHK` : null,
+        aiState.furnishing,
+        propertyListString,
+      ].filter(Boolean).join(', ') || undefined;
+
+      const hasActiveInterest = !!(aiState.locality || budget || primaryPropertyId || aiState.category);
+
+      if (hasActiveInterest || mergedUpdates.stage === 'SITE_VISIT' || structuredRes.appointmentDate) {
         try {
           let leadUserId = userId;
           const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
           if (emailRes.rows[0]?.email) leadUserId = emailRes.rows[0].email;
 
           const existing = await getLeadsByUser(leadUserId);
-          const existingLead = existing.find(l => l.customerPhone === senderNumber);
+          
+          // Match lead by phone and category (only matches active non-closed, non-lost leads)
+          let targetLead = existing.find(l => 
+            l.customerPhone === senderNumber && 
+            l.category === (aiState.category || null) &&
+            l.status !== 'Closed' && 
+            l.status !== 'Lost (Not Interested)'
+          );
 
-          const aiState = conversation.ai_state;
-          const targetPropertyIds = Array.isArray(aiState.interested_property_ids) && aiState.interested_property_ids.length > 0
-            ? aiState.interested_property_ids
-            : (Array.isArray(aiState.recommended_property_ids) ? aiState.recommended_property_ids : []);
-
-          const primaryPropertyId = targetPropertyIds.length > 0
-            ? String(targetPropertyIds[0])
-            : undefined;
-
-          const propertyListString = targetPropertyIds.length > 0
-            ? `Target Property IDs: ${targetPropertyIds.join(', ')}`
-            : '';
-
-          const budget = (aiState.transaction_type === 'Rent' ? aiState.rent_budget : aiState.buy_budget) || undefined;
-          const otherReqs = [
-            aiState.property_type,
-            aiState.beds ? `${aiState.beds} BHK` : null,
-            aiState.furnishing,
-            propertyListString,
-          ].filter(Boolean).join(', ') || undefined;
-
-          if (!existingLead) {
-            const newLead = await createLead(
+          if (!targetLead) {
+            targetLead = await createLead(
               {
                 customerName: conversation.customer_name || senderNumber,
                 customerPhone: senderNumber,
+                category: aiState.category || null,
                 requestedLocality: aiState.locality || undefined,
                 budget: budget,
                 otherReqs: otherReqs,
-                interestedPropertyId: primaryPropertyId,
-                appointmentDate: structuredRes.appointmentDate || null,
-                status: 'Upcoming Visit',
-                leadScore: 'High',
+                status: structuredRes.appointmentDate ? 'Upcoming Visit' : 'Browsing (No Visit)',
+                leadScore: structuredRes.appointmentDate ? 'High' : 'Low',
               },
               leadUserId
             );
 
-            console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${newLead.key} for ${senderNumber}`);
+            console.log(`🏠 [LEAD CREATED] Auto-promoted conversation ${conversationId} → Lead ${targetLead.key} for ${senderNumber}`);
           } else {
-            // Update existing lead with newly captured details and the appointment date
-            if (structuredRes.appointmentDate || budget || aiState.locality || primaryPropertyId) {
-              await updateLead(
-                existingLead.key as string,
+            // Update existing lead if details changed
+            const hasChanged = 
+              (aiState.locality && aiState.locality !== targetLead.requestedLocality) ||
+              (budget && budget !== targetLead.budget) ||
+              (otherReqs && otherReqs !== targetLead.otherReqs);
+
+            if (hasChanged) {
+              targetLead = await updateLead(
+                targetLead.key!,
                 {
-                  requestedLocality: aiState.locality || existingLead.requestedLocality || undefined,
-                  budget: budget || existingLead.budget || undefined,
-                  interestedPropertyId: primaryPropertyId || existingLead.interestedPropertyId || undefined,
-                  appointmentDate: structuredRes.appointmentDate || existingLead.appointmentDate || null,
-                  status: 'Upcoming Visit',
-                  leadScore: 'High',
-                  otherReqs: otherReqs || existingLead.otherReqs || undefined,
+                  requestedLocality: aiState.locality || targetLead.requestedLocality || undefined,
+                  budget: budget || targetLead.budget || undefined,
+                  otherReqs: otherReqs || targetLead.otherReqs || undefined,
                 },
                 leadUserId
-              );
-              console.log(`🏠 [LEAD UPDATED] Enhanced existing Lead ${existingLead.key} for ${senderNumber} with new AI state (Appt: ${structuredRes.appointmentDate || existingLead.appointmentDate}).`);
+              ) || targetLead;
+              console.log(`🏠 [LEAD UPDATED] Enhanced existing Lead ${targetLead.key} for ${senderNumber} with new AI state.`);
+            }
+          }
+
+          // Handle Site Visit Booking
+          if (structuredRes.appointmentDate && targetLead) {
+            const alreadyExists = await checkSiteVisitExists(
+              targetLead.key!,
+              primaryPropertyId || null,
+              structuredRes.appointmentDate
+            );
+
+            if (!alreadyExists) {
+              await createSiteVisit({
+                lead_id: targetLead.key!,
+                property_id: primaryPropertyId || null,
+                appointment_date: structuredRes.appointmentDate,
+                status: 'Scheduled'
+              });
+              console.log(`📅 [SITE VISIT CREATED] Linked visit for Lead ${targetLead.key} on ${structuredRes.appointmentDate}`);
+              
+              if (targetLead.status !== 'Upcoming Visit') {
+                await updateLead(
+                  targetLead.key!,
+                  { status: 'Upcoming Visit', leadScore: 'High' },
+                  leadUserId
+                );
+              }
             }
           }
         } catch (leadErr) {

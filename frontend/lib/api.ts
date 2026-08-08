@@ -183,9 +183,22 @@ export async function fetchTemplates(wabaId: string) {
 
 // ─── Client-side Leads CRUD (used from "use client" components) ──────────────
 
+export interface SiteVisit {
+  key?: string;
+  lead_id: string;
+  property_id?: string | null;
+  property_title?: string | null;
+  appointment_date: string;
+  status: "Scheduled" | "Completed" | "Cancelled";
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface LeadPayload {
+  key?: string;
   customerName: string;
   customerPhone: string;
+  category?: "Residential" | "Commercial" | "Land" | null;
   requestedLocality?: string;
   budget?: string;
   otherReqs?: string;
@@ -193,6 +206,7 @@ export interface LeadPayload {
   appointmentDate?: string | null;
   status?: "Upcoming Visit" | "Visited" | "Negotiating" | "Browsing (No Visit)" | "Closed" | "Lost (Not Interested)";
   leadScore?: "High" | "Medium" | "Low";
+  visits?: SiteVisit[];
 }
 
 export async function createLeadApi(data: LeadPayload) {
@@ -226,6 +240,32 @@ export async function deleteLeadApi(id: string) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err?.error || "Failed to delete lead");
+  }
+  return res.json();
+}
+
+export async function addSiteVisitApi(leadId: string, data: { propertyId?: string | null; appointmentDate: string; status?: string }) {
+  const res = await fetch(`/api/leads/${leadId}/visits`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to add site visit");
+  }
+  return res.json();
+}
+
+export async function updateSiteVisitApi(visitId: string, data: { status: "Scheduled" | "Completed" | "Cancelled" }) {
+  const res = await fetch(`/api/leads/visits/${visitId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || "Failed to update site visit");
   }
   return res.json();
 }

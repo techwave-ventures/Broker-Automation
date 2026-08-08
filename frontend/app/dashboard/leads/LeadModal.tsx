@@ -7,6 +7,7 @@ import type { LeadPayload, PropertyOption } from "@/lib/api";
 export interface LeadFormData {
   customerName: string;
   customerPhone: string;
+  category: "Residential" | "Commercial" | "Land" | "";
   requestedLocality: string;
   budget: string;
   otherReqs: string;
@@ -39,6 +40,7 @@ const SCORES: LeadFormData["leadScore"][] = ["High", "Medium", "Low"];
 const empty: LeadFormData = {
   customerName: "",
   customerPhone: "",
+  category: "",
   requestedLocality: "",
   budget: "",
   otherReqs: "",
@@ -85,11 +87,12 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
       const payload: LeadPayload = {
         customerName: form.customerName.trim(),
         customerPhone: form.customerPhone.trim(),
+        category: form.category || null,
         requestedLocality: form.requestedLocality,
         budget: form.budget,
         otherReqs: form.otherReqs,
-        interestedPropertyId: form.interestedPropertyId,
-        appointmentDate: form.appointmentDate,
+        interestedPropertyId: form.interestedPropertyId || undefined,
+        appointmentDate: form.appointmentDate || null,
         status: form.status,
         leadScore: form.leadScore,
       };
@@ -118,7 +121,7 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
         <div className="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex-shrink-0">
           <div className="min-w-0">
             <h2 className="text-base sm:text-lg font-bold">
-              {mode === "create" ? "Add New Lead" : "Edit Lead"}
+              {mode === "create" ? "Add New Lead" : "Edit Lead Profile"}
             </h2>
             <p className="text-xs text-foreground/50 mt-0.5 truncate">
               {mode === "create"
@@ -165,6 +168,26 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
             </div>
           </div>
 
+          {/* Category selection */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide">
+              Property Category
+            </label>
+            <div className="relative">
+              <select
+                value={form.category}
+                onChange={(e) => set("category", e.target.value as any)}
+                className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none"
+              >
+                <option value="">None / Unspecified</option>
+                <option value="Residential">Residential</option>
+                <option value="Commercial">Commercial</option>
+                <option value="Land">Land</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+            </div>
+          </div>
+
           {/* Locality + Budget */}
           <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1.5">
@@ -207,113 +230,120 @@ export function LeadModal({ open, onClose, onSubmit, initial, properties, mode }
             />
           </div>
 
-          {/* Interested Property */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
-              <Building2 className="h-3 w-3" /> Interested Property
-            </label>
-            <div className="relative">
-              <select
-                value={form.interestedPropertyId}
-                onChange={(e) => set("interestedPropertyId", e.target.value)}
-                className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none"
-              >
-                <option value="">None — Still Browsing</option>
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title} — {p.locality}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
-            </div>
-          </div>
+          {/* Initial Site Visit Booking (Only shown on Create mode) */}
+          {mode === "create" && (
+            <>
+              <div className="h-px bg-border my-6" />
+              <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider mb-2">Initial Site Visit (Optional)</p>
+              
+              {/* Interested Property */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
+                  <Building2 className="h-3 w-3" /> Interested Property
+                </label>
+                <div className="relative">
+                  <select
+                    value={form.interestedPropertyId}
+                    onChange={(e) => set("interestedPropertyId", e.target.value)}
+                    className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none"
+                  >
+                    <option value="">None — Still Browsing</option>
+                    {properties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} — {p.locality}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/40" />
+                </div>
+              </div>
 
-          {/* Appointment Date */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
-              <Calendar className="h-3 w-3" /> Appointment Date &amp; Time
-            </label>
-            {(() => {
-              let dStr = "";
-              let hStr = "12";
-              let mStr = "00";
-              let ap = "PM";
+              {/* Appointment Date */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground/60 uppercase tracking-wide flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" /> Appointment Date &amp; Time
+                </label>
+                {(() => {
+                  let dStr = "";
+                  let hStr = "12";
+                  let mStr = "00";
+                  let ap = "PM";
 
-              if (form.appointmentDate) {
-                const dt = new Date(form.appointmentDate);
-                if (!isNaN(dt.getTime())) {
-                  // Keep as local date string to match user's local timezone picking
-                  dStr = form.appointmentDate.split("T")[0];
-                  if (!dStr.includes("-")) {
-                    dStr = dt.toISOString().split("T")[0];
+                  if (form.appointmentDate) {
+                    const dt = new Date(form.appointmentDate);
+                    if (!isNaN(dt.getTime())) {
+                      dStr = form.appointmentDate.split("T")[0];
+                      if (!dStr.includes("-")) {
+                        dStr = dt.toISOString().split("T")[0];
+                      }
+
+                      const h = dt.getHours();
+                      const m = dt.getMinutes();
+                      mStr = m === 0 ? "00" : (m < 15 ? "00" : (m < 30 ? "15" : (m < 45 ? "30" : "45"))); 
+                      ap = h >= 12 ? "PM" : "AM";
+                      const h12 = h % 12 || 12;
+                      hStr = h12.toString().padStart(2, "0");
+                    }
                   }
 
-                  const h = dt.getHours();
-                  const m = dt.getMinutes();
-                  mStr = m === 0 ? "00" : (m < 15 ? "00" : (m < 30 ? "15" : (m < 45 ? "30" : "45"))); // rough align to options
-                  ap = h >= 12 ? "PM" : "AM";
-                  const h12 = h % 12 || 12;
-                  hStr = h12.toString().padStart(2, "0");
-                }
-              }
+                  const handleChange = (part: "date" | "hour" | "minute" | "ampm", val: string) => {
+                    let newD = part === "date" ? val : dStr;
+                    if (!newD) {
+                      set("appointmentDate", "");
+                      return;
+                    }
 
-              const handleChange = (part: "date" | "hour" | "minute" | "ampm", val: string) => {
-                let newD = part === "date" ? val : dStr;
-                if (!newD) {
-                  set("appointmentDate", "");
-                  return;
-                }
+                    let newH = part === "hour" ? val : hStr;
+                    let newM = part === "minute" ? val : mStr;
+                    let newAp = part === "ampm" ? val : ap;
 
-                let newH = part === "hour" ? val : hStr;
-                let newM = part === "minute" ? val : mStr;
-                let newAp = part === "ampm" ? val : ap;
+                    const dateObj = new Date(newD);
+                    if (isNaN(dateObj.getTime())) return;
 
-                const dateObj = new Date(newD);
-                if (isNaN(dateObj.getTime())) return;
+                    let h24 = parseInt(newH, 10);
+                    if (newAp === "PM" && h24 !== 12) h24 += 12;
+                    if (newAp === "AM" && h24 === 12) h24 = 0;
 
-                let h24 = parseInt(newH, 10);
-                if (newAp === "PM" && h24 !== 12) h24 += 12;
-                if (newAp === "AM" && h24 === 12) h24 = 0;
+                    dateObj.setHours(h24, parseInt(newM, 10), 0, 0);
+                    set("appointmentDate", dateObj.toISOString());
+                  };
 
-                dateObj.setHours(h24, parseInt(newM, 10), 0, 0);
-                set("appointmentDate", dateObj.toISOString());
-              };
-
-              return (
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="date"
-                    value={dStr}
-                    onChange={(e) => handleChange("date", e.target.value)}
-                    className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                  />
-                  <div className="flex gap-1.5 flex-1 items-center">
-                    <div className="relative flex-1 min-w-[70px]">
-                      <select value={hStr} onChange={(e) => handleChange("hour", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
-                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
+                  return (
+                    <div className="flex flex-col gap-3">
+                      <input
+                        type="date"
+                        value={dStr}
+                        onChange={(e) => handleChange("date", e.target.value)}
+                        className="flex-1 px-3 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                      />
+                      <div className="flex gap-1.5 flex-1 items-center">
+                        <div className="relative flex-1 min-w-[70px]">
+                          <select value={hStr} onChange={(e) => handleChange("hour", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
+                            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
+                        </div>
+                        <span className="font-black text-foreground/40">:</span>
+                        <div className="relative flex-1 min-w-[70px]">
+                          <select value={mStr} onChange={(e) => handleChange("minute", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
+                            {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
+                        </div>
+                        <div className="relative flex-1 min-w-[70px]">
+                          <select value={ap} onChange={(e) => handleChange("ampm", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-bold">
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                          </select>
+                          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/60" />
+                        </div>
+                      </div>
                     </div>
-                    <span className="font-black text-foreground/40">:</span>
-                    <div className="relative flex-1 min-w-[70px]">
-                      <select value={mStr} onChange={(e) => handleChange("minute", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-background border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-medium">
-                        {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/50" />
-                    </div>
-                    <div className="relative flex-1 min-w-[70px]">
-                      <select value={ap} onChange={(e) => handleChange("ampm", e.target.value)} className="w-full pl-3 pr-7 py-2.5 rounded-xl bg-muted border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm appearance-none font-bold">
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-foreground/60" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+                  );
+                })()}
+              </div>
+            </>
+          )}
 
           {/* Status + Lead Score */}
           <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:gap-4">
