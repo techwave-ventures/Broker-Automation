@@ -111,7 +111,7 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
     "move_in_date": string | null,
     "purpose": string | null
   },
-  "updated_rolling_summary": string // Create/update the rolling summary of the conversation incorporating this new exchange. Keep it under 2 sentences.
+  "updated_rolling_summary": string // Create/update the rolling summary of the conversation incorporating this new exchange. Keep it under 2 sentences. Prefix the summary with active slot anchors in brackets if qualified (e.g. '[Locality: Baner | Category: Residential | Beds: 2] User wants to ...').
 }
 
 ### Field Explanations for Output:

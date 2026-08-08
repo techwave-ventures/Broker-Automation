@@ -31,11 +31,17 @@ export async function postWebhook(req: Request, res: Response) {
         ? req.body
         : JSON.stringify(req.body ?? {});
 
+    const isProd = env.NODE_ENV === 'production';
+    if (isProd && !env.FB_APP_SECRET) {
+      console.error(`❌ [WEBHOOK ERROR] FB_APP_SECRET is not configured in production/staging environment! Rejecting request.`);
+      return res.status(401).json({ error: 'Unauthorized: Missing webhook app secret configuration' });
+    }
+
     if (env.FB_APP_SECRET) {
       const signature = req.header('x-hub-signature-256');
       if (!signature) {
         console.warn(`⚠️ [WEBHOOK REJECTED] Missing x-hub-signature-256 header`);
-        return res.json({ status: 'ok' });
+        return res.status(401).json({ error: 'Unauthorized: Missing signature' });
       }
 
       const expected = `sha256=${crypto.createHmac('sha256', env.FB_APP_SECRET).update(rawBody).digest('hex')}`;
@@ -44,7 +50,7 @@ export async function postWebhook(req: Request, res: Response) {
 
       if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
         console.warn(`⚠️ [WEBHOOK REJECTED] Signature mismatch`);
-        return res.json({ status: 'ok' });
+        return res.status(401).json({ error: 'Unauthorized: Signature mismatch' });
       }
     }
 

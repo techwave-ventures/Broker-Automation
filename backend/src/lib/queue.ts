@@ -32,10 +32,9 @@ import { formatOutboundMessages, OutboundMessage } from '../services/whatsappFor
 export const whatsappQueue = new Queue('whatsapp-queue', {
   connection: redisConnection,
   defaultJobOptions: {
-    attempts: 3,
+    attempts: 5,
     backoff: {
-      type: 'exponential',
-      delay: 5000,
+      type: 'custom',
     },
   },
 });
@@ -45,8 +44,7 @@ export const geminiQueue = new Queue('gemini-queue', {
   defaultJobOptions: {
     attempts: 5,
     backoff: {
-      type: 'exponential',
-      delay: 10000,
+      type: 'custom',
     },
   },
 });
@@ -547,11 +545,17 @@ export async function handleTokenExchangeFollowup(payload: any) {
 
 export async function handleWebhookProcess(payload: any) {
   const data = payload;
-  const lockKey = `lock:webhook:${data.customerPhone || data.from}`;
-  const acquired = await redisConnection.set(lockKey, 'locked', 'PX', 10000, 'NX');
-  if (!acquired) {
-    console.warn(`⚠️ [WEBHOOK CONCURRENCY] Skipping duplicate webhook retry for phone: ${data.customerPhone || data.from}`);
-    return { status: 'skipped_duplicate' };
+  const message = data.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+  const senderNumber = message?.from || data.entry?.[0]?.changes?.[0]?.value?.statuses?.[0]?.recipient_id;
+  
+  let lockKey = '';
+  if (senderNumber) {
+    lockKey = `lock:webhook:${senderNumber}`;
+    const acquired = await redisConnection.set(lockKey, 'locked', 'PX', 8000, 'NX');
+    if (!acquired) {
+      console.warn(`⚠️ [WEBHOOK CONCURRENCY] Lock busy for phone: ${senderNumber}. Delaying job execution.`);
+      throw new Error(`Lock busy: conversation for ${senderNumber} is being processed.`);
+    }
   }
 
   try {

@@ -49,6 +49,11 @@ async function startWorker() {
       settings: {
         backoffStrategies: {
           custom(attemptsMade: number, err: any) {
+            // Handle concurrency lock busy retries quickly (in 2 seconds)
+            if (err.message?.includes('Lock busy')) {
+              console.log(`⚠️ [BULLMQ BACKOFF] Lock busy. Retrying job in 2000ms...`);
+              return 2000;
+            }
             // If it is a rate limit error (status 429), respect retryAfterMs or backoff
             if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
               const delay = err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
@@ -91,6 +96,10 @@ async function startWorker() {
       settings: {
         backoffStrategies: {
           custom(attemptsMade: number, err: any) {
+            if (err.message?.includes('Lock busy')) {
+              console.log(`⚠️ [BULLMQ GEMINI BACKOFF] Lock busy. Retrying Gemini job in 2000ms...`);
+              return 2000;
+            }
             if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
               const delay = err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
               console.warn(`⚠️ [BULLMQ GEMINI BACKOFF] Rate limited (Attempt ${attemptsMade}). Retrying in ${delay}ms. Error: ${err.message}`);
