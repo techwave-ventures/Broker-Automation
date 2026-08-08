@@ -71,7 +71,7 @@ export interface GeminiStructuredResponse {
   stage: 'GREETING' | 'COLLECT_INFO' | 'SEARCHING' | 'RECOMMENDING' | 'SITE_VISIT' | 'FOLLOW_UP' | 'COMPLETED';
   /** ISO 8601 datetime string for the agreed site-visit appointment, or null if not yet scheduled. */
   appointmentDate: string | null;
-  intent?: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';
+  intent?: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'CANCEL_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';
   slots?: {
     transaction_type?: 'Sell' | 'Rent' | null;
     locality?: string | null;

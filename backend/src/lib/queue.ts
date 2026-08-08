@@ -14,7 +14,7 @@ import {
 import { sendImageMessage } from './meta.js';
 import { publishToChannel } from './websocket.js';
 import { createLead, getLeadsByUser, updateLead } from '../models/Lead.js';
-import { createSiteVisit, checkSiteVisitExists } from '../models/SiteVisit.js';
+import { createSiteVisit, checkSiteVisitExists, updateSiteVisitDate, updateSiteVisitStatus } from '../models/SiteVisit.js';
 import {
   findOrCreateConversation,
   saveMessage,
@@ -1029,7 +1029,9 @@ export async function handleGeminiReply(payload: any) {
 
       const hasActiveInterest = !!(aiState.locality || budget || primaryPropertyId || aiState.category);
 
-      if (hasActiveInterest || mergedUpdates.stage === 'SITE_VISIT' || structuredRes.appointmentDate) {
+      const isCancel = structuredRes.intent === 'CANCEL_VISIT' || (typeof intentResult !== 'undefined' && intentResult?.intent === 'CANCEL_VISIT');
+
+      if (hasActiveInterest || mergedUpdates.stage === 'SITE_VISIT' || structuredRes.appointmentDate || isCancel) {
         try {
           let leadUserId = userId;
           const emailRes = await pool.query('SELECT email FROM users WHERE user_id = $1 LIMIT 1', [userId]);
@@ -1054,8 +1056,8 @@ export async function handleGeminiReply(payload: any) {
                 requestedLocality: aiState.locality || undefined,
                 budget: budget,
                 otherReqs: otherReqs,
-                status: structuredRes.appointmentDate ? 'Upcoming Visit' : 'Browsing (No Visit)',
-                leadScore: structuredRes.appointmentDate ? 'High' : 'Low',
+                status: (structuredRes.appointmentDate && !isCancel) ? 'Upcoming Visit' : 'Browsing (No Visit)',
+                leadScore: (structuredRes.appointmentDate && !isCancel) ? 'High' : 'Low',
               },
               leadUserId
             );
@@ -1082,24 +1084,78 @@ export async function handleGeminiReply(payload: any) {
             }
           }
 
-          // Handle Site Visit Booking
-          if (structuredRes.appointmentDate && targetLead) {
-            const alreadyExists = await checkSiteVisitExists(
-              targetLead.key!,
-              primaryPropertyId || null,
-              structuredRes.appointmentDate
-            );
-
-            if (!alreadyExists) {
-              await createSiteVisit({
-                lead_id: targetLead.key!,
-                property_id: primaryPropertyId || null,
-                appointment_date: structuredRes.appointmentDate,
-                status: 'Scheduled'
-              });
-              console.log(`📅 [SITE VISIT CREATED] Linked visit for Lead ${targetLead.key} on ${structuredRes.appointmentDate}`);
+          // Handle Cancel Visit
+          if (isCancel && targetLead) {
+            const scheduledVisits = targetLead.visits ? targetLead.visits.filter(v => v.status === 'Scheduled') : [];
+            if (scheduledVisits.length > 0) {
+              const activeVisit = scheduledVisits[0];
+              await updateSiteVisitStatus(activeVisit.key!, 'Cancelled');
+              console.log(`📅 [SITE VISIT CANCELLED] Cancelled visit ${activeVisit.key} for Lead ${targetLead.key}`);
               
-              if (targetLead.status !== 'Upcoming Visit') {
+              // If no other scheduled visits remain, revert status
+              const remainingScheduled = scheduledVisits.length - 1;
+              if (remainingScheduled === 0 && targetLead.status === 'Upcoming Visit') {
+                await updateLead(
+                  targetLead.key!,
+                  { status: 'Browsing (No Visit)', leadScore: 'Low' },
+                  leadUserId
+                );
+              }
+            }
+          }
+
+          // Handle Site Visit Booking / Rescheduling
+          if (structuredRes.appointmentDate && targetLead && !isCancel) {
+            // 1. Property Availability Check
+            let isAvailable = true;
+            if (primaryPropertyId) {
+              const propCheck = await pool.query('SELECT status FROM properties WHERE key = $1', [Number(primaryPropertyId)]);
+              const propStatus = propCheck.rows[0]?.status;
+              if (propStatus && propStatus !== 'Available') {
+                console.log(`⚠️ [BOOKING BLOCKED] Property ${primaryPropertyId} status is '${propStatus}'. Booking aborted.`);
+                isAvailable = false;
+              }
+            }
+
+            if (isAvailable) {
+              const scheduledVisits = targetLead.visits ? targetLead.visits.filter(v => v.status === 'Scheduled') : [];
+              
+              if (scheduledVisits.length > 0) {
+                // Reschedule: Move the date on the existing scheduled visit
+                const activeVisit = scheduledVisits[0];
+                await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
+                console.log(`📅 [SITE VISIT RESCHEDULED] Moved visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+              } else {
+                // Book new: Check duplicate first
+                const alreadyExists = await checkSiteVisitExists(
+                  targetLead.key!,
+                  primaryPropertyId || null,
+                  structuredRes.appointmentDate
+                );
+
+                if (!alreadyExists) {
+                  await createSiteVisit({
+                    lead_id: targetLead.key!,
+                    property_id: primaryPropertyId || null,
+                    appointment_date: structuredRes.appointmentDate,
+                    status: 'Scheduled'
+                  });
+                  console.log(`📅 [SITE VISIT CREATED] Linked visit for Lead ${targetLead.key} on ${structuredRes.appointmentDate}`);
+                }
+              }
+
+              // Status transition guard (prevent downgrading higher stages)
+              const statusRanks: Record<string, number> = {
+                'Browsing (No Visit)': 1,
+                'Upcoming Visit': 2,
+                'Visited': 3,
+                'Negotiating': 4,
+                'Closed': 5,
+                'Lost (Not Interested)': 5
+              };
+
+              const currentRank = statusRanks[targetLead.status] || 1;
+              if (currentRank < 2) {
                 await updateLead(
                   targetLead.key!,
                   { status: 'Upcoming Visit', leadScore: 'High' },

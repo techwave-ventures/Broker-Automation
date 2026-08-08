@@ -25,10 +25,11 @@ export function buildSystemInstruction(
     rolling_summary: state.rolling_summary
   }, null, 2);
 
-  // Compute current date and time specifically in Pune local timezone (IST, UTC+5:30)
-  const nowIST = new Date(new Date().getTime() + (5.5 * 60 * 60 * 1000));
-  const localDateStr = nowIST.toDateString();
-  const localISOStr = nowIST.toISOString();
+  // Compute current date and time specifically in system local timezone
+  const now = new Date();
+  const localDateStr = now.toString(); // includes timezone offset, e.g. "Sat Aug 08 2026 11:09:05 GMT+0530 (India Standard Time)"
+  const localISOStr = now.toISOString();
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return `${instructions}
 
@@ -93,8 +94,8 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
   "interested_property_ids": [number], // Array of database key IDs of properties the user explicitly wants to visit (e.g., if they say "I want to visit the second one", extract the corresponding key ID). Return empty array [] if not specified.
   "missing_fields": [string], // List of critical fields that are still needed (choose from: 'transaction_type', 'locality', 'rent_budget', 'buy_budget', 'beds', 'property_type')
   "stage": "GREETING" | "COLLECT_INFO" | "SEARCHING" | "RECOMMENDING" | "SITE_VISIT" | "FOLLOW_UP" | "COMPLETED", // Propose the next stage of the conversation
-  "appointmentDate": string | null, // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${localDateStr}.
-  "intent": "GREETING" | "BUY_OR_RENT" | "PROPERTY_DETAILS" | "SITE_VISIT" | "NEGOTIATION" | "LOAN_QUERY" | "CHANGE_PREFERENCES" | "HUMAN_TAKEOVER" | "UNKNOWN", // Intent of the user's last message
+  "appointmentDate": string | null, // ISO 8601 formatted datetime string (e.g., '2026-07-25T11:30:00.000Z') if a visit is agreed or proposed with a specific date and time, otherwise null. Use local time anchor relative to today: ${localDateStr} (Timezone: ${timeZone}).
+  "intent": "GREETING" | "BUY_OR_RENT" | "PROPERTY_DETAILS" | "SITE_VISIT" | "CANCEL_VISIT" | "NEGOTIATION" | "LOAN_QUERY" | "CHANGE_PREFERENCES" | "HUMAN_TAKEOVER" | "UNKNOWN", // Intent of the user's last message
   "slots": { // Preferences/requirements extracted strictly from the user's last message (not historical ones unless they re-confirm them)
     "transaction_type": "Sell" | "Rent" | null,
     "locality": string | null,
@@ -129,8 +130,8 @@ Do not wrap your output in markdown code blocks like \`\`\`json. Return a raw JS
     *   **SITE_VISIT**: Pitching or booking a visit.
     *   **FOLLOW_UP**: Following up on viewings or offers.
     *   **COMPLETED**: Lead closed or transaction finished.
-*   **appointmentDate**: The confirmed or proposed date/time for a site viewing. Keep it null until the client proposes or confirms a date/time. Parse expressions like "tomorrow at 4pm" relative to current Pune local IST time: ${localISOStr}.
-*   **intent**: Set to the intent of the last message sent by the user.
+*   **appointmentDate**: The confirmed or proposed date/time for a site viewing. Keep it null until the client proposes or confirms a date/time. Parse expressions like "tomorrow at 4pm" relative to current local system time: ${localDateStr} (Timezone: ${timeZone}).
+*   **intent**: Set to the intent of the last message sent by the user (include CANCEL_VISIT if they express a desire to cancel or reschedule to a different date).
 *   **slots**: Extract any newly mentioned preferences (locality, budget, beds, transaction_type, etc.) from the user's last message. Set to null if not mentioned or not clear.
 *   **updated_rolling_summary**: Update the existing rolling_summary (from context above) by adding the context of this new exchange.
 `;

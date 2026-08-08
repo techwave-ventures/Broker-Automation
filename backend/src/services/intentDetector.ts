@@ -1,7 +1,7 @@
 import { getVertexAI } from './gemini.js';
 
 export interface IntentResult {
-  intent: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';
+  intent: 'GREETING' | 'BUY_OR_RENT' | 'PROPERTY_DETAILS' | 'SITE_VISIT' | 'CANCEL_VISIT' | 'NEGOTIATION' | 'LOAN_QUERY' | 'CHANGE_PREFERENCES' | 'HUMAN_TAKEOVER' | 'UNKNOWN';
   slots: {
     transaction_type?: 'Sell' | 'Rent' | null;
     locality?: string | null;
@@ -41,8 +41,18 @@ export function detectIntentDeterministically(text: string): IntentResult | null
     };
   }
 
-  // 3. Site Visit Scheduling
-  const visitRegex = /\b(site\s*visit|schedule\s*visit|visit\s*property|book\s*visit|want\s*to\s*see|view\s*property|schedule\s*viewing|book\s*viewing|visit\s*tomorrow|visit\s*today|site\s*viewing)\b/i;
+  // 3. Site Visit Scheduling / Rescheduling
+  // Note: we check reschedule/change dates here as SITE_VISIT
+  const visitRegex = /\b(site\s*visit|schedule\s*visit|visit\s*property|book\s*visit|want\s*to\s*see|view\s*property|schedule\s*viewing|book\s*viewing|visit\s*tomorrow|visit\s*today|site\s*viewing|reschedule|change\s*date|change\s*time|move\s*visit)\b/i;
+  const cancelVisitRegex = /\b(cancel\s*visit|cancel\s*appointment|cancel\s*viewing|dont\s*want\s*to\s*visit|delete\s*visit|remove\s*visit|cancel\s*booking)\b/i;
+
+  if (cancelVisitRegex.test(normalized)) {
+    return {
+      intent: 'CANCEL_VISIT',
+      slots: {}
+    };
+  }
+
   if (visitRegex.test(normalized)) {
     return {
       intent: 'SITE_VISIT',

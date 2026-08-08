@@ -76,6 +76,21 @@ export async function updateSiteVisitStatus(
   return mapRowToSiteVisit(result.rows[0]);
 }
 
+export async function updateSiteVisitDate(
+  key: string | number,
+  date: string
+): Promise<SiteVisit | null> {
+  const query = `
+    UPDATE site_visits
+    SET appointment_date = $1, updated_at = CURRENT_TIMESTAMP
+    WHERE key = $2
+    RETURNING *
+  `;
+  const result = await pool.query(query, [new Date(date), Number(key)]);
+  if (result.rows.length === 0) return null;
+  return mapRowToSiteVisit(result.rows[0]);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapRowToSiteVisit(row: any): SiteVisit {
   return {
