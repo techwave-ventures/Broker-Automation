@@ -1158,10 +1158,30 @@ export async function handleGeminiReply(payload: any) {
               if (scheduledVisits.length > 0) {
                 // If the user specified target properties, only reschedule matching active visits
                 let matchedVisitsToReschedule: any[] = [];
-                if (availablePropertyIds.length > 0) {
+                
+                // 1. Check if the LLM explicitly returned interested property IDs in this response
+                const explicitPropIds = Array.isArray(structuredRes.interested_property_ids)
+                  ? structuredRes.interested_property_ids.map(String)
+                  : [];
+
+                if (explicitPropIds.length > 0) {
                   matchedVisitsToReschedule = scheduledVisits.filter(v => 
-                    v.property_id && availablePropertyIds.includes(String(v.property_id))
+                    v.property_id && explicitPropIds.includes(String(v.property_id))
                   );
+                }
+
+                // 2. Fallback: filter by locality slot if no property IDs matched
+                const targetLocality = structuredRes.slots?.locality;
+                if (matchedVisitsToReschedule.length === 0 && targetLocality) {
+                  for (const activeVisit of scheduledVisits) {
+                    if (activeVisit.property_id) {
+                      const propRes = await pool.query('SELECT locality FROM properties WHERE key = $1', [Number(activeVisit.property_id)]);
+                      const propLocality = propRes.rows[0]?.locality;
+                      if (propLocality && propLocality.toLowerCase().includes(targetLocality.toLowerCase())) {
+                        matchedVisitsToReschedule.push(activeVisit);
+                      }
+                    }
+                  }
                 }
 
                 if (matchedVisitsToReschedule.length > 0) {
