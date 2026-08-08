@@ -37,6 +37,19 @@ export const whatsappQueue = new Queue('whatsapp-queue', {
       type: 'custom',
     },
   },
+  settings: {
+    backoffStrategies: {
+      custom(attemptsMade: number, type: string, err: any) {
+        if (err.message?.includes('Lock busy')) {
+          return 2000;
+        }
+        if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
+          return err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
+        }
+        return Math.min(2 ** attemptsMade * 5000, 60000);
+      }
+    }
+  } as any
 });
 
 export const geminiQueue = new Queue('gemini-queue', {
@@ -47,6 +60,19 @@ export const geminiQueue = new Queue('gemini-queue', {
       type: 'custom',
     },
   },
+  settings: {
+    backoffStrategies: {
+      custom(attemptsMade: number, type: string, err: any) {
+        if (err.message?.includes('Lock busy')) {
+          return 2000;
+        }
+        if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate Limit')) {
+          return err.retryAfterMs || Math.min(2 ** attemptsMade * 10000, 120000);
+        }
+        return Math.min(2 ** attemptsMade * 5000, 60000);
+      }
+    }
+  } as any
 });
 
 export async function enqueueGeminiReplyJob(payload: any) {
