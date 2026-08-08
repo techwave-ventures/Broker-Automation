@@ -1126,10 +1126,67 @@ export async function handleGeminiReply(payload: any) {
               const scheduledVisits = targetLead.visits ? targetLead.visits.filter(v => v.status === 'Scheduled') : [];
               
               if (scheduledVisits.length > 0) {
-                // Reschedule: Move the date on all existing scheduled visits
-                for (const activeVisit of scheduledVisits) {
-                  await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
-                  console.log(`📅 [SITE VISIT RESCHEDULED] Moved visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+                // If the user specified target properties, only reschedule matching active visits
+                let matchedVisitsToReschedule: any[] = [];
+                if (availablePropertyIds.length > 0) {
+                  matchedVisitsToReschedule = scheduledVisits.filter(v => 
+                    v.property_id && availablePropertyIds.includes(String(v.property_id))
+                  );
+                }
+
+                if (matchedVisitsToReschedule.length > 0) {
+                  // Reschedule only the matching ones
+                  for (const activeVisit of matchedVisitsToReschedule) {
+                    await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
+                    console.log(`📅 [SITE VISIT RESCHEDULED] Moved matching visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+                  }
+                  
+                  // For the other properties in availablePropertyIds that did NOT match any active scheduled visit, 
+                  // we should book them as new site visits!
+                  const matchedPropIds = matchedVisitsToReschedule.map(v => String(v.property_id));
+                  const newPropIdsToBook = availablePropertyIds.filter(id => !matchedPropIds.includes(id));
+                  
+                  for (const propId of newPropIdsToBook) {
+                    const alreadyExists = await checkSiteVisitExists(
+                      targetLead.key!,
+                      propId,
+                      structuredRes.appointmentDate
+                    );
+                    if (!alreadyExists) {
+                      await createSiteVisit({
+                        lead_id: targetLead.key!,
+                        property_id: propId,
+                        appointment_date: structuredRes.appointmentDate,
+                        status: 'Scheduled'
+                      });
+                      console.log(`📅 [SITE VISIT CREATED] Linked new visit for Lead ${targetLead.key} (Property ${propId}) on ${structuredRes.appointmentDate}`);
+                    }
+                  }
+                } else if (updatedPropertyIds.length > 0 && availablePropertyIds.length > 0) {
+                  // If properties were specified but none matched an active scheduled visit,
+                  // it means these are new properties to book! So book them as new visits:
+                  for (const propId of availablePropertyIds) {
+                    const alreadyExists = await checkSiteVisitExists(
+                      targetLead.key!,
+                      propId,
+                      structuredRes.appointmentDate
+                    );
+                    if (!alreadyExists) {
+                      await createSiteVisit({
+                        lead_id: targetLead.key!,
+                        property_id: propId,
+                        appointment_date: structuredRes.appointmentDate,
+                        status: 'Scheduled'
+                      });
+                      console.log(`📅 [SITE VISIT CREATED] Linked new visit for Lead ${targetLead.key} (Property ${propId}) on ${structuredRes.appointmentDate}`);
+                    }
+                  }
+                } else {
+                  // No properties specified, reschedule ALL scheduled visits
+                  for (const activeVisit of scheduledVisits) {
+                    await updateSiteVisitDate(activeVisit.key!, structuredRes.appointmentDate);
+                    console.log(`📅 [SITE VISIT RESCHEDULED] Moved visit ${activeVisit.key} to ${structuredRes.appointmentDate}`);
+                  }
                 }
               } else {
                 // Book new visits
